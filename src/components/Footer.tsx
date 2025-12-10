@@ -35,18 +35,18 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Colonne Entreprise */}
+          {/* Colonne Company */}
           <div>
-            <h3 className="text-white font-semibold mb-4">Entreprise</h3>
+            <h3 className="text-white font-semibold mb-4">Company</h3>
             <ul className="space-y-2">
               <li>
                 <Link href="/about" className="hover:text-orange-500 transition-colors">
-                  À propos de nous
+                  About Us
                 </Link>
               </li>
               <li>
                 <Link href="/careers" className="hover:text-orange-500 transition-colors">
-                  Carrières
+                  Careers
                 </Link>
               </li>
               <li>
@@ -63,39 +63,39 @@ export default function Footer() {
             <ul className="space-y-2">
               <li>
                 <Link href="/faq" className="hover:text-orange-500 transition-colors">
-                  FAQ
+                  FAQs
                 </Link>
               </li>
               <li>
                 <Link href="/help" className="hover:text-orange-500 transition-colors">
-                  Centre d&apos;aide
+                  Help Center
                 </Link>
               </li>
               <li>
                 <Link href="/terms" className="hover:text-orange-500 transition-colors">
-                  Conditions d&apos;utilisation
+                  Terms of Service
                 </Link>
               </li>
               <li>
                 <Link href="/privacy" className="hover:text-orange-500 transition-colors">
-                  Politique de confidentialité
+                  Privacy Policy
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Colonne Légal */}
+          {/* Colonne Legal */}
           <div>
-            <h3 className="text-white font-semibold mb-4">Légal</h3>
+            <h3 className="text-white font-semibold mb-4">Legal</h3>
             <ul className="space-y-2">
               <li>
                 <Link href="/refund" className="hover:text-orange-500 transition-colors">
-                  Politique de remboursement
+                  Refund Policy
                 </Link>
               </li>
               <li>
                 <Link href="/cookies" className="hover:text-orange-500 transition-colors">
-                  Politique de cookies
+                  Cookie Policy
                 </Link>
               </li>
             </ul>
