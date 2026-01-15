@@ -35,18 +35,18 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Colonne Company */}
+          {/* Colonne Entreprise */}
           <div>
-            <h3 className="text-white font-semibold mb-4">Company</h3>
+            <h3 className="text-white font-semibold mb-4">Entreprise</h3>
             <ul className="space-y-2">
               <li>
                 <Link href="/about" className="hover:text-orange-500 transition-colors">
-                  About Us
+                  À Propos
                 </Link>
               </li>
               <li>
                 <Link href="/careers" className="hover:text-orange-500 transition-colors">
-                  Careers
+                  Carrières
                 </Link>
               </li>
               <li>
@@ -68,34 +68,34 @@ export default function Footer() {
               </li>
               <li>
                 <Link href="/help" className="hover:text-orange-500 transition-colors">
-                  Help Center
+                  Centre d&apos;aide
                 </Link>
               </li>
               <li>
                 <Link href="/terms" className="hover:text-orange-500 transition-colors">
-                  Terms of Service
+                  Conditions Générales
                 </Link>
               </li>
               <li>
                 <Link href="/privacy" className="hover:text-orange-500 transition-colors">
-                  Privacy Policy
+                  Politique de Confidentialité
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Colonne Legal */}
+          {/* Colonne Légal */}
           <div>
-            <h3 className="text-white font-semibold mb-4">Legal</h3>
+            <h3 className="text-white font-semibold mb-4">Légal</h3>
             <ul className="space-y-2">
               <li>
                 <Link href="/refund" className="hover:text-orange-500 transition-colors">
-                  Refund Policy
+                  Politique de Remboursement
                 </Link>
               </li>
               <li>
                 <Link href="/cookies" className="hover:text-orange-500 transition-colors">
-                  Cookie Policy
+                  Politique de Cookies
                 </Link>
               </li>
             </ul>
