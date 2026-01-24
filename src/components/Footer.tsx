@@ -5,13 +5,17 @@ export default function Footer() {
     <footer className="bg-gray-900 text-gray-300 py-12">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-          {/* Colonne Afro Eats */}
+          {/* Colonne Afro-Eats */}
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">A</span>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+                <img 
+                  src="/logo-afro-eats.png" 
+                  alt="Afro-Eats Logo" 
+                  className="w-full h-full object-contain p-1"
+                />
               </div>
-              <span className="text-2xl font-bold text-orange-500">Afro Eats</span>
+              <span className="text-2xl font-bold text-orange-500">Afro-Eats</span>
             </div>
             <p className="text-sm mb-4">
               Authentic African flavors delivered to your door.
@@ -105,7 +109,7 @@ export default function Footer() {
         {/* Copyright */}
         <div className="border-t border-gray-800 pt-8 text-center">
           <p className="text-sm">
-            © 2025 Afro Eats. All rights reserved.
+            © 2025 Afro-Eats. All rights reserved.
           </p>
         </div>
       </div>

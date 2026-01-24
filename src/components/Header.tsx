@@ -10,11 +10,15 @@ export default function Header() {
     <header className="bg-white shadow-sm sticky top-0 z-50">
       <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-xl">A</span>
+        <Link href="/" className="flex items-center gap-3">
+          <div className="w-12 h-12 flex items-center justify-center">
+            <img 
+              src="/logo-afro-eats.png" 
+              alt="Afro-Eats Logo" 
+              className="w-full h-full object-contain"
+            />
           </div>
-          <span className="text-2xl font-bold text-orange-500">Afro Eats</span>
+          <span className="text-2xl font-bold text-gray-800">Afro-Eats</span>
         </Link>
 
         {/* Navigation Links */}
