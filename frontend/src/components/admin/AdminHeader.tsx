@@ -6,6 +6,7 @@ const pageTitles: Record<string, string> = {
   '/admin-dashboard': 'Tableau de bord',
   '/commande-admin': 'Commandes',
   '/admin-plats': 'Gestion des Plats',
+  '/admin-messagerie': 'Messagerie',
   '/admin-parametres': 'Paramètres'
 };
 

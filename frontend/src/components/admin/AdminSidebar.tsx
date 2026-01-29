@@ -1,7 +1,9 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { getUnreadCount } from '@/services/adminMessages';
 
 interface NavItem {
   href: string;
@@ -36,6 +38,15 @@ const navItems: NavItem[] = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
       </svg>
     )
+  },
+  {
+    href: '/admin-messagerie',
+    label: 'Messagerie',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      </svg>
+    )
   }
 ];
 
@@ -63,6 +74,13 @@ const settingsItems: NavItem[] = [
 
 export default function AdminSidebar() {
   const pathname = usePathname();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    getUnreadCount()
+      .then((count) => setUnreadCount(count))
+      .catch(() => setUnreadCount(0));
+  }, [pathname]); // Recharger le compteur quand on change de page (ex. après lecture sur messagerie)
 
   const isActive = (href: string) => {
     return pathname === href;
@@ -96,6 +114,8 @@ export default function AdminSidebar() {
           <div className="space-y-1">
             {navItems.map((item) => {
               const active = isActive(item.href);
+              const isMessagerie = item.href === '/admin-messagerie';
+              const showBadge = isMessagerie && unreadCount > 0;
               return (
                 <Link
                   key={item.href}
@@ -106,8 +126,15 @@ export default function AdminSidebar() {
                       : 'text-blue-100 hover:bg-blue-800 hover:text-white'
                   }`}
                 >
-                  <span className={active ? 'text-blue-600' : ''}>{item.icon}</span>
-                  <span>{item.label}</span>
+                  <span className={`relative ${active ? 'text-blue-600' : ''}`}>
+                    {item.icon}
+                    {showBadge && (
+                      <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold text-white bg-orange-500 rounded-full">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
+                  </span>
+                  <span className="flex-1">{item.label}</span>
                 </Link>
               );
             })}

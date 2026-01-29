@@ -1,147 +1,45 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
-
-interface Plat {
-  id: number;
-  nom: string;
-  quantite: number;
-  prix: number;
-}
-
-interface Commande {
-  id: number;
-  numeroCommande: string;
-  client: {
-    nom: string;
-    email: string;
-    telephone: string;
-    adresse: string;
-  };
-  plats: Plat[];
-  statut: 'en_attente' | 'confirmee' | 'en_preparation' | 'en_livraison' | 'livree' | 'annulee';
-  montantTotal: number;
-  dateCommande: string;
-  dateEstimeeLivraison: string;
-  modePaiement: 'carte' | 'especes' | 'mobile';
-  notes?: string;
-}
+import { getCommandes, updateStatut, type CommandeAdmin } from '@/services/adminCommandes';
 
 const statutsCommande = [
   { value: 'en_attente', label: 'En attente', color: 'bg-yellow-100 text-yellow-800' },
   { value: 'confirmee', label: 'Confirmée', color: 'bg-blue-100 text-blue-800' },
   { value: 'en_preparation', label: 'En préparation', color: 'bg-orange-100 text-orange-800' },
+  { value: 'prete', label: 'Prête', color: 'bg-indigo-100 text-indigo-800' },
   { value: 'en_livraison', label: 'En livraison', color: 'bg-purple-100 text-purple-800' },
   { value: 'livree', label: 'Livrée', color: 'bg-green-100 text-green-800' },
-  { value: 'annulee', label: 'Annulée', color: 'bg-red-100 text-red-800' }
-];
-
-const commandesInitiales: Commande[] = [
-  {
-    id: 1,
-    numeroCommande: 'CMD-2025-001',
-    client: {
-      nom: 'Fatoumata Diallo',
-      email: 'fatoumata.diallo@email.com',
-      telephone: '+33 6 12 34 56 78',
-      adresse: '12 Rue de la Paix, 75001 Paris'
-    },
-    plats: [
-      { id: 1, nom: 'Ndolé aux Crevettes', quantite: 2, prix: 18.50 },
-      { id: 2, nom: 'Attieké Poisson', quantite: 1, prix: 16.00 }
-    ],
-    statut: 'en_preparation',
-    montantTotal: 53.00,
-    dateCommande: '2025-01-24T14:30:00',
-    dateEstimeeLivraison: '2025-01-24T15:45:00',
-    modePaiement: 'carte',
-    notes: 'Pas de piment dans le ndolé s\'il vous plaît'
-  },
-  {
-    id: 2,
-    numeroCommande: 'CMD-2025-002',
-    client: {
-      nom: 'Amadou Traoré',
-      email: 'amadou.traore@email.com',
-      telephone: '+33 6 98 76 54 32',
-      adresse: '45 Avenue des Champs, 75008 Paris'
-    },
-    plats: [
-      { id: 3, nom: 'Poulet DG', quantite: 1, prix: 17.00 },
-      { id: 4, nom: 'Plantain Frit', quantite: 2, prix: 7.50 }
-    ],
-    statut: 'en_attente',
-    montantTotal: 32.00,
-    dateCommande: '2025-01-24T15:15:00',
-    dateEstimeeLivraison: '2025-01-24T16:30:00',
-    modePaiement: 'mobile'
-  },
-  {
-    id: 3,
-    numeroCommande: 'CMD-2025-003',
-    client: {
-      nom: 'Aissatou Ba',
-      email: 'aissatou.ba@email.com',
-      telephone: '+33 7 11 22 33 44',
-      adresse: '78 Boulevard Saint-Michel, 75006 Paris'
-    },
-    plats: [
-      { id: 5, nom: 'Eru', quantite: 1, prix: 16.50 },
-      { id: 6, nom: 'Jus de Bissap', quantite: 2, prix: 6.00 }
-    ],
-    statut: 'livree',
-    montantTotal: 28.50,
-    dateCommande: '2025-01-24T12:00:00',
-    dateEstimeeLivraison: '2025-01-24T13:15:00',
-    modePaiement: 'carte'
-  },
-  {
-    id: 4,
-    numeroCommande: 'CMD-2025-004',
-    client: {
-      nom: 'Ibrahima Sarr',
-      email: 'ibrahima.sarr@email.com',
-      telephone: '+33 6 55 44 33 22',
-      adresse: '23 Rue du Commerce, 75015 Paris'
-    },
-    plats: [
-      { id: 7, nom: 'Poisson Braisé', quantite: 2, prix: 19.00 },
-      { id: 8, nom: 'Riz Jollof', quantite: 1, prix: 13.25 }
-    ],
-    statut: 'en_livraison',
-    montantTotal: 51.25,
-    dateCommande: '2025-01-24T13:45:00',
-    dateEstimeeLivraison: '2025-01-24T15:00:00',
-    modePaiement: 'especes'
-  },
-  {
-    id: 5,
-    numeroCommande: 'CMD-2025-005',
-    client: {
-      nom: 'Mariam Diallo',
-      email: 'mariam.diallo@email.com',
-      telephone: '+33 6 77 88 99 00',
-      adresse: '67 Rue de Rivoli, 75001 Paris'
-    },
-    plats: [
-      { id: 9, nom: 'Sauce Arachide', quantite: 1, prix: 14.50 },
-      { id: 10, nom: 'Beignet Haricot', quantite: 3, prix: 7.83 }
-    ],
-    statut: 'confirmee',
-    montantTotal: 38.00,
-    dateCommande: '2025-01-24T11:20:00',
-    dateEstimeeLivraison: '2025-01-24T12:35:00',
-    modePaiement: 'carte',
-    notes: 'Merci de sonner à l\'interphone'
-  }
+  { value: 'annulee', label: 'Annulée', color: 'bg-red-100 text-red-800' },
+  { value: 'remboursee', label: 'Remboursée', color: 'bg-gray-100 text-gray-800' }
 ];
 
 export default function CommandeAdminPage() {
-  const [commandes, setCommandes] = useState<Commande[]>(commandesInitiales);
+  const [commandes, setCommandes] = useState<CommandeAdmin[]>([]);
   const [filtreStatut, setFiltreStatut] = useState<string>('tous');
   const [recherche, setRecherche] = useState('');
-  const [commandeSelectionnee, setCommandeSelectionnee] = useState<Commande | null>(null);
+  const [commandeSelectionnee, setCommandeSelectionnee] = useState<CommandeAdmin | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getCommandes({ limite: 100 }).then(({ commandes: list }) => {
+      if (!cancelled) {
+        setCommandes(list || []);
+        setError(null);
+      }
+      if (!cancelled) setLoading(false);
+    }).catch(() => {
+      if (!cancelled) {
+        setCommandes([]);
+        setError('Impossible de charger les commandes. Connectez-vous en tant qu\'admin.');
+        setLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -158,12 +56,16 @@ export default function CommandeAdminPage() {
     return statutsCommande.find(s => s.value === statut) || statutsCommande[0];
   };
 
-  const changerStatut = (commandeId: number, nouveauStatut: string) => {
-    setCommandes(prev => prev.map(commande => 
-      commande.id === commandeId 
-        ? { ...commande, statut: nouveauStatut as Commande['statut'] }
-        : commande
-    ));
+const changerStatut = async (commandeId: string, nouveauStatut: string) => {
+    const ok = await updateStatut(commandeId, nouveauStatut);
+    if (ok) {
+      setCommandes(prev => prev.map(commande =>
+        commande.id === commandeId ? { ...commande, statut: nouveauStatut } : commande
+      ));
+      if (commandeSelectionnee?.id === commandeId) {
+        setCommandeSelectionnee(prev => prev ? { ...prev, statut: nouveauStatut } : null);
+      }
+    }
   };
 
   const commandesFiltrees = commandes.filter(commande => {
@@ -186,12 +88,35 @@ export default function CommandeAdminPage() {
     revenus: commandes.filter(c => c.statut === 'livree').reduce((sum, c) => sum + c.montantTotal, 0)
   };
 
+  const refetch = () => {
+    setLoading(true);
+    getCommandes({ limite: 100 }).then(({ commandes: list }) => {
+      setCommandes(list || []);
+      setError(null);
+      setLoading(false);
+    }).catch(() => {
+      setCommandes([]);
+      setError('Impossible de charger les commandes.');
+      setLoading(false);
+    });
+  };
+
   return (
     <AdminLayout>
       <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestion des Commandes</h1>
             <p className="text-gray-600">Gérez et suivez toutes les commandes de votre restaurant</p>
           </div>
+
+          {error && (
+            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 flex items-center justify-between">
+              <span>{error}</span>
+              <button type="button" onClick={refetch} className="text-amber-700 font-medium hover:underline">Réessayer</button>
+            </div>
+          )}
+          {loading && commandes.length === 0 && (
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg text-gray-600">Chargement des commandes...</div>
+          )}
 
           {/* Statistiques */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">

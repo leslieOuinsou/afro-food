@@ -74,7 +74,6 @@ export default function MenuPage() {
   const [selectedCategory, setSelectedCategory] = useState('Tous');
   const [plats, setPlats] = useState<PlatAffichage[]>(platsFallback);
   const [loading, setLoading] = useState(true);
-  const [fromApi, setFromApi] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -86,7 +85,6 @@ export default function MenuPage() {
           const list = (res.data as { plats: Plat[] }).plats;
           if (list.length > 0) {
             setPlats(list.map(platApiToAffichage));
-            setFromApi(true);
           }
         }
       })
@@ -108,9 +106,6 @@ export default function MenuPage() {
       <Header />
       <main className="flex-grow bg-gray-50 text-gray-900">
         <div className="container mx-auto px-4 py-12">
-          {fromApi && (
-            <p className="text-sm text-green-600 mb-4">Menu chargé depuis le serveur</p>
-          )}
           <section className="mb-12">
             <h2 className="text-3xl font-bold text-gray-800 mb-6">Catégories de Plats</h2>
             <div className="flex flex-wrap gap-3">

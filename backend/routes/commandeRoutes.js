@@ -28,43 +28,41 @@ router.use(protegerRoute);
 // Routes pour les clients
 router.post('/', validerCommande, creerCommande);
 
-router.get('/mes-commandes', 
+router.get('/mes-commandes',
   validerPagination,
   obtenirMesCommandes
 );
 
-router.get('/:id', 
-  validerIdMongoDB(),
-  obtenirCommandeParId
-);
-
-router.patch('/:id/annuler', 
-  validerIdMongoDB(),
-  annulerCommande
-);
-
-router.post('/:id/evaluer', 
-  validerIdMongoDB(),
-  evaluerCommande
-);
-
-// Routes pour les admins et livreurs
-router.get('/', 
+// Routes admin : doivent être avant /:id pour être matchées
+router.get('/',
   restreindreAcces('admin', 'livreur'),
   validerPagination,
   obtenirToutesCommandes
 );
+router.get('/statistiques/general',
+  restreindreAcces('admin'),
+  obtenirStatistiques
+);
 
-router.patch('/:id/statut', 
+router.get('/:id',
+  validerIdMongoDB(),
+  obtenirCommandeParId
+);
+
+router.patch('/:id/annuler',
+  validerIdMongoDB(),
+  annulerCommande
+);
+
+router.post('/:id/evaluer',
+  validerIdMongoDB(),
+  evaluerCommande
+);
+
+router.patch('/:id/statut',
   restreindreAcces('admin', 'livreur'),
   validerIdMongoDB(),
   changerStatutCommande
-);
-
-// Routes pour les admins seulement
-router.get('/statistiques/general', 
-  restreindreAcces('admin'),
-  obtenirStatistiques
 );
 
 export default router;

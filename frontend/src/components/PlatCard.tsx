@@ -7,9 +7,11 @@ interface PlatCardProps {
   id?: string;
   prixUnitaire?: number;
   onAddToCart?: () => void;
+  /** Masquer le prix et le bouton "Ajouter au panier" (ex. page d'accueil) */
+  hidePriceAndCart?: boolean;
 }
 
-export default function PlatCard({ nom, description, prix, image, onAddToCart }: PlatCardProps) {
+export default function PlatCard({ nom, description, prix, image, onAddToCart, hidePriceAndCart }: PlatCardProps) {
   const handleAdd = () => {
     if (onAddToCart) onAddToCart();
   };
@@ -29,17 +31,19 @@ export default function PlatCard({ nom, description, prix, image, onAddToCart }:
       {/* Contenu */}
       <div className="p-4">
         <h3 className="text-xl font-bold text-gray-800 mb-2">{nom}</h3>
-        <p className="text-gray-600 text-sm mb-4 line-clamp-2">{description}</p>
-        <div className="flex items-center justify-between">
-          <span className="text-2xl font-bold text-gray-800">{prix}</span>
-          <button
-            type="button"
-            onClick={handleAdd}
-            className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
-          >
-            Ajouter au panier
-          </button>
-        </div>
+        <p className={`text-gray-600 text-sm line-clamp-2 ${hidePriceAndCart ? '' : 'mb-4'}`}>{description}</p>
+        {!hidePriceAndCart && (
+          <div className="flex items-center justify-between mt-4">
+            <span className="text-2xl font-bold text-gray-800">{prix}</span>
+            <button
+              type="button"
+              onClick={handleAdd}
+              className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+            >
+              Ajouter au panier
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

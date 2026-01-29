@@ -1,7 +1,10 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AdminLayout from '@/components/admin/AdminLayout';
+import { getPublicStats, getAdminCommandesStats } from '@/services/adminStats';
+import { getCommandes } from '@/services/adminCommandes';
 
 interface StatCard {
   title: string;
@@ -11,81 +14,86 @@ interface StatCard {
   color: string;
 }
 
-const stats: StatCard[] = [
-  {
-    title: 'Commandes Aujourd\'hui',
-    value: '24',
-    change: '+12% vs hier',
-    color: 'bg-blue-500',
-    icon: (
-      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-      </svg>
-    )
-  },
-  {
-    title: 'Revenus du Mois',
-    value: '45,230 €',
-    change: '+18% vs mois dernier',
-    color: 'bg-green-500',
-    icon: (
-      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    )
-  },
-  {
-    title: 'Plats Disponibles',
-    value: '15',
-    change: '3 nouveaux cette semaine',
-    color: 'bg-orange-500',
-    icon: (
-      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-      </svg>
-    )
-  },
-  {
-    title: 'Clients Actifs',
-    value: '342',
-    change: '+28 nouveaux clients',
-    color: 'bg-purple-500',
-    icon: (
-      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-      </svg>
-    )
-  }
+const statLabels: StatCard[] = [
+  { title: 'Commandes (mois)', value: '—', change: 'Depuis le serveur', color: 'bg-blue-500', icon: <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg> },
+  { title: 'Revenus (mois)', value: '—', change: 'Depuis le serveur', color: 'bg-green-500', icon: <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
+  { title: 'Plats Disponibles', value: '—', change: 'Depuis le serveur', color: 'bg-orange-500', icon: <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg> },
+  { title: 'Clients Actifs', value: '—', change: 'Depuis le serveur', color: 'bg-purple-500', icon: <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg> },
 ];
 
-const recentOrders = [
+const recentOrdersFallback = [
   { id: 'AM001', client: 'Fatoumata Diallo', montant: '45,50 €', status: 'Livrée', time: 'Il y a 2h' },
   { id: 'AM002', client: 'Amadou Traoré', montant: '32,00 €', status: 'En cours', time: 'Il y a 3h' },
   { id: 'AM003', client: 'Aissatou Ba', montant: '28,75 €', status: 'Nouvelle', time: 'Il y a 4h' },
-  { id: 'AM004', client: 'Ibrahima Sarr', montant: '51,25 €', status: 'En cours', time: 'Il y a 5h' },
-  { id: 'AM005', client: 'Mariam Diallo', montant: '38,00 €', status: 'Livrée', time: 'Il y a 6h' }
 ];
 
-const topPlats = [
+const topPlatsFallback = [
   { nom: 'Ndolé aux Crevettes', commandes: 45, revenu: '837,50 €' },
   { nom: 'Poulet DG', commandes: 38, revenu: '646,00 €' },
   { nom: 'Poisson Braisé', commandes: 32, revenu: '608,00 €' },
-  { nom: 'Pâte avec Sauce Arachide', commandes: 28, revenu: '406,00 €' },
-  { nom: 'Eru', commandes: 25, revenu: '412,50 €' }
 ];
 
+function formatTimeAgo(dateStr: string): string {
+  const d = new Date(dateStr);
+  const diffM = Math.floor((Date.now() - d.getTime()) / 60000);
+  if (diffM < 60) return `Il y a ${diffM} min`;
+  const diffH = Math.floor(diffM / 60);
+  if (diffH < 24) return `Il y a ${diffH}h`;
+  return `Il y a ${Math.floor(diffH / 24)}j`;
+}
+
+const statusLabel: Record<string, string> = {
+  livree: 'Livrée', en_preparation: 'En préparation', en_attente: 'Nouvelle',
+  confirmee: 'Confirmée', en_livraison: 'En livraison', annulee: 'Annulée', prete: 'Prête', remboursee: 'Remboursée'
+};
+
 export default function AdminDashboardPage() {
+  const [stats, setStats] = useState<StatCard[]>(statLabels);
+  const [recentOrders, setRecentOrders] = useState(recentOrdersFallback);
+  const [topPlats, setTopPlats] = useState(topPlatsFallback);
+  const [evolutionRevenus, setEvolutionRevenus] = useState([120, 180, 150, 220, 200, 250, 280]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [publicStats, adminStats, commandesRes] = await Promise.all([
+        getPublicStats(),
+        getAdminCommandesStats(),
+        getCommandes({ limite: 5 })
+      ]);
+      if (cancelled) return;
+      if (publicStats) {
+        setStats(prev => [
+          { ...prev[0], value: adminStats?.statistiques ? String(adminStats.statistiques.totalCommandes) : '—', change: prev[0].change },
+          { ...prev[1], value: adminStats?.statistiques ? `${Number(adminStats.statistiques.totalRevenu || 0).toFixed(0)} €` : '—', change: prev[1].change },
+          { ...prev[2], value: String(publicStats.nombrePlats), change: `${publicStats.nombreCategories} catégories` },
+          { ...prev[3], value: String(publicStats.nombreUtilisateursActifs), change: 'Clients inscrits' },
+        ]);
+      }
+      if (adminStats?.evolutionQuotidienne && adminStats.evolutionQuotidienne.length > 0) {
+        const rev = adminStats.evolutionQuotidienne.slice(-7).map(e => e.revenus ?? 0);
+        setEvolutionRevenus(rev.length >= 7 ? rev : [...Array(7 - rev.length).fill(0), ...rev]);
+      }
+      if (commandesRes.commandes?.length) {
+        setRecentOrders(commandesRes.commandes.slice(0, 5).map(c => ({
+          id: c.numeroCommande,
+          client: c.client.nom,
+          montant: `${c.montantTotal.toFixed(2)} €`,
+          status: statusLabel[c.statut] || c.statut,
+          time: formatTimeAgo(c.dateCommande)
+        })));
+      }
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Livrée':
-        return 'bg-green-100 text-green-800';
-      case 'En cours':
-        return 'bg-orange-100 text-orange-800';
-      case 'Nouvelle':
-        return 'bg-blue-100 text-blue-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+    if (status === 'Livrée' || status === 'livree') return 'bg-green-100 text-green-800';
+    if (status === 'En cours' || status === 'En préparation' || status === 'en_preparation' || status === 'en_livraison') return 'bg-orange-100 text-orange-800';
+    if (status === 'Nouvelle' || status === 'en_attente' || status === 'Confirmée' || status === 'confirmee') return 'bg-blue-100 text-blue-800';
+    return 'bg-gray-100 text-gray-800';
   };
 
   return (
@@ -185,21 +193,23 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* Graphique de Revenus (simulé) */}
+          {/* Graphique de Revenus */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-bold text-gray-800 mb-6">Revenus des 7 Derniers Jours</h2>
             <div className="h-64 flex items-end justify-between gap-2">
-              {[120, 180, 150, 220, 200, 250, 280].map((height, index) => (
+              {(loading ? [120, 180, 150, 220, 200, 250, 280] : evolutionRevenus).map((height, index) => {
+                const maxVal = Math.max(...(loading ? [280] : evolutionRevenus), 1);
+                return (
                 <div key={index} className="flex-1 flex flex-col items-center">
                   <div
                     className="w-full bg-gradient-to-t from-orange-500 to-orange-400 rounded-t-lg mb-2 transition-all hover:opacity-80"
-                    style={{ height: `${(height / 300) * 100}%` }}
+                    style={{ height: `${(height / maxVal) * 100}%` }}
                   ></div>
                   <span className="text-xs text-gray-600">
                     {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'][index]}
                   </span>
                 </div>
-              ))}
+              ); })}
             </div>
             <div className="mt-4 flex items-center justify-center gap-4 text-sm text-gray-600">
               <div className="flex items-center gap-2">

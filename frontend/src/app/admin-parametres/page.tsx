@@ -1,47 +1,71 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
+
+const STORAGE_KEY = 'afro_admin_parametres';
+
+const defaultSettings = {
+  nomRestaurant: 'Afro-Eats',
+  email: 'contact@afrimiam.com',
+  telephone: '+33 1 23 45 67 89',
+  adresse: '123 Rue de la Gastronomie, 75001 Paris',
+  description: 'Restaurant spécialisé dans la cuisine camerounaise et béninoise',
+  fraisLivraison: 5.00,
+  delaiLivraison: 30,
+  zoneLivraison: 'Paris et banlieue',
+  montantMinimum: 15.00,
+  notificationsEmail: true,
+  notificationsSMS: false,
+  notificationsCommandes: true,
+  notificationsPromotions: true,
+  paiementCarte: true,
+  paiementEspeces: true,
+  paiementLivraison: true,
+  theme: 'clair' as const,
+  langue: 'fr' as const
+};
+
+type SettingsState = typeof defaultSettings;
+
+function loadSettings(): SettingsState {
+  if (typeof window === 'undefined') return defaultSettings;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<SettingsState>;
+      return { ...defaultSettings, ...parsed };
+    }
+  } catch (_) {}
+  return defaultSettings;
+}
+
+function saveSettings(settings: SettingsState) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  } catch (_) {}
+}
 
 export default function AdminParametresPage() {
   const [activeTab, setActiveTab] = useState('general');
-  const [settings, setSettings] = useState({
-    // Paramètres généraux
-    nomRestaurant: 'Afro-Eats',
-    email: 'contact@afrimiam.com',
-    telephone: '+33 1 23 45 67 89',
-    adresse: '123 Rue de la Gastronomie, 75001 Paris',
-    description: 'Restaurant spécialisé dans la cuisine camerounaise et béninoise',
-    
-    // Paramètres de livraison
-    fraisLivraison: 5.00,
-    delaiLivraison: 30,
-    zoneLivraison: 'Paris et banlieue',
-    montantMinimum: 15.00,
-    
-    // Paramètres de notifications
-    notificationsEmail: true,
-    notificationsSMS: false,
-    notificationsCommandes: true,
-    notificationsPromotions: true,
-    
-    // Paramètres de paiement
-    paiementCarte: true,
-    paiementEspeces: true,
-    paiementLivraison: true,
-    
-    // Paramètres d'affichage
-    theme: 'clair',
-    langue: 'fr'
-  });
+  const [settings, setSettings] = useState<SettingsState>(defaultSettings);
+  const [saved, setSaved] = useState(false);
 
-  const handleInputChange = (field: string, value: any) => {
-    setSettings({ ...settings, [field]: value });
+  useEffect(() => {
+    setSettings(loadSettings());
+  }, []);
+
+  const handleInputChange = (field: keyof SettingsState, value: string | number | boolean) => {
+    setSettings(prev => ({ ...prev, [field]: value }));
+    setSaved(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    alert('Paramètres sauvegardés avec succès !');
+    saveSettings(settings);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
   };
 
   const tabs = [
@@ -414,11 +438,14 @@ export default function AdminParametresPage() {
               )}
 
               {/* Submit Button */}
-              <div className="mt-8 pt-6 border-t border-gray-200 flex justify-end gap-4">
+              <div className="mt-8 pt-6 border-t border-gray-200 flex justify-end items-center gap-4">
+                {saved && (
+                  <span className="text-sm text-green-600 font-medium">Paramètres enregistrés (stockage local)</span>
+                )}
                 <button
                   type="button"
-                  className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                  onClick={() => window.location.reload()}
+                  className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-gray-900"
+                  onClick={() => setSettings(loadSettings())}
                 >
                   Annuler
                 </button>

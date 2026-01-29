@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 
 export interface CartItem {
   id: string;
@@ -11,6 +11,7 @@ export interface CartItem {
 }
 
 const CART_STORAGE_KEY = 'afro_eats_cart';
+const TOAST_DURATION_MS = 2500;
 
 interface CartContextType {
   items: CartItem[];
@@ -44,6 +45,8 @@ function saveToStorage(items: CartItem[]) {
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setItems(loadFromStorage());
@@ -53,6 +56,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (hydrated) saveToStorage(items);
   }, [items, hydrated]);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    };
+  }, []);
 
   const addItem = useCallback((item: Omit<CartItem, 'quantite'> | CartItem) => {
     const quantite = 'quantite' in item ? item.quantite : 1;
@@ -65,6 +74,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
       return [...prev, { ...item, quantite } as CartItem];
     });
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    setToastMessage(`${item.nom} ajouté au panier`);
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastMessage(null);
+      toastTimeoutRef.current = null;
+    }, TOAST_DURATION_MS);
   }, []);
 
   const removeItem = useCallback((id: string) => {
@@ -88,6 +103,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
       value={{ items, addItem, removeItem, updateQuantity, clearCart }}
     >
       {children}
+      {toastMessage && (
+        <div
+          role="alert"
+          className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-6 py-4 bg-white text-gray-900 text-base font-semibold rounded-xl shadow-2xl border-2 border-orange-500 min-w-[280px]"
+          style={{ boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}
+        >
+          <span className="flex items-center gap-3">
+            <span className="flex-shrink-0 w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </span>
+            <span>{toastMessage}</span>
+          </span>
+        </div>
+      )}
     </CartContext.Provider>
   );
 }

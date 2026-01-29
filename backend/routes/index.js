@@ -6,6 +6,8 @@ import authRoutes from './authRoutes.js';
 import platRoutes from './platRoutes.js';
 import commandeRoutes from './commandeRoutes.js';
 import avisRoutes from './avisRoutes.js';
+import messageRoutes from './messageRoutes.js';
+import { creerMessage } from '../controllers/contactMessageController.js';
 
 const router = express.Router(); // Création d'un routeur Express pour gérer les routes
 
@@ -32,6 +34,10 @@ router.use('/auth', authRoutes);           // Routes d'authentification
 router.use('/plats', platRoutes);          // Routes pour les plats
 router.use('/commandes', commandeRoutes);  // Routes pour les commandes
 router.use('/avis', avisRoutes);           // Routes pour les avis
+router.use('/messages', messageRoutes);    // Routes messagerie (admin)
+
+// Envoi message depuis la page contact (public)
+router.post('/contact', creerMessage);
 
 // Route pour les statistiques générales (publique)
 router.get('/statistiques', async (req, res, next) => {
