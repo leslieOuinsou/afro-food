@@ -269,8 +269,7 @@ const commandeSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// Index pour améliorer les performances
-commandeSchema.index({ numeroCommande: 1 });
+// Index pour améliorer les performances (numeroCommande a déjà unique: true)
 commandeSchema.index({ client: 1, createdAt: -1 });
 commandeSchema.index({ statut: 1 });
 commandeSchema.index({ 'dates.commande': -1 });

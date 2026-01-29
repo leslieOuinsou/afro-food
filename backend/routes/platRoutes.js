@@ -54,6 +54,17 @@ router.get('/:id',
   obtenirPlatParId
 );
 
+// Route dev : créer un plat sans auth (désactivée en production)
+router.post('/dev', (req, res, next) => {
+  if (process.env.NODE_ENV === 'production') {
+    const err = new Error('Route réservée au développement');
+    err.statusCode = 404;
+    return next(err);
+  }
+  req.utilisateur = { id: null };
+  creerPlat(req, res, next);
+});
+
 // Routes protégées pour les admins
 router.post('/', 
   protegerRoute,
@@ -62,6 +73,16 @@ router.post('/',
   creerPlat
 );
 
+// Route dev : modifier un plat sans auth (désactivée en production)
+router.put('/dev/:id', validerIdMongoDB(), (req, res, next) => {
+  if (process.env.NODE_ENV === 'production') {
+    const err = new Error('Route réservée au développement');
+    err.statusCode = 404;
+    return next(err);
+  }
+  mettreAJourPlat(req, res, next);
+});
+
 router.put('/:id', 
   protegerRoute,
   restreindreAcces('admin'),
@@ -69,6 +90,16 @@ router.put('/:id',
   validerPlat,
   mettreAJourPlat
 );
+
+// Route dev : supprimer un plat sans auth (désactivée en production)
+router.delete('/dev/:id', validerIdMongoDB(), (req, res, next) => {
+  if (process.env.NODE_ENV === 'production') {
+    const err = new Error('Route réservée au développement');
+    err.statusCode = 404;
+    return next(err);
+  }
+  supprimerPlat(req, res, next);
+});
 
 router.delete('/:id', 
   protegerRoute,

@@ -53,8 +53,18 @@ export const connectDB = async () => {
     });
 
   } catch (error) {
-    // En cas d'erreur, afficher le message d'erreur détaillé
+    // Message d'erreur détaillé selon le type d'erreur
     console.error('❌ Erreur lors de la connexion à MongoDB:', error.message);
+    
+    // Aide spécifique pour l'erreur "IP non autorisée" (Atlas)
+    if (error.message && error.message.includes('whitelist')) {
+      console.error('\n📌 SOLUTION : Ajoutez votre IP dans MongoDB Atlas :');
+      console.error('   1. Allez sur https://cloud.mongodb.com');
+      console.error('   2. Votre projet → Network Access → Add IP Address');
+      console.error('   3. Cliquez "Add Current IP Address" ou "Allow Access from Anywhere" (0.0.0.0/0)');
+      console.error('   4. Attendez 1-2 minutes puis relancez le serveur\n');
+    }
+    
     throw error; // Relancer l'erreur pour que le serveur ne démarre pas si la DB échoue
   }
 };

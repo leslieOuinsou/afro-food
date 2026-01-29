@@ -255,7 +255,7 @@ export const creerPlat = async (req, res, next) => {
   try {
     const platData = {
       ...req.body,
-      creeParAdmin: req.utilisateur.id
+      creeParAdmin: req.utilisateur?.id || undefined
     };
     
     const plat = await Plat.create(platData);

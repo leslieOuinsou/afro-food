@@ -179,24 +179,34 @@ console.log('🚀 Démarrage du serveur backend...');
 console.log('═══════════════════════════════════════\n');
 
 // Connexion à la base de données MongoDB
+const skipDB = process.env.SKIP_DB_CONNECTION === 'true' && process.env.NODE_ENV !== 'production';
+
 connectDB()
   .then(() => {
-    // Démarrage du serveur seulement si la connexion à la DB réussit
-    app.listen(PORT, () => {
-      // Forcer l'affichage immédiat
-      process.stdout.write('\n');
-      process.stdout.write('═══════════════════════════════════════\n');
-      process.stdout.write('✅ SERVEUR BACKEND ACTIF\n');
-      process.stdout.write('═══════════════════════════════════════\n');
-      console.log(`🚀 Serveur démarré sur le port ${PORT}`);
-      console.log(`📍 API disponible sur http://localhost:${PORT}`);
-      console.log(`📡 MongoDB connecté avec succès`);
-      console.log('═══════════════════════════════════════\n');
-    });
+    startServer();
   })
   .catch((error) => {
-    // En cas d'erreur de connexion, afficher l'erreur et arrêter le processus
-    console.error('\n❌ Erreur de connexion à la base de données:', error);
-    console.error('═══════════════════════════════════════\n');
-    process.exit(1); // Arrêter l'application si la DB n'est pas accessible
+    if (skipDB) {
+      // Mode développement sans DB : démarrer quand même avec un avertissement
+      console.warn('\n⚠️  Mode sans base de données (SKIP_DB_CONNECTION=true)');
+      console.warn('   Les routes qui utilisent MongoDB échoueront.\n');
+      startServer();
+    } else {
+      console.error('\n❌ Erreur de connexion à la base de données:', error.message);
+      console.error('═══════════════════════════════════════\n');
+      process.exit(1);
+    }
   });
+
+function startServer() {
+  app.listen(PORT, () => {
+    process.stdout.write('\n');
+    process.stdout.write('═══════════════════════════════════════\n');
+    process.stdout.write('✅ SERVEUR BACKEND ACTIF\n');
+    process.stdout.write('═══════════════════════════════════════\n');
+    console.log(`🚀 Serveur démarré sur le port ${PORT}`);
+    console.log(`📍 API disponible sur http://localhost:${PORT}`);
+    console.log(skipDB ? '⚠️  MongoDB non connecté (mode sans DB)' : '📡 MongoDB connecté avec succès');
+    console.log('═══════════════════════════════════════\n');
+  });
+}

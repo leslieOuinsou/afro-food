@@ -169,8 +169,7 @@ const userSchema = new mongoose.Schema({
   }
 });
 
-// Index pour améliorer les performances de recherche
-userSchema.index({ email: 1 });
+// Index pour améliorer les performances de recherche (email a déjà unique: true)
 userSchema.index({ role: 1 });
 userSchema.index({ 'adresses.parDefaut': 1 });
 

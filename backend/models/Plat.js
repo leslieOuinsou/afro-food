@@ -306,7 +306,7 @@ platSchema.index({ notemoyenne: -1 });
 platSchema.index({ nombreCommandes: -1 });
 platSchema.index({ disponible: 1, enRupture: 1 });
 platSchema.index({ tags: 1 });
-platSchema.index({ slug: 1 });
+// slug a déjà unique: true dans le schéma
 
 // Index de recherche textuelle
 platSchema.index({
