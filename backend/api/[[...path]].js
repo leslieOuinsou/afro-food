@@ -93,7 +93,9 @@ export default async function handler(req, res) {
     setCorsHeaders(req, res);
 
     if (method === 'OPTIONS') {
-      res.status(204).end();
+      setCorsHeaders(req, res);
+      res.writeHead(204, { 'Content-Length': 0 });
+      res.end();
       return;
     }
 
