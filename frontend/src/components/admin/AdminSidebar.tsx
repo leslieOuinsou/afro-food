@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -72,7 +73,12 @@ const settingsItems: NavItem[] = [
   }
 ];
 
-export default function AdminSidebar() {
+interface AdminSidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
   const pathname = usePathname();
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -82,105 +88,126 @@ export default function AdminSidebar() {
       .catch(() => setUnreadCount(0));
   }, [pathname]); // Recharger le compteur quand on change de page (ex. après lecture sur messagerie)
 
-  const isActive = (href: string) => {
-    return pathname === href;
-  };
+  const isActive = (href: string) => pathname === href;
+
+  const handleLinkClick = () => onClose();
 
   return (
-    <aside className="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white flex flex-col h-screen fixed left-0 top-0 z-40 shadow-xl">
-      {/* Logo Section */}
-      <div className="p-6 border-b border-blue-700">
-        <Link href="/admin-dashboard" className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-lg">
-            <img 
-              src="/logo-afro-eats.png" 
-              alt="Afro-Eats Logo" 
-              className="w-full h-full object-contain p-1"
-            />
-          </div>
-          <div>
-            <span className="font-bold text-xl block">Afro-Eats</span>
-            <span className="text-xs text-blue-200">Administration</span>
-          </div>
-        </Link>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto p-4">
-        <div className="mb-6">
-          <p className="text-xs font-semibold text-blue-300 uppercase tracking-wider mb-3 px-3">
-            Menu Principal
-          </p>
-          <div className="space-y-1">
-            {navItems.map((item) => {
-              const active = isActive(item.href);
-              const isMessagerie = item.href === '/admin-messagerie';
-              const showBadge = isMessagerie && unreadCount > 0;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                    active
-                      ? 'bg-white text-blue-900 shadow-md font-semibold'
-                      : 'text-blue-100 hover:bg-blue-800 hover:text-white'
-                  }`}
-                >
-                  <span className={`relative ${active ? 'text-blue-600' : ''}`}>
-                    {item.icon}
-                    {showBadge && (
-                      <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold text-white bg-orange-500 rounded-full">
-                        {unreadCount > 99 ? '99+' : unreadCount}
-                      </span>
-                    )}
-                  </span>
-                  <span className="flex-1">{item.label}</span>
-                </Link>
-              );
-            })}
-          </div>
+    <>
+      <div
+        className={`fixed inset-0 bg-black/40 z-30 transition-opacity duration-200 md:hidden ${
+          isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={onClose}
+      />
+      <aside
+        className={`w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white flex flex-col h-screen fixed left-0 top-0 z-40 shadow-xl transform transition-transform duration-300 ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        } md:translate-x-0 md:static`}
+      >
+        <div className="p-6 border-b border-blue-700 flex items-center justify-between">
+          <Link href="/admin-dashboard" className="flex items-center gap-3" onClick={handleLinkClick}>
+            <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-lg">
+              <img 
+                src="/logo-afro-eats.png" 
+                alt="Afro-Eats Logo" 
+                className="w-full h-full object-contain p-1"
+              />
+            </div>
+            <div>
+              <span className="font-bold text-xl block">Afro-Eats</span>
+              <span className="text-xs text-blue-200">Administration</span>
+            </div>
+          </Link>
+          <button
+            type="button"
+            className="md:hidden p-2 text-blue-200 hover:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-white/40"
+            onClick={onClose}
+            aria-label="Fermer le menu"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
-        <div className="border-t border-blue-700 my-4"></div>
+        <nav className="flex-1 overflow-y-auto p-4">
+          <div className="mb-6">
+            <p className="text-xs font-semibold text-blue-300 uppercase tracking-wider mb-3 px-3">
+              Menu Principal
+            </p>
+            <div className="space-y-1">
+              {navItems.map((item) => {
+                const active = isActive(item.href);
+                const isMessagerie = item.href === '/admin-messagerie';
+                const showBadge = isMessagerie && unreadCount > 0;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={handleLinkClick}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                      active
+                        ? 'bg-white text-blue-900 shadow-md font-semibold'
+                        : 'text-blue-100 hover:bg-blue-800 hover:text-white'
+                    }`}
+                  >
+                    <span className={`relative ${active ? 'text-blue-600' : ''}`}>
+                      {item.icon}
+                      {showBadge && (
+                        <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold text-white bg-orange-500 rounded-full">
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </span>
+                      )}
+                    </span>
+                    <span className="flex-1">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
 
-        <div className="mb-6">
-          <p className="text-xs font-semibold text-blue-300 uppercase tracking-wider mb-3 px-3">
-            Paramètres
-          </p>
-          <div className="space-y-1">
-            {settingsItems.map((item) => {
-              const active = isActive(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                    active
-                      ? 'bg-white text-blue-900 shadow-md font-semibold'
-                      : 'text-blue-100 hover:bg-blue-800 hover:text-white'
-                  }`}
-                >
-                  <span className={active ? 'text-blue-600' : ''}>{item.icon}</span>
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
+          <div className="border-t border-blue-700 my-4" />
+
+          <div className="mb-6">
+            <p className="text-xs font-semibold text-blue-300 uppercase tracking-wider mb-3 px-3">
+              Paramètres
+            </p>
+            <div className="space-y-1">
+              {settingsItems.map((item) => {
+                const active = isActive(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={handleLinkClick}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                      active
+                        ? 'bg-white text-blue-900 shadow-md font-semibold'
+                        : 'text-blue-100 hover:bg-blue-800 hover:text-white'
+                    }`}
+                  >
+                    <span className={active ? 'text-blue-600' : ''}>{item.icon}</span>
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </nav>
+
+        <div className="p-4 border-t border-blue-700">
+          <div className="flex items-center gap-3 px-4 py-3 bg-blue-800 rounded-lg">
+            <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center">
+              <span className="text-white font-semibold">A</span>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-white">Admin</p>
+              <p className="text-xs text-blue-200">admin@afrimiam.com</p>
+            </div>
           </div>
         </div>
-      </nav>
-
-      {/* Footer */}
-      <div className="p-4 border-t border-blue-700">
-        <div className="flex items-center gap-3 px-4 py-3 bg-blue-800 rounded-lg">
-          <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center">
-            <span className="text-white font-semibold">A</span>
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-white">Admin</p>
-            <p className="text-xs text-blue-200">admin@afrimiam.com</p>
-          </div>
-        </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }
