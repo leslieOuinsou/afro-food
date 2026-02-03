@@ -6,13 +6,40 @@
 let appInstance = null;
 let initPromise = null;
 
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  if (origin.endsWith('.vercel.app')) return true;
+  const allowed = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'https://frontend-nine-beta-45.vercel.app',
+    'https://afro-food.vercel.app',
+    process.env.FRONTEND_URL
+  ].filter(Boolean);
+  return allowed.includes(origin);
+}
+
+function setCorsHeaders(req, res) {
+  const origin = req.headers && req.headers.origin;
+  if (origin && isAllowedOrigin(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Max-Age', '86400');
+}
+
 function sendJson(res, status, body) {
   res.setHeader('Content-Type', 'application/json');
   res.status(status).end(JSON.stringify(body));
 }
 
 /** Réponse immédiate pour la racine (sans charger Express) - évite le crash au premier hit */
-function sendRootResponse(res) {
+function sendRootResponse(req, res) {
+  setCorsHeaders(req, res);
   sendJson(res, 200, {
     success: true,
     message: "Bienvenue sur l'API Afro-Eats!",
@@ -53,10 +80,17 @@ function runExpress(app, req, res) {
 
 export default async function handler(req, res) {
   const path = (req.url || req.path || '').split('?')[0];
-  const method = req.method || 'GET';
+  const method = (req.method || 'GET').toUpperCase();
+
+  setCorsHeaders(req, res);
+
+  if (method === 'OPTIONS') {
+    res.status(204).end();
+    return;
+  }
 
   if (method === 'GET' && (path === '/' || path === '' || path === '/api')) {
-    sendRootResponse(res);
+    sendRootResponse(req, res);
     return;
   }
 
