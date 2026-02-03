@@ -20,16 +20,19 @@ function isAllowedOrigin(origin) {
 }
 
 function setCorsHeaders(req, res) {
-  const origin = req.headers && req.headers.origin;
-  if (origin && isAllowedOrigin(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-  }
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Max-Age', '86400');
+  if (!res || typeof res.setHeader !== 'function') return;
+  try {
+    const origin = (req && req.headers && req.headers.origin) || '';
+    if (origin && isAllowedOrigin(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Max-Age', '86400');
+  } catch (_) {}
 }
 
 function sendJson(res, status, body) {
@@ -79,33 +82,40 @@ function runExpress(app, req, res) {
 }
 
 export default async function handler(req, res) {
-  const path = (req.url || req.path || '').split('?')[0];
-  const method = (req.method || 'GET').toUpperCase();
-
-  setCorsHeaders(req, res);
-
-  if (method === 'OPTIONS') {
-    res.status(204).end();
-    return;
-  }
-
-  if (method === 'GET' && (path === '/' || path === '' || path === '/api')) {
-    sendRootResponse(req, res);
-    return;
-  }
-
   try {
+    if (!res || typeof res.setHeader !== 'function') {
+      console.error('Handler: res invalide');
+      return;
+    }
+    const path = ((req && (req.url || req.path)) || '').split('?')[0];
+    const method = (req && req.method || 'GET').toUpperCase();
+
+    setCorsHeaders(req, res);
+
+    if (method === 'OPTIONS') {
+      res.status(204).end();
+      return;
+    }
+
+    if (method === 'GET' && (path === '/' || path === '' || path === '/api')) {
+      sendRootResponse(req, res);
+      return;
+    }
+
     const app = await getApp();
     await runExpress(app, req, res);
   } catch (err) {
     console.error('Serverless handler error:', err);
-    if (!res.headersSent) {
-      sendJson(res, 503, {
-        success: false,
-        error: 'FUNCTION_INIT_FAILED',
-        message: err.message || 'Service temporairement indisponible.',
-        hint: !process.env.MONGODB_URI ? 'Ajoute MONGODB_URI dans Vercel → Settings → Environment Variables.' : undefined,
-      });
-    }
+    try {
+      if (res && typeof res.setHeader === 'function' && !res.headersSent) {
+        setCorsHeaders(req, res);
+        res.setHeader('Content-Type', 'application/json');
+        res.status(500).end(JSON.stringify({
+          success: false,
+          error: 'FUNCTION_INVOCATION_FAILED',
+          message: err.message || 'Erreur serveur',
+        }));
+      }
+    } catch (_) {}
   }
 }
