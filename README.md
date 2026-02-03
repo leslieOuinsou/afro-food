@@ -1,36 +1,102 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Afro-Food
 
-## Getting Started
+Application de commande de plats africains (Afro-Eats).
 
-First, run the development server:
+## Structure du projet
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+afro-food/
+├── frontend/     # Application Next.js (interface utilisateur)
+│   ├── src/
+│   ├── public/
+│   ├── package.json
+│   └── ...
+├── backend/      # API Express + MongoDB
+│   ├── controllers/
+│   ├── models/
+│   ├── routes/
+│   ├── server.js
+│   ├── package.json
+│   └── ...
+└── README.md
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Démarrage
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Frontend (Next.js)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-## Learn More
+Ouvre [http://localhost:3000](http://localhost:3000).
 
-To learn more about Next.js, take a look at the following resources:
+### Backend (API Express)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+cd backend
+npm install
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+L’API tourne sur [http://localhost:5000](http://localhost:5000).
 
-## Deploy on Vercel
+### Variables d’environnement
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **frontend** : créer `frontend/.env.local` avec `NEXT_PUBLIC_API_URL=http://localhost:5000`
+- **backend** : créer `backend/.env` avec `MONGODB_URI`, `PORT`, etc.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Scripts utiles (depuis la racine)
+
+- `cd frontend && npm run dev` — lancer le frontend
+- `cd backend && npm run dev` — lancer le backend
+
+---
+
+## Déploiement sur Vercel (frontend + backend)
+
+Tu peux déployer **le frontend et le backend** sur Vercel en créant **deux projets** (même dépôt Git, racines différentes).
+
+### 1. Projet Vercel « Frontend »
+
+1. Va sur [vercel.com](https://vercel.com) → **Add New** → **Project**.
+2. Importe le dépôt **afro-food** (ou ton fork).
+3. **Root Directory** : clique sur **Edit** et choisis **`frontend`**.
+4. **Variables d’environnement** : ajoute  
+   - **Nom** : `NEXT_PUBLIC_API_URL`  
+   - **Valeur** : l’URL de ton **backend** (voir étape 2). Ex. `https://afro-food-api-xxx.vercel.app`
+5. **Deploy**. Tu obtiendras une URL du type `https://afro-food-xxx.vercel.app`.
+
+### 2. Projet Vercel « Backend » (API)
+
+1. **Add New** → **Project** et importe **le même dépôt** afro-food.
+2. **Root Directory** : choisis **`backend`** (et non `frontend`).
+3. **Variables d’environnement** (obligatoires pour l’API) :
+   - **Nom** : `MONGODB_URI`  
+     **Valeur** : ton URI MongoDB Atlas (ex. `mongodb+srv://user:pass@cluster.mongodb.net/afro-food`)
+   - **Nom** : `JWT_SECRET`  
+     **Valeur** : une chaîne secrète longue et aléatoire
+   - **Nom** : `FRONTEND_URL` (optionnel)  
+     **Valeur** : l’URL de ton frontend Vercel (ex. `https://afro-food-xxx.vercel.app`) pour CORS
+4. **Deploy**. Tu obtiendras une URL du type `https://afro-food-api-xxx.vercel.app`.
+5. L’API est exposée sur **`/api`** :  
+   - Ex. `https://afro-food-api-xxx.vercel.app/api/plats`  
+   - Ex. `https://afro-food-api-xxx.vercel.app/api/contact`  
+   - Ex. `https://afro-food-api-xxx.vercel.app/health`
+
+### 3. Relier frontend et backend
+
+1. Dans le **projet Vercel Frontend**, va dans **Settings** → **Environment Variables**.
+2. Mets à jour **`NEXT_PUBLIC_API_URL`** avec l’URL exacte du projet Backend (ex. `https://afro-food-api-xxx.vercel.app`).
+3. Redéploie le frontend (ou attends le prochain push) pour que le changement soit pris en compte.
+
+### Résumé
+
+| Projet   | Root Directory | Rôle                          |
+|----------|----------------|-------------------------------|
+| Frontend | `frontend`     | Site Next.js (pages, panier)  |
+| Backend  | `backend`      | API Express (plats, commandes, contact, etc.) |
+
+Les deux projets se mettent à jour à chaque push sur la branche connectée (ex. `main` ou `backend`).
