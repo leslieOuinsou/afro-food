@@ -55,6 +55,12 @@ function runExpress(app, req, res) {
 }
 
 export default async function handler(req, res) {
+  if (res && typeof res.setHeader === 'function') {
+    try {
+      Object.entries(CORS_HEADERS).forEach(([k, v]) => { res.setHeader(k, v); });
+    } catch (_) {}
+  }
+
   let path = '';
   let method = 'GET';
   try {
