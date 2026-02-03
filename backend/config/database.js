@@ -8,8 +8,10 @@ dotenv.config();
 // Fonction pour connecter l'application à MongoDB
 export const connectDB = async () => {
   try {
-    // Récupération de l'URI de connexion MongoDB depuis les variables d'environnement
-    // Si MONGODB_URI n'est pas définie, utilise une URI par défaut (MongoDB local)
+    // Sur Vercel, MONGODB_URI est obligatoire (pas de MongoDB local)
+    if (process.env.VERCEL === '1' && !process.env.MONGODB_URI) {
+      throw new Error('MONGODB_URI manquante. Ajoute-la dans Vercel → Projet backend → Settings → Environment Variables.');
+    }
     const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/afro-food';
     
     // Debug : vérifier que l'URI est bien lue (masquer le mot de passe pour la sécurité)

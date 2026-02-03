@@ -11,7 +11,8 @@ async function getApp() {
   if (initPromise) return initPromise;
   initPromise = (async () => {
     const { app, connectDB } = await import('../server.js');
-    await connectDB();
+    // Connexion en arrière-plan pour ne pas bloquer (évite le timeout Vercel 10s)
+    connectDB().catch((err) => console.error('MongoDB init:', err.message));
     appInstance = app;
     return app;
   })();
@@ -23,16 +24,31 @@ function sendJson(res, status, body) {
   res.status(status).end(JSON.stringify(body));
 }
 
+/** Attendre que Express ait fini d'envoyer la réponse (évite FUNCTION_INVOCATION_FAILED) */
+function runExpress(app, req, res) {
+  return new Promise((resolve, reject) => {
+    const onFinish = () => resolve();
+    const onError = (err) => reject(err);
+    res.once('finish', onFinish);
+    res.once('close', onFinish);
+    res.once('error', onError);
+    app(req, res);
+  });
+}
+
 export default async function handler(req, res) {
   try {
     const app = await getApp();
-    return app(req, res);
+    await runExpress(app, req, res);
   } catch (err) {
     console.error('Serverless handler error:', err);
-    sendJson(res, 503, {
-      success: false,
-      error: 'FUNCTION_INIT_FAILED',
-      message: process.env.NODE_ENV === 'production' ? 'Service temporairement indisponible.' : err.message,
-    });
+    if (!res.headersSent) {
+      sendJson(res, 503, {
+        success: false,
+        error: 'FUNCTION_INIT_FAILED',
+        message: err.message || 'Service temporairement indisponible.',
+        hint: !process.env.MONGODB_URI ? 'Ajoute MONGODB_URI dans Vercel → Settings → Environment Variables.' : undefined,
+      });
+    }
   }
 }
