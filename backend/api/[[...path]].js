@@ -81,25 +81,35 @@ function runExpress(app, req, res) {
   });
 }
 
-export default async function handler(req, res) {
-  try {
-    if (!res || typeof res.setHeader !== 'function') {
-      console.error('Handler: res invalide');
-      return;
-    }
-    const path = ((req && (req.url || req.path)) || '').split('?')[0];
-    const method = (req && req.method || 'GET').toUpperCase();
+const ROOT_JSON = '{"success":true,"message":"API Afro-Eats","status":"OK"}';
 
+export default async function handler(req, res) {
+  const path = String((req && (req.url || req.path)) || '').split('?')[0];
+  const method = String((req && req.method) || 'GET').toUpperCase();
+
+  if (method === 'GET' && (path === '/' || path === '' || path === '/api' || path === '/api/')) {
+    try {
+      if (res && typeof res.setHeader === 'function') {
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.status(200);
+        res.end(ROOT_JSON);
+      }
+      return;
+    } catch (_) {}
+  }
+
+  try {
+    if (!res || typeof res.setHeader !== 'function') return;
     setCorsHeaders(req, res);
 
     if (method === 'OPTIONS') {
-      setCorsHeaders(req, res);
       res.writeHead(204, { 'Content-Length': 0 });
       res.end();
       return;
     }
 
-    if (method === 'GET' && (path === '/' || path === '' || path === '/api')) {
+    if (method === 'GET' && (path === '/' || path === '' || path === '/api' || path === '/api/')) {
       sendRootResponse(req, res);
       return;
     }
@@ -110,12 +120,12 @@ export default async function handler(req, res) {
     console.error('Serverless handler error:', err);
     try {
       if (res && typeof res.setHeader === 'function' && !res.headersSent) {
-        setCorsHeaders(req, res);
+        res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Content-Type', 'application/json');
         res.status(500).end(JSON.stringify({
           success: false,
           error: 'FUNCTION_INVOCATION_FAILED',
-          message: err.message || 'Erreur serveur',
+          message: String(err && err.message || 'Erreur serveur'),
         }));
       }
     } catch (_) {}
