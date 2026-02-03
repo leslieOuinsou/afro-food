@@ -1,56 +1,30 @@
 /**
  * Handler Vercel serverless : expose l'API Express sur /api/*
- * Déploie ce projet avec Root Directory = "backend" pour avoir l'API sur un domaine Vercel.
+ * Root Directory = "backend" sur Vercel.
  */
+
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma',
+  'Access-Control-Allow-Credentials': 'true',
+  'Access-Control-Max-Age': '86400',
+};
+
+const ROOT_JSON = '{"success":true,"message":"Bienvenue sur l\'API Afro-Eats!","status":"OK","version":"1.0.0","docs":"/api/health et /api/plats"}';
 
 let appInstance = null;
 let initPromise = null;
 
-function isAllowedOrigin(origin) {
-  if (!origin) return true;
-  if (origin.endsWith('.vercel.app')) return true;
-  const allowed = [
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'https://frontend-nine-beta-45.vercel.app',
-    'https://afro-food.vercel.app',
-    process.env.FRONTEND_URL
-  ].filter(Boolean);
-  return allowed.includes(origin);
-}
-
-function setCorsHeaders(req, res) {
-  if (!res || typeof res.setHeader !== 'function') return;
+function safeSend(res, status, headers, body) {
   try {
-    const origin = (req && req.headers && req.headers.origin) || '';
-    if (origin && isAllowedOrigin(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-    } else {
-      res.setHeader('Access-Control-Allow-Origin', '*');
+    if (res.writeHead) res.writeHead(status, { ...CORS_HEADERS, ...headers });
+    else if (res.setHeader) {
+      Object.entries({ ...CORS_HEADERS, ...headers }).forEach(([k, v]) => res.setHeader(k, v));
+      res.statusCode = status;
     }
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Max-Age', '86400');
+    if (res.end) res.end(body || '');
   } catch (_) {}
-}
-
-function sendJson(res, status, body) {
-  res.setHeader('Content-Type', 'application/json');
-  res.status(status).end(JSON.stringify(body));
-}
-
-/** Réponse immédiate pour la racine (sans charger Express) - évite le crash au premier hit */
-function sendRootResponse(req, res) {
-  setCorsHeaders(req, res);
-  sendJson(res, 200, {
-    success: true,
-    message: "Bienvenue sur l'API Afro-Eats!",
-    status: 'OK',
-    version: '1.0.0',
-    timestamp: new Date().toISOString(),
-    docs: '/api/health et /api/plats'
-  });
 }
 
 async function getApp() {
@@ -58,14 +32,13 @@ async function getApp() {
   if (initPromise) return initPromise;
   initPromise = (async () => {
     const { app, connectDB } = await import('../server.js');
-    connectDB().catch((err) => console.error('MongoDB init:', err.message));
+    connectDB().catch(() => {});
     appInstance = app;
     return app;
   })();
   return initPromise;
 }
 
-/** Attendre la fin de la réponse Express, avec timeout pour éviter le blocage Vercel */
 function runExpress(app, req, res) {
   return new Promise((resolve) => {
     const done = () => resolve();
@@ -77,55 +50,45 @@ function runExpress(app, req, res) {
       clearTimeout(t);
       done();
     }
-    app(req, res);
+    try { app(req, res); } catch (_) { done(); }
   });
 }
 
-const ROOT_JSON = '{"success":true,"message":"API Afro-Eats","status":"OK"}';
-
 export default async function handler(req, res) {
-  const path = String((req && (req.url || req.path)) || '').split('?')[0];
-  const method = String((req && req.method) || 'GET').toUpperCase();
+  let path = '';
+  let method = 'GET';
+  try {
+    if (req && req.url) path = (req.url || '').split('?')[0];
+    else if (req && req.path) path = (req.path || '').split('?')[0];
+    if (req && req.method) method = String(req.method).toUpperCase();
+  } catch (_) {}
 
-  if (method === 'GET' && (path === '/' || path === '' || path === '/api' || path === '/api/')) {
-    try {
-      if (res && typeof res.setHeader === 'function') {
-        res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.status(200);
-        res.end(ROOT_JSON);
-      }
+  try {
+    if (method === 'OPTIONS') {
+      safeSend(res, 204, { 'Content-Length': '0' });
       return;
+    }
+    if (method === 'GET' && (path === '/' || path === '' || path === '/api')) {
+      safeSend(res, 200, { 'Content-Type': 'application/json' }, ROOT_JSON);
+      return;
+    }
+  } catch (_) {
+    try {
+      safeSend(res, 200, { 'Content-Type': 'application/json' }, ROOT_JSON);
     } catch (_) {}
+    return;
   }
 
   try {
-    if (!res || typeof res.setHeader !== 'function') return;
-    setCorsHeaders(req, res);
-
-    if (method === 'OPTIONS') {
-      res.writeHead(204, { 'Content-Length': 0 });
-      res.end();
-      return;
-    }
-
-    if (method === 'GET' && (path === '/' || path === '' || path === '/api' || path === '/api/')) {
-      sendRootResponse(req, res);
-      return;
-    }
-
     const app = await getApp();
     await runExpress(app, req, res);
   } catch (err) {
-    console.error('Serverless handler error:', err);
     try {
-      if (res && typeof res.setHeader === 'function' && !res.headersSent) {
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Content-Type', 'application/json');
-        res.status(500).end(JSON.stringify({
+      if (res && !res.headersSent) {
+        safeSend(res, 503, { 'Content-Type': 'application/json' }, JSON.stringify({
           success: false,
-          error: 'FUNCTION_INVOCATION_FAILED',
-          message: String(err && err.message || 'Erreur serveur'),
+          error: 'INIT_FAILED',
+          message: (err && err.message) ? String(err.message) : 'Erreur serveur',
         }));
       }
     } catch (_) {}
