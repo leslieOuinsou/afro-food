@@ -25,3 +25,4 @@ Thumbs.db
 # Fichiers temporaires
 *.tmp
 .cache/
+.vercel

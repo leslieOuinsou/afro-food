@@ -81,9 +81,13 @@ const corsOptions = {
       process.env.FRONTEND_URL || 'http://localhost:3000',
       'http://localhost:3000',
       'http://localhost:3001',
-      'https://afro-food.vercel.app' // Ajouter votre domaine de production
+      'https://afro-food.vercel.app'
     ];
-    
+    // Autoriser tous les sous-domaines Vercel (*.vercel.app)
+    if (origin && origin.endsWith('.vercel.app')) {
+      callback(null, true);
+      return;
+    }
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -173,40 +177,37 @@ app.use(notFound);
 // Middleware de gestion d'erreurs - doit être le dernier middleware
 app.use(errorHandler);
 
-// Message de démarrage initial
-console.log('\n═══════════════════════════════════════');
-console.log('🚀 Démarrage du serveur backend...');
-console.log('═══════════════════════════════════════\n');
+// Export pour Vercel serverless (ne pas démarrer le serveur quand importé)
+export { app, connectDB };
 
-// Connexion à la base de données MongoDB
-const skipDB = process.env.SKIP_DB_CONNECTION === 'true' && process.env.NODE_ENV !== 'production';
+// Démarrer le serveur uniquement en local (pas sur Vercel)
+const isVercel = process.env.VERCEL === '1';
+if (!isVercel) {
+  const skipDB = process.env.SKIP_DB_CONNECTION === 'true' && process.env.NODE_ENV !== 'production';
+  console.log('\n═══════════════════════════════════════');
+  console.log('🚀 Démarrage du serveur backend...');
+  console.log('═══════════════════════════════════════\n');
 
-connectDB()
-  .then(() => {
-    startServer();
-  })
-  .catch((error) => {
-    if (skipDB) {
-      // Mode développement sans DB : démarrer quand même avec un avertissement
-      console.warn('\n⚠️  Mode sans base de données (SKIP_DB_CONNECTION=true)');
-      console.warn('   Les routes qui utilisent MongoDB échoueront.\n');
-      startServer();
-    } else {
-      console.error('\n❌ Erreur de connexion à la base de données:', error.message);
-      console.error('═══════════════════════════════════════\n');
-      process.exit(1);
-    }
-  });
-
-function startServer() {
-  app.listen(PORT, () => {
-    process.stdout.write('\n');
-    process.stdout.write('═══════════════════════════════════════\n');
-    process.stdout.write('✅ SERVEUR BACKEND ACTIF\n');
-    process.stdout.write('═══════════════════════════════════════\n');
-    console.log(`🚀 Serveur démarré sur le port ${PORT}`);
-    console.log(`📍 API disponible sur http://localhost:${PORT}`);
-    console.log(skipDB ? '⚠️  MongoDB non connecté (mode sans DB)' : '📡 MongoDB connecté avec succès');
-    console.log('═══════════════════════════════════════\n');
-  });
+  connectDB()
+    .then(() => {
+      app.listen(PORT, () => {
+        process.stdout.write('\n');
+        process.stdout.write('═══════════════════════════════════════\n');
+        process.stdout.write('✅ SERVEUR BACKEND ACTIF\n');
+        process.stdout.write('═══════════════════════════════════════\n');
+        console.log(`🚀 Serveur démarré sur le port ${PORT}`);
+        console.log(`📍 API disponible sur http://localhost:${PORT}`);
+        console.log(skipDB ? '⚠️  MongoDB non connecté (mode sans DB)' : '📡 MongoDB connecté avec succès');
+        console.log('═══════════════════════════════════════\n');
+      });
+    })
+    .catch((error) => {
+      if (skipDB) {
+        console.warn('\n⚠️  Mode sans base de données (SKIP_DB_CONNECTION=true)');
+        app.listen(PORT, () => console.log(`🚀 Serveur sur le port ${PORT}`));
+      } else {
+        console.error('\n❌ Erreur de connexion à la base de données:', error.message);
+        process.exit(1);
+      }
+    });
 }
