@@ -20,15 +20,11 @@ export const obtenirPlats = async (req, res, next) => {
       recherche
     } = req.query;
 
-    // Pagination robuste (éviter NaN et valeurs invalides)
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limiteNum = Math.max(1, Math.min(100, parseInt(limite, 10) || 20));
     const skip = (pageNum - 1) * limiteNum;
 
-    // Construire la query de base
-    let query = {};
-
-    // Filtres
+    const query = {};
     if (categorie) query.categorie = categorie;
     if (pays) query['origineAfricaine.pays'] = pays;
     if (niveauEpice) query.niveauEpice = niveauEpice;
@@ -37,143 +33,58 @@ export const obtenirPlats = async (req, res, next) => {
       query.disponible = true;
       query.enRupture = false;
     }
+    if (prixMin != null && !isNaN(parseFloat(prixMin))) {
+      query.prix = query.prix || {};
+      query.prix.$gte = parseFloat(prixMin);
+    }
+    if (prixMax != null && !isNaN(parseFloat(prixMax))) {
+      query.prix = query.prix || {};
+      query.prix.$lte = parseFloat(prixMax);
+    }
 
-    // Recherche textuelle (nécessite un index text sur la collection ; si absent → erreur)
     const useTextSearch = recherche && typeof recherche === 'string' && recherche.trim().length > 0;
-    if (useTextSearch) {
-      query.$text = { $search: recherche.trim() };
-    }
+    if (useTextSearch) query.$text = { $search: recherche.trim() };
 
-    // Construction de l'agrégation pour gérer le prix effectif
-    let pipeline = [
-      { $match: query },
-      {
-        $addFields: {
-          prixEffectif: {
-            $cond: {
-              if: {
-                $and: [
-                  { $gt: ['$prixPromo', 0] },
-                  { $lt: ['$prixPromo', '$prix'] }
-                ]
-              },
-              then: '$prixPromo',
-              else: '$prix'
-            }
-          }
-        }
+    const sortBy = (() => {
+      switch (tri) {
+        case 'prix-asc': return { prix: 1, nom: 1 };
+        case 'prix-desc': return { prix: -1, nom: 1 };
+        case 'nom': return { nom: 1 };
+        case 'note': return { notemoyenne: -1, nombreCommandes: -1 };
+        case 'nouveau': return { createdAt: -1 };
+        default: return { nombreCommandes: -1, notemoyenne: -1 };
       }
-    ];
-
-    // Filtre de prix sur le prix effectif
-    if (prixMin || prixMax) {
-      const prixFilter = {};
-      const pMin = parseFloat(prixMin);
-      const pMax = parseFloat(prixMax);
-      if (!isNaN(pMin)) prixFilter.$gte = pMin;
-      if (!isNaN(pMax)) prixFilter.$lte = pMax;
-      if (Object.keys(prixFilter).length) pipeline.push({ $match: { prixEffectif: prixFilter } });
-    }
-
-    // Tri
-    let sortStage = {};
-    switch (tri) {
-      case 'prix-asc':
-        sortStage = { prixEffectif: 1, nom: 1 };
-        break;
-      case 'prix-desc':
-        sortStage = { prixEffectif: -1, nom: 1 };
-        break;
-      case 'nom':
-        sortStage = { nom: 1 };
-        break;
-      case 'note':
-        sortStage = { notemoyenne: -1, nombreCommandes: -1 };
-        break;
-      case 'nouveau':
-        sortStage = { createdAt: -1 };
-        break;
-      case 'populaire':
-      default:
-        sortStage = { nombreCommandes: -1, notemoyenne: -1 };
-        break;
-    }
-    if (useTextSearch) {
-      sortStage = { score: { $meta: 'textScore' }, ...sortStage };
-    }
-    pipeline.push({ $sort: sortStage });
-    pipeline.push({ $skip: skip });
-    pipeline.push({ $limit: limiteNum });
+    })();
 
     let plats = [];
     let total = 0;
 
     try {
-      plats = await Plat.aggregate(pipeline);
-    } catch (aggError) {
-      // Si erreur (ex. index text manquant), retenter sans recherche textuelle
-      if (useTextSearch && (aggError.code === 27 || aggError.message?.includes('text index') || aggError.message?.includes('$text'))) {
+      // Méthode simple : find + countDocuments (évite les 500 liés à l'agrégation)
+      const [platsList, totalCount] = await Promise.all([
+        Plat.find(query)
+          .sort(useTextSearch ? { score: { $meta: 'textScore' }, ...sortBy } : sortBy)
+          .skip(skip)
+          .limit(limiteNum)
+          .lean(),
+        Plat.countDocuments(query)
+      ]);
+      plats = platsList;
+      total = totalCount;
+    } catch (findError) {
+      // Si find avec $text échoue (index manquant), retenter sans recherche textuelle
+      if (useTextSearch && (findError.code === 27 || findError.message?.includes('text index') || findError.message?.includes('$text'))) {
         const queryFallback = { ...query };
         delete queryFallback.$text;
-        const sortFallback = { nombreCommandes: -1, notemoyenne: -1 };
-        const pipelineFallback = [
-          { $match: queryFallback },
-          {
-            $addFields: {
-              prixEffectif: {
-                $cond: {
-                  if: { $and: [{ $gt: ['$prixPromo', 0] }, { $lt: ['$prixPromo', '$prix'] }] },
-                  then: '$prixPromo',
-                  else: '$prix'
-                }
-              }
-            }
-          }
-        ];
-        if (prixMin || prixMax) {
-          const prixFilter = {};
-          if (!isNaN(parseFloat(prixMin))) prixFilter.$gte = parseFloat(prixMin);
-          if (!isNaN(parseFloat(prixMax))) prixFilter.$lte = parseFloat(prixMax);
-          if (Object.keys(prixFilter).length) pipelineFallback.push({ $match: { prixEffectif: prixFilter } });
-        }
-        pipelineFallback.push({ $sort: sortFallback });
-        pipelineFallback.push({ $skip: skip });
-        pipelineFallback.push({ $limit: limiteNum });
-        plats = await Plat.aggregate(pipelineFallback);
+        const [platsList, totalCount] = await Promise.all([
+          Plat.find(queryFallback).sort(sortBy).skip(skip).limit(limiteNum).lean(),
+          Plat.countDocuments(queryFallback)
+        ]);
+        plats = platsList;
+        total = totalCount;
       } else {
-        throw aggError;
+        throw findError;
       }
-    }
-
-    // Compter le total pour la pagination (sans $text si on a fallback)
-    const totalQuery = { ...query };
-    if (totalQuery.$text) delete totalQuery.$text;
-    const totalPipeline = [
-      { $match: totalQuery },
-      {
-        $addFields: {
-          prixEffectif: {
-            $cond: {
-              if: { $and: [{ $gt: ['$prixPromo', 0] }, { $lt: ['$prixPromo', '$prix'] }] },
-              then: '$prixPromo',
-              else: '$prix'
-            }
-          }
-        }
-      }
-    ];
-    if (prixMin || prixMax) {
-      const prixFilter = {};
-      if (!isNaN(parseFloat(prixMin))) prixFilter.$gte = parseFloat(prixMin);
-      if (!isNaN(parseFloat(prixMax))) prixFilter.$lte = parseFloat(prixMax);
-      if (Object.keys(prixFilter).length) totalPipeline.push({ $match: { prixEffectif: prixFilter } });
-    }
-    totalPipeline.push({ $count: 'total' });
-    try {
-      const countResult = await Plat.aggregate(totalPipeline);
-      total = countResult.length > 0 ? countResult[0].total : 0;
-    } catch (_) {
-      total = plats.length;
     }
 
     const totalPages = limiteNum > 0 ? Math.ceil(total / limiteNum) : 0;
