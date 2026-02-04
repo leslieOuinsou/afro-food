@@ -1,26 +1,49 @@
 /**
  * Handler Vercel serverless : expose l'API Express sur /api/*
  * Root Directory = "backend" sur Vercel.
+ *
+ * CORS : avec credentials (cookies), le navigateur interdit 'Access-Control-Allow-Origin: *'.
+ * On renvoie donc l'origine réelle si elle est autorisée.
  */
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma',
-  'Access-Control-Allow-Credentials': 'true',
-  'Access-Control-Max-Age': '86400',
-};
+const ALLOWED_ORIGINS = [
+  process.env.FRONTEND_URL || 'http://localhost:3000',
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'https://afro-food.vercel.app',
+  'https://frontend-nine-beta-45.vercel.app',
+];
+
+function isOriginAllowed(origin) {
+  if (!origin || typeof origin !== 'string') return false;
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  if (origin.endsWith('.vercel.app')) return true;
+  return false;
+}
+
+function getCorsHeaders(req) {
+  const origin = req?.headers?.origin || req?.headers?.Origin;
+  const allowOrigin = isOriginAllowed(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma',
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Max-Age': '86400',
+  };
+}
 
 const ROOT_JSON = '{"success":true,"message":"Bienvenue sur l\'API Afro-Eats!","status":"OK","version":"1.0.0","docs":"/api/health et /api/plats"}';
 
 let appInstance = null;
 let initPromise = null;
 
-function safeSend(res, status, headers, body) {
+function safeSend(res, status, headers, body, corsHeaders) {
+  const merged = { ...(corsHeaders || getCorsHeaders({})), ...headers };
   try {
-    if (res.writeHead) res.writeHead(status, { ...CORS_HEADERS, ...headers });
+    if (res.writeHead) res.writeHead(status, merged);
     else if (res.setHeader) {
-      Object.entries({ ...CORS_HEADERS, ...headers }).forEach(([k, v]) => res.setHeader(k, v));
+      Object.entries(merged).forEach(([k, v]) => res.setHeader(k, v));
       res.statusCode = status;
     }
     if (res.end) res.end(body || '');
@@ -55,6 +78,7 @@ function runExpress(app, req, res) {
 }
 
 export default async function handler(req, res) {
+  const CORS_HEADERS = getCorsHeaders(req);
   if (res && typeof res.setHeader === 'function') {
     try {
       Object.entries(CORS_HEADERS).forEach(([k, v]) => { res.setHeader(k, v); });
@@ -71,16 +95,16 @@ export default async function handler(req, res) {
 
   try {
     if (method === 'OPTIONS') {
-      safeSend(res, 204, { 'Content-Length': '0' });
+      safeSend(res, 204, { 'Content-Length': '0' }, undefined, CORS_HEADERS);
       return;
     }
     if (method === 'GET' && (path === '/' || path === '' || path === '/api')) {
-      safeSend(res, 200, { 'Content-Type': 'application/json' }, ROOT_JSON);
+      safeSend(res, 200, { 'Content-Type': 'application/json' }, ROOT_JSON, CORS_HEADERS);
       return;
     }
   } catch (_) {
     try {
-      safeSend(res, 200, { 'Content-Type': 'application/json' }, ROOT_JSON);
+      safeSend(res, 200, { 'Content-Type': 'application/json' }, ROOT_JSON, CORS_HEADERS);
     } catch (_) {}
     return;
   }
@@ -95,7 +119,7 @@ export default async function handler(req, res) {
           success: false,
           error: 'INIT_FAILED',
           message: (err && err.message) ? String(err.message) : 'Erreur serveur',
-        }));
+        }), CORS_HEADERS);
       }
     } catch (_) {}
   }
