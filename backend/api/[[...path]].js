@@ -23,12 +23,13 @@ function isOriginAllowed(origin) {
 }
 
 function getCorsHeaders(req) {
-  const origin =
-    (req && typeof req.getHeader === 'function' && req.getHeader('origin')) ||
-    req?.headers?.origin ||
-    req?.headers?.Origin ||
-    (req?.headers && req.headers['origin']);
-  const allowOrigin = isOriginAllowed(origin) ? origin : (process.env.FRONTEND_URL || ALLOWED_ORIGINS[0]);
+  let origin = null;
+  if (req) {
+    if (typeof req.getHeader === 'function') origin = req.getHeader('origin') || req.getHeader('Origin');
+    if (!origin && req.headers?.get) origin = req.headers.get('origin') || req.headers.get('Origin');
+    if (!origin && req.headers) origin = req.headers.origin || req.headers.Origin || req.headers['origin'];
+  }
+  const allowOrigin = isOriginAllowed(origin) ? origin : (process.env.FRONTEND_URL || 'https://afrofood.vercel.app');
   return {
     'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
@@ -91,6 +92,25 @@ function runExpress(app, req, res) {
 
 export default async function handler(req, res) {
   const CORS_HEADERS = getCorsHeaders(req);
+
+  let method = 'GET';
+  try {
+    if (req?.method) method = String(req.method).toUpperCase();
+    const acrm = req?.headers?.['access-control-request-method'] ?? req?.headers?.['Access-Control-Request-Method'] ?? (req?.headers?.get && req.headers.get('access-control-request-method'));
+    if (acrm) method = 'OPTIONS';
+  } catch (_) {}
+
+  if (method === 'OPTIONS') {
+    try {
+      if (res?.setHeader) Object.entries(CORS_HEADERS).forEach(([k, v]) => { res.setHeader(k, v); });
+      if (res?.status) res.status(200); else if (res) res.statusCode = 200;
+      if (res?.end) res.end(); else safeSend(res, 200, { 'Content-Length': '0' }, '', CORS_HEADERS);
+    } catch (_) {
+      safeSend(res, 200, { 'Content-Length': '0' }, '', CORS_HEADERS);
+    }
+    return;
+  }
+
   if (res && typeof res.setHeader === 'function') {
     try {
       Object.entries(CORS_HEADERS).forEach(([k, v]) => { res.setHeader(k, v); });
@@ -98,21 +118,12 @@ export default async function handler(req, res) {
   }
 
   let path = '';
-  let method = 'GET';
   try {
     if (req && req.url) path = (req.url || '').split('?')[0];
     else if (req && req.path) path = (req.path || '').split('?')[0];
-    if (req && req.method) method = String(req.method).toUpperCase();
-    // Prérequête CORS : si le navigateur envoie ce header, c'est un OPTIONS
-    const isPreflight = req?.headers?.['access-control-request-method'] || req?.headers?.['Access-Control-Request-Method'];
-    if (isPreflight && method !== 'OPTIONS') method = 'OPTIONS';
   } catch (_) {}
 
   try {
-    if (method === 'OPTIONS') {
-      safeSend(res, 204, { 'Content-Length': '0' }, undefined, CORS_HEADERS);
-      return;
-    }
     if (method === 'GET' && (path === '/' || path === '' || path === '/api')) {
       safeSend(res, 200, { 'Content-Type': 'application/json' }, ROOT_JSON, CORS_HEADERS);
       return;
