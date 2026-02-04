@@ -63,6 +63,20 @@ npm run dev
 npm start
 ```
 
+### Connexion à la page admin
+
+Il n’y a pas d’admin par défaut. Pour en créer un :
+
+```bash
+node scripts/seedAdmin.js
+```
+
+Cela crée un compte admin avec :
+- **Email :** `admin@afrofood.com`
+- **Mot de passe :** `Admin123!`
+
+Ensuite, allez sur la page **Connexion** du site (ou `/login`) et connectez-vous avec ces identifiants. En production, changez le mot de passe après la première connexion.
+
 ## 📁 Architecture du projet
 
 ```
