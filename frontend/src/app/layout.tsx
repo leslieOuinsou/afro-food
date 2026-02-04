@@ -16,10 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Afro-Eats - Cuisine Camerounaise et Béninoise",
   description: "Découvrez les saveurs authentiques du Cameroun et du Bénin avec Afro-Eats. Livraison de plats traditionnels à domicile.",
-  icons: {
-    icon: "/logo-afro-eats.png",
-    apple: "/logo-afro-eats.png",
-  },
+  // Icônes définies via <link> dans le head pour éviter le preload automatique (warning navigateur)
 };
 
 export default function RootLayout({
@@ -30,8 +27,8 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <head>
-        <link rel="icon" href="/logo-afro-eats.png" />
-        <link rel="apple-touch-icon" href="/logo-afro-eats.png" />
+        <link rel="icon" href="/logo-afro-eats.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/logo-afro-eats.png" type="image/png" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
