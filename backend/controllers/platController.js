@@ -19,10 +19,15 @@ export const obtenirPlats = async (req, res, next) => {
       tri = 'populaire',
       recherche
     } = req.query;
-    
+
+    // Pagination robuste (éviter NaN et valeurs invalides)
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limiteNum = Math.max(1, Math.min(100, parseInt(limite, 10) || 20));
+    const skip = (pageNum - 1) * limiteNum;
+
     // Construire la query de base
     let query = {};
-    
+
     // Filtres
     if (categorie) query.categorie = categorie;
     if (pays) query['origineAfricaine.pays'] = pays;
@@ -32,12 +37,13 @@ export const obtenirPlats = async (req, res, next) => {
       query.disponible = true;
       query.enRupture = false;
     }
-    
-    // Recherche textuelle
-    if (recherche) {
-      query.$text = { $search: recherche };
+
+    // Recherche textuelle (nécessite un index text sur la collection ; si absent → erreur)
+    const useTextSearch = recherche && typeof recherche === 'string' && recherche.trim().length > 0;
+    if (useTextSearch) {
+      query.$text = { $search: recherche.trim() };
     }
-    
+
     // Construction de l'agrégation pour gérer le prix effectif
     let pipeline = [
       { $match: query },
@@ -45,11 +51,11 @@ export const obtenirPlats = async (req, res, next) => {
         $addFields: {
           prixEffectif: {
             $cond: {
-              if: { 
+              if: {
                 $and: [
-                  { $gt: ['$prixPromo', 0] }, 
+                  { $gt: ['$prixPromo', 0] },
                   { $lt: ['$prixPromo', '$prix'] }
-                ] 
+                ]
               },
               then: '$prixPromo',
               else: '$prix'
@@ -58,15 +64,17 @@ export const obtenirPlats = async (req, res, next) => {
         }
       }
     ];
-    
+
     // Filtre de prix sur le prix effectif
     if (prixMin || prixMax) {
       const prixFilter = {};
-      if (prixMin) prixFilter.$gte = parseFloat(prixMin);
-      if (prixMax) prixFilter.$lte = parseFloat(prixMax);
-      pipeline.push({ $match: { prixEffectif: prixFilter } });
+      const pMin = parseFloat(prixMin);
+      const pMax = parseFloat(prixMax);
+      if (!isNaN(pMin)) prixFilter.$gte = pMin;
+      if (!isNaN(pMax)) prixFilter.$lte = pMax;
+      if (Object.keys(prixFilter).length) pipeline.push({ $match: { prixEffectif: prixFilter } });
     }
-    
+
     // Tri
     let sortStage = {};
     switch (tri) {
@@ -90,36 +98,63 @@ export const obtenirPlats = async (req, res, next) => {
         sortStage = { nombreCommandes: -1, notemoyenne: -1 };
         break;
     }
-    
-    if (recherche) {
+    if (useTextSearch) {
       sortStage = { score: { $meta: 'textScore' }, ...sortStage };
     }
-    
     pipeline.push({ $sort: sortStage });
-    
-    // Pagination
-    const limiteNum = parseInt(limite);
-    const skip = (parseInt(page) - 1) * limiteNum;
-    
     pipeline.push({ $skip: skip });
     pipeline.push({ $limit: limiteNum });
-    
-    // Exécution de l'agrégation
-    const plats = await Plat.aggregate(pipeline);
-    
-    // Compter le total pour la pagination
+
+    let plats = [];
+    let total = 0;
+
+    try {
+      plats = await Plat.aggregate(pipeline);
+    } catch (aggError) {
+      // Si erreur (ex. index text manquant), retenter sans recherche textuelle
+      if (useTextSearch && (aggError.code === 27 || aggError.message?.includes('text index') || aggError.message?.includes('$text'))) {
+        const queryFallback = { ...query };
+        delete queryFallback.$text;
+        const sortFallback = { nombreCommandes: -1, notemoyenne: -1 };
+        const pipelineFallback = [
+          { $match: queryFallback },
+          {
+            $addFields: {
+              prixEffectif: {
+                $cond: {
+                  if: { $and: [{ $gt: ['$prixPromo', 0] }, { $lt: ['$prixPromo', '$prix'] }] },
+                  then: '$prixPromo',
+                  else: '$prix'
+                }
+              }
+            }
+          }
+        ];
+        if (prixMin || prixMax) {
+          const prixFilter = {};
+          if (!isNaN(parseFloat(prixMin))) prixFilter.$gte = parseFloat(prixMin);
+          if (!isNaN(parseFloat(prixMax))) prixFilter.$lte = parseFloat(prixMax);
+          if (Object.keys(prixFilter).length) pipelineFallback.push({ $match: { prixEffectif: prixFilter } });
+        }
+        pipelineFallback.push({ $sort: sortFallback });
+        pipelineFallback.push({ $skip: skip });
+        pipelineFallback.push({ $limit: limiteNum });
+        plats = await Plat.aggregate(pipelineFallback);
+      } else {
+        throw aggError;
+      }
+    }
+
+    // Compter le total pour la pagination (sans $text si on a fallback)
+    const totalQuery = { ...query };
+    if (totalQuery.$text) delete totalQuery.$text;
     const totalPipeline = [
-      { $match: query },
+      { $match: totalQuery },
       {
         $addFields: {
           prixEffectif: {
             $cond: {
-              if: { 
-                $and: [
-                  { $gt: ['$prixPromo', 0] }, 
-                  { $lt: ['$prixPromo', '$prix'] }
-                ] 
-              },
+              if: { $and: [{ $gt: ['$prixPromo', 0] }, { $lt: ['$prixPromo', '$prix'] }] },
               then: '$prixPromo',
               else: '$prix'
             }
@@ -127,36 +162,36 @@ export const obtenirPlats = async (req, res, next) => {
         }
       }
     ];
-    
     if (prixMin || prixMax) {
       const prixFilter = {};
-      if (prixMin) prixFilter.$gte = parseFloat(prixMin);
-      if (prixMax) prixFilter.$lte = parseFloat(prixMax);
-      totalPipeline.push({ $match: { prixEffectif: prixFilter } });
+      if (!isNaN(parseFloat(prixMin))) prixFilter.$gte = parseFloat(prixMin);
+      if (!isNaN(parseFloat(prixMax))) prixFilter.$lte = parseFloat(prixMax);
+      if (Object.keys(prixFilter).length) totalPipeline.push({ $match: { prixEffectif: prixFilter } });
     }
-    
     totalPipeline.push({ $count: 'total' });
-    
-    const countResult = await Plat.aggregate(totalPipeline);
-    const total = countResult.length > 0 ? countResult[0].total : 0;
-    
-    // Métadonnées de pagination
+    try {
+      const countResult = await Plat.aggregate(totalPipeline);
+      total = countResult.length > 0 ? countResult[0].total : 0;
+    } catch (_) {
+      total = plats.length;
+    }
+
+    const totalPages = limiteNum > 0 ? Math.ceil(total / limiteNum) : 0;
     const pagination = {
-      pageActuelle: parseInt(page),
-      totalPages: Math.ceil(total / limiteNum),
+      pageActuelle: pageNum,
+      totalPages,
       totalPlats: total,
       platsPourPage: limiteNum,
-      aPrecedent: parseInt(page) > 1,
-      aSuivant: parseInt(page) < Math.ceil(total / limiteNum)
+      aPrecedent: pageNum > 1,
+      aSuivant: pageNum < totalPages
     };
-    
+
     res.status(200).json({
       success: true,
       message: 'Plats récupérés avec succès',
       data: { plats },
       pagination
     });
-    
   } catch (error) {
     next(error);
   }
