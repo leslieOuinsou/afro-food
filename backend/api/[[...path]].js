@@ -91,6 +91,9 @@ export default async function handler(req, res) {
     if (req && req.url) path = (req.url || '').split('?')[0];
     else if (req && req.path) path = (req.path || '').split('?')[0];
     if (req && req.method) method = String(req.method).toUpperCase();
+    // Prérequête CORS : si le navigateur envoie ce header, c'est un OPTIONS
+    const isPreflight = req?.headers?.['access-control-request-method'] || req?.headers?.['Access-Control-Request-Method'];
+    if (isPreflight && method !== 'OPTIONS') method = 'OPTIONS';
   } catch (_) {}
 
   try {
