@@ -77,6 +77,16 @@ Cela crée un compte admin avec :
 
 Ensuite, allez sur la page **Connexion** du site (ou `/login`) et connectez-vous avec ces identifiants. En production, changez le mot de passe après la première connexion.
 
+### CORS et déploiement Vercel
+
+Si tu as l’erreur **« Response to preflight request doesn't pass access control check: It does not have HTTP ok status »** depuis ton front (ex. afrofood.vercel.app) :
+
+1. **Vercel → Projet backend → Settings → Deployment Protection**
+2. Dans **OPTIONS Allowlist**, active l’option et ajoute le chemin **`/api`**.
+3. Ainsi les requêtes **OPTIONS** (prérequête CORS) ne sont plus bloquées et renvoient un statut 2xx.
+
+Sans ça, la protection peut renvoyer 403 sur OPTIONS et le navigateur bloque l’appel (inscription, connexion, etc.).
+
 ## 📁 Architecture du projet
 
 ```
