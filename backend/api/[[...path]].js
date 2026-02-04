@@ -23,8 +23,12 @@ function isOriginAllowed(origin) {
 }
 
 function getCorsHeaders(req) {
-  const origin = req?.headers?.origin || req?.headers?.Origin;
-  const allowOrigin = isOriginAllowed(origin) ? origin : ALLOWED_ORIGINS[0];
+  const origin =
+    (req && typeof req.getHeader === 'function' && req.getHeader('origin')) ||
+    req?.headers?.origin ||
+    req?.headers?.Origin ||
+    (req?.headers && req.headers['origin']);
+  const allowOrigin = isOriginAllowed(origin) ? origin : (process.env.FRONTEND_URL || ALLOWED_ORIGINS[0]);
   return {
     'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',

@@ -81,7 +81,9 @@ const corsOptions = {
       process.env.FRONTEND_URL || 'http://localhost:3000',
       'http://localhost:3000',
       'http://localhost:3001',
-      'https://afro-food.vercel.app'
+      'https://afro-food.vercel.app',
+      'https://afrofood.vercel.app',
+      'https://frontend-nine-beta-45.vercel.app',
     ];
     // Autoriser tous les sous-domaines Vercel (*.vercel.app)
     if (origin && origin.endsWith('.vercel.app')) {
