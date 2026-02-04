@@ -27,11 +27,11 @@ export const connectDB = async () => {
       throw new Error(`URI invalide. L'URI doit commencer par "mongodb://" ou "mongodb+srv://". URI reçue: ${mongoURI.substring(0, 50)}...`);
     }
     
-    // Connexion à MongoDB avec les options recommandées
+    // Connexion à MongoDB (timeout court sur Vercel pour éviter blocage)
+    const isVercel = process.env.VERCEL === '1';
     await mongoose.connect(mongoURI, {
-      // Ces options sont recommandées par MongoDB pour éviter les avertissements
-      // useNewUrlParser: true, // Déjà activé par défaut dans Mongoose 6+
-      // useUnifiedTopology: true, // Déjà activé par défaut dans Mongoose 6+
+      serverSelectionTimeoutMS: isVercel ? 12000 : 30000,
+      connectTimeoutMS: isVercel ? 10000 : 10000,
     });
 
     // Affichage des messages de succès (console.log affiche toujours, même avec node --watch)

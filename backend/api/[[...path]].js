@@ -125,10 +125,14 @@ export default async function handler(req, res) {
   } catch (err) {
     try {
       if (res && !res.headersSent) {
+        const msg = (err && err.message) ? String(err.message) : 'Erreur serveur';
+        const hint = msg.includes('MONGODB') || msg.includes('mongo') || msg.includes('timed out')
+          ? ' Verifiez MONGODB_URI sur Vercel (Settings > Environment Variables) et Network Access sur MongoDB Atlas (0.0.0.0/0).'
+          : '';
         safeSend(res, 503, { 'Content-Type': 'application/json' }, JSON.stringify({
           success: false,
           error: 'INIT_FAILED',
-          message: (err && err.message) ? String(err.message) : 'Erreur serveur',
+          message: msg + hint,
         }), CORS_HEADERS);
       }
     } catch (_) {}
