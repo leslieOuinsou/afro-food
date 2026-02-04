@@ -422,27 +422,30 @@ export const rechercherPlats = async (req, res, next) => {
 // @access  Public
 export const obtenirCategories = async (req, res, next) => {
   try {
-    const categories = await Plat.aggregate([
-      { $group: { _id: '$categorie', nombre: { $sum: 1 } } },
-      { $sort: { nombre: -1 } },
-      { $project: { categorie: '$_id', nombre: 1, _id: 0 } }
-    ]);
-    
-    const pays = await Plat.aggregate([
-      { $group: { _id: '$origineAfricaine.pays', nombre: { $sum: 1 } } },
-      { $sort: { nombre: -1 } },
-      { $project: { pays: '$_id', nombre: 1, _id: 0 } }
-    ]);
-    
+    const plats = await Plat.find({}, { categorie: 1, 'origineAfricaine.pays': 1 }).lean();
+    const catMap = new Map();
+    const paysMap = new Map();
+    for (const p of plats) {
+      if (p.categorie) {
+        catMap.set(p.categorie, (catMap.get(p.categorie) || 0) + 1);
+      }
+      const pays = p.origineAfricaine?.pays;
+      if (pays) {
+        paysMap.set(pays, (paysMap.get(pays) || 0) + 1);
+      }
+    }
+    const categories = [...catMap.entries()]
+      .map(([categorie, nombre]) => ({ categorie, nombre }))
+      .sort((a, b) => b.nombre - a.nombre);
+    const pays = [...paysMap.entries()]
+      .map(([pays, nombre]) => ({ pays, nombre }))
+      .sort((a, b) => b.nombre - a.nombre);
+
     res.status(200).json({
       success: true,
       message: 'Catégories récupérées avec succès',
-      data: {
-        categories,
-        pays
-      }
+      data: { categories, pays }
     });
-    
   } catch (error) {
     next(error);
   }
