@@ -55,7 +55,14 @@ async function getApp() {
   if (initPromise) return initPromise;
   initPromise = (async () => {
     const { app, connectDB } = await import('../server.js');
-    connectDB().catch(() => {});
+    // Attendre que MongoDB soit connecté avant de traiter des requêtes (évite "buffering timed out")
+    try {
+      await connectDB();
+    } catch (err) {
+      console.error('MongoDB connection failed:', err?.message || err);
+      initPromise = null; // permettre un nouvel essai à la prochaine requête
+      throw err;
+    }
     appInstance = app;
     return app;
   })();
