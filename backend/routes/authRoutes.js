@@ -30,6 +30,14 @@ const router = express.Router();
 router.use(loggerAuthentification);
 
 // Routes publiques avec limitation du taux
+// GET /api/auth/inscription → 405 (évite 404 si quelqu'un ouvre l'URL en GET)
+router.get('/inscription', (req, res) => {
+  res.status(405).json({
+    success: false,
+    message: 'Méthode non autorisée. Utilisez POST pour l\'inscription.',
+    allowed: ['POST'],
+  });
+});
 router.post('/inscription', 
   limiteurTaux(5, 15 * 60 * 1000), // 5 tentatives par 15 minutes
   validerInscription,

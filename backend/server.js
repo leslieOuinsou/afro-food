@@ -20,6 +20,17 @@ const app = express();
 // Configuration du port (par défaut 5000 si PORT n'est pas défini dans .env)
 const PORT = process.env.PORT || 5000;
 
+// Sur Vercel, connecter la DB au premier requête (car le serveur n'appelle pas connectDB au démarrage)
+const isVercel = process.env.VERCEL === '1';
+if (isVercel) {
+  let dbConnectPromise = null;
+  app.use(async (req, res, next) => {
+    if (!dbConnectPromise) dbConnectPromise = connectDB();
+    await dbConnectPromise;
+    next();
+  });
+}
+
 // Trust proxy si derrière un reverse proxy (Nginx, Cloudflare, etc.)
 app.set('trust proxy', 1);
 
@@ -209,11 +220,11 @@ app.use(notFound);
 // Middleware de gestion d'erreurs - doit être le dernier middleware
 app.use(errorHandler);
 
-// Export pour Vercel serverless (ne pas démarrer le serveur quand importé)
+// Export pour Vercel : l'export par défaut doit être l'app (ou une fonction) pour le déploiement Node
+export default app;
 export { app, connectDB };
 
 // Démarrer le serveur uniquement en local (pas sur Vercel)
-const isVercel = process.env.VERCEL === '1';
 if (!isVercel) {
   const skipDB = process.env.SKIP_DB_CONNECTION === 'true' && process.env.NODE_ENV !== 'production';
   console.log('\n═══════════════════════════════════════');
