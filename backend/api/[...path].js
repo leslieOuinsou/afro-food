@@ -1,9 +1,7 @@
 /**
  * Handler Vercel serverless : expose l'API Express sur /api/*
  * Root Directory = "backend" sur Vercel.
- *
- * CORS : avec credentials (cookies), le navigateur interdit 'Access-Control-Allow-Origin: *'.
- * On renvoie donc l'origine réelle si elle est autorisée.
+ * Fichier [...path].js = route /api/:path+ (reconnu par Vercel)
  */
 
 const ALLOWED_ORIGINS = [
@@ -61,12 +59,11 @@ async function getApp() {
   if (initPromise) return initPromise;
   initPromise = (async () => {
     const { app, connectDB } = await import('../server.js');
-    // Attendre que MongoDB soit connecté avant de traiter des requêtes (évite "buffering timed out")
     try {
       await connectDB();
     } catch (err) {
       console.error('MongoDB connection failed:', err?.message || err);
-      initPromise = null; // permettre un nouvel essai à la prochaine requête
+      initPromise = null;
       throw err;
     }
     appInstance = app;
@@ -124,7 +121,7 @@ export default async function handler(req, res) {
   } catch (_) {}
 
   try {
-    if (method === 'GET' && (path === '/' || path === '' || path === '/api')) {
+    if (method === 'GET' && (path === '/' || path === '' || path === '/api' || path === '/api/')) {
       safeSend(res, 200, { 'Content-Type': 'application/json' }, ROOT_JSON, CORS_HEADERS);
       return;
     }
