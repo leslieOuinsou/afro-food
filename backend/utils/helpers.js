@@ -1,5 +1,5 @@
 /**
- * Fonctions utilitaires pour l'application Afro-Eats
+ * Fonctions utilitaires pour l'application Afro-food
  */
 
 import crypto from 'crypto';

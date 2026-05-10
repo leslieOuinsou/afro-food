@@ -1,26 +1,10 @@
 /**
- * Service Admin Plats - Créer, modifier, supprimer des plats via l'API backend
- * En développement : utilise /api/plats/dev (sans auth)
- * En production : utilise /api/plats (avec token admin)
+ * Service Admin Plats - routes protégées admin uniquement.
+ * Aligné sur le backend: /api/plats + JWT admin (pas de route dev bypass côté front).
  */
 
 import { apiGet, apiPost, apiPut, apiDelete, ApiResponse } from '@/lib/api';
-import { isAuthenticated } from './auth';
 import type { Plat } from './plats';
-
-const getUseDevRoutes = () => {
-  if (typeof window === 'undefined') return false;
-  const url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-  return url.includes('localhost') && !isAuthenticated();
-};
-
-function platEndpoint(id?: string): string {
-  const base = '/api/plats';
-  if (getUseDevRoutes()) {
-    return id ? `${base}/dev/${id}` : `${base}/dev`;
-  }
-  return id ? `${base}/${id}` : base;
-}
 
 /** Catégories affichage → slug backend */
 export const categorieToSlug: Record<string, string> = {
@@ -88,16 +72,16 @@ export async function fetchPlatsAdmin(): Promise<ApiResponse<{ plats?: Plat[] }>
 /** Créer un plat */
 export async function createPlat(form: PlatFormData): Promise<ApiResponse<{ plat?: Plat }>> {
   const body = formToBody(form);
-  return apiPost(platEndpoint(), body);
+  return apiPost('/api/plats', body);
 }
 
 /** Mettre à jour un plat */
 export async function updatePlat(id: string, form: PlatFormData): Promise<ApiResponse<{ plat?: Plat }>> {
   const body = formToBody(form);
-  return apiPut(platEndpoint(id), body);
+  return apiPut(`/api/plats/${id}`, body);
 }
 
 /** Supprimer un plat */
 export async function deletePlat(id: string): Promise<ApiResponse<unknown>> {
-  return apiDelete(platEndpoint(id));
+  return apiDelete(`/api/plats/${id}`);
 }

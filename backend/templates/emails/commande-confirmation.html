@@ -1,0 +1,261 @@
+<!--
+  Template statique d’aperçu — Confirmation de commande Afro-food.
+  Styles 100 % inline, tables de mise en page (compatibilité clients mail).
+  En production : utiliser orderConfirmationEmail() dans backend/utils/emailTemplates.js
+  (données dynamiques + logo / liens via FRONTEND_URL en HTTPS).
+-->
+<!DOCTYPE html>
+<html lang="fr" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="x-apple-disable-message-reformatting" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>Confirmation de commande — Afro-food</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <style type="text/css">
+    table { border-collapse: collapse; }
+    td { font-family: Arial, Helvetica, sans-serif; }
+  </style>
+  <![endif]-->
+</head>
+<body style="margin:0;padding:0;width:100%;background-color:#FAF3E0;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+  <!-- Préheader (aperçu boîte mail) -->
+  <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">
+    Votre commande est confirmée — retrouvez le détail et suivez la livraison sur Afro-food.
+  </div>
+
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FAF3E0;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <!-- Conteneur principal max 600px -->
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:600px;width:100%;background-color:#FAF3E0;border-radius:12px;overflow:hidden;">
+
+          <!-- HEADER bois sombre -->
+          <tr>
+            <td align="center" style="background-color:#2C1A0E;padding:28px 24px 24px 24px;border-radius:12px 12px 0 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td align="center" style="padding-bottom:16px;">
+                    <!-- Logo : remplacer src par l’URL absolue hébergée (HTTPS) -->
+                    <img src="https://example.com/logo-afro-eats.png" width="56" height="56" alt="Afro-food" style="display:block;border:0;outline:none;text-decoration:none;width:56px;height:56px;border-radius:12px;background-color:#FAF3E0;padding:4px;" />
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="font-family:Georgia,'Times New Roman',serif;font-size:26px;line-height:1.25;font-weight:700;color:#FAF3E0;padding:0 8px;">
+                    Votre commande est confirmée
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#FAF3E0;padding:12px 8px 0 8px;opacity:0.9;">
+                    Merci pour votre confiance — vos saveurs arrivent bientôt.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Corps -->
+          <tr>
+            <td style="background-color:#FAF3E0;padding:28px 24px 8px 24px;border-left:1px solid #e8dcc4;border-right:1px solid #e8dcc4;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#2C1A0E;padding-bottom:8px;">
+                    Bonjour <strong style="color:#2C1A0E;">Marie</strong>,
+                  </td>
+                </tr>
+                <tr>
+                  <td style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#2C1A0E;padding-bottom:20px;">
+                    Nous avons bien enregistré votre commande. Vous trouverez ci-dessous le récapitulatif.
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Numéro + date -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border-radius:10px;border:1px solid #e8dcc4;">
+                <tr>
+                  <td style="padding:16px 18px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tr>
+                        <td style="font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#C2610F;padding-bottom:6px;">
+                          Commande
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:700;color:#2C1A0E;padding-bottom:4px;">
+                          #CMD-2026-004892
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#2C1A0E;opacity:0.75;">
+                          Passée le 9 avril 2026 à 14:32
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Tableau produits -->
+          <tr>
+            <td style="background-color:#FAF3E0;padding:8px 24px 8px 24px;border-left:1px solid #e8dcc4;border-right:1px solid #e8dcc4;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border-radius:10px;border:1px solid #e8dcc4;overflow:hidden;">
+                <tr>
+                  <td colspan="4" style="padding:14px 16px;background-color:#2C1A0E;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#FAF3E0;">
+                    Récapitulatif des produits
+                  </td>
+                </tr>
+                <!-- Ligne article exemple 1 -->
+                <tr>
+                  <td width="72" valign="top" style="padding:14px 0 14px 14px;width:72px;">
+                    <img src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=120&q=80" width="64" height="64" alt="" style="display:block;width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #e8dcc4;" />
+                  </td>
+                  <td valign="middle" style="padding:14px 8px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#2C1A0E;line-height:1.35;">
+                    Jollof rice au poulet
+                  </td>
+                  <td valign="middle" align="center" width="44" style="padding:14px 6px;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#2C1A0E;">
+                    ×&nbsp;2
+                  </td>
+                  <td valign="middle" align="right" width="88" style="padding:14px 14px 14px 6px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#C2610F;white-space:nowrap;">
+                    31,00&nbsp;€
+                  </td>
+                </tr>
+                <tr>
+                  <td colspan="4" style="border-top:1px solid #efe6d4;"></td>
+                </tr>
+                <!-- Ligne article exemple 2 -->
+                <tr>
+                  <td width="72" valign="top" style="padding:14px 0 14px 14px;width:72px;">
+                    <img src="https://images.unsplash.com/photo-1544145945-f90425340c7e?w=120&q=80" width="64" height="64" alt="" style="display:block;width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #e8dcc4;" />
+                  </td>
+                  <td valign="middle" style="padding:14px 8px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#2C1A0E;line-height:1.35;">
+                    Bissap artisanal 1&nbsp;L
+                  </td>
+                  <td valign="middle" align="center" width="44" style="padding:14px 6px;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#2C1A0E;">
+                    ×&nbsp;1
+                  </td>
+                  <td valign="middle" align="right" width="88" style="padding:14px 14px 14px 6px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#C2610F;white-space:nowrap;">
+                    4,50&nbsp;€
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Adresse + totaux -->
+          <tr>
+            <td style="background-color:#FAF3E0;padding:8px 24px 20px 24px;border-left:1px solid #e8dcc4;border-right:1px solid #e8dcc4;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border-radius:10px;border:1px solid #e8dcc4;">
+                <tr>
+                  <td style="padding:16px 18px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tr>
+                        <td style="font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#C2610F;padding-bottom:8px;">
+                          Adresse de livraison
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#2C1A0E;">
+                          Marie Koné<br />
+                          12 rue des Épices<br />
+                          75011 Paris, France
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="border-top:1px solid #efe6d4;padding:14px 18px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tr>
+                        <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#2C1A0E;padding:4px 0;">Sous-total TTC</td>
+                        <td align="right" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#2C1A0E;padding:4px 0;">35,50&nbsp;€</td>
+                      </tr>
+                      <tr>
+                        <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#2C1A0E;padding:4px 0;">Livraison</td>
+                        <td align="right" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#2C1A0E;padding:4px 0;">2,99&nbsp;€</td>
+                      </tr>
+                      <tr>
+                        <td colspan="2" style="padding-top:10px;border-top:2px solid #C2610F;">
+                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                            <tr>
+                              <td style="font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:700;color:#2C1A0E;padding-top:8px;">Total TTC</td>
+                              <td align="right" style="font-family:Georgia,'Times New Roman',serif;font-size:20px;font-weight:700;color:#C2610F;padding-top:8px;">38,49&nbsp;€</td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- CTA -->
+          <tr>
+            <td align="center" style="background-color:#FAF3E0;padding:8px 24px 28px 24px;border-left:1px solid #e8dcc4;border-right:1px solid #e8dcc4;border-radius:0 0 12px 12px;">
+              <!--[if mso]>
+              <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="https://example.com/commandes/CMD-2026-004892" style="height:48px;v-text-anchor:middle;width:280px;" arcsize="50%" stroke="f" fillcolor="#C2610F">
+                <w:anchorlock/>
+                <center style="color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:bold;">Suivre ma commande</center>
+              </v:roundrect>
+              <![endif]-->
+              <!--[if !mso]><!-->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+                <tr>
+                  <td align="center" style="border-radius:999px;background-color:#C2610F;box-shadow:0 10px 24px rgba(194,97,15,0.28);">
+                    <a href="https://example.com/commandes/CMD-2026-004892" target="_blank" style="font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;display:inline-block;padding:14px 32px;border-radius:999px;">
+                      Suivre ma commande
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <!--<![endif]-->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td align="center" style="padding-top:16px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:#2C1A0E;opacity:0.65;">
+                    Un problème avec votre commande ? Répondez à cet e-mail ou contactez notre aide.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="padding:20px 16px 32px 16px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
+                <tr>
+                  <td style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#2C1A0E;opacity:0.7;">
+                    <a href="https://example.com/aide" style="color:#C2610F;text-decoration:underline;">Centre d’aide</a>
+                    <span style="color:#c4b8a8;">&nbsp;·&nbsp;</span>
+                    <a href="https://example.com/terms" style="color:#C2610F;text-decoration:underline;">Conditions générales</a>
+                    <span style="color:#c4b8a8;">&nbsp;·&nbsp;</span>
+                    <a href="https://example.com/compte/notifications?unsubscribe=1" style="color:#C2610F;text-decoration:underline;">Se désabonner</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding-top:14px;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.5;color:#2C1A0E;opacity:0.5;">
+                    © 2026 Afro-food — Marketplace de nourriture africaine
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

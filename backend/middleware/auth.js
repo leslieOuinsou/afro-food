@@ -216,10 +216,10 @@ export const limiteurTaux = (maxRequetes = 100, fenetreMs = 15 * 60 * 1000) => {
       return next(error);
     }
     
-    // Ajouter des headers informatifs
-    res.setHeader('X-RateLimit-Limit', maxRequetes);
-    res.setHeader('X-RateLimit-Remaining', Math.max(0, maxRequetes - donneesIp.count));
-    res.setHeader('X-RateLimit-Reset', new Date(maintenant + fenetreMs));
+    // Ajouter des headers informatifs (valeurs en string pour conformité HTTP)
+    res.setHeader('X-RateLimit-Limit', String(maxRequetes));
+    res.setHeader('X-RateLimit-Remaining', String(Math.max(0, maxRequetes - donneesIp.count)));
+    res.setHeader('X-RateLimit-Reset', String(Math.ceil((maintenant + fenetreMs) / 1000)));
     
     next();
   };

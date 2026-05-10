@@ -54,6 +54,66 @@ const obtenirAvisPlat = async (req, res, next) => {
   }
 };
 
+// @desc    Obtenir les avis de l'utilisateur connecté
+// @route   GET /api/avis/mes-avis
+// @access  Private
+const obtenirMesAvis = async (req, res, next) => {
+  try {
+    const {
+      page = 1,
+      limite = 20,
+      tri = 'recent',
+      statut,
+    } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limiteNum = Math.max(1, Math.min(100, parseInt(limite, 10) || 20));
+
+    const query = {
+      utilisateur: req.utilisateur.id,
+      ...(statut ? { statut } : {}),
+    };
+
+    const sortOptions = (() => {
+      switch (tri) {
+        case 'ancien':
+          return { createdAt: 1 };
+        case 'note_desc':
+          return { note: -1, createdAt: -1 };
+        case 'note_asc':
+          return { note: 1, createdAt: -1 };
+        case 'recent':
+        default:
+          return { createdAt: -1 };
+      }
+    })();
+
+    const [avis, total] = await Promise.all([
+      Avis.find(query)
+        .populate('plat', 'nom images.principale')
+        .populate('commande', 'numeroCommande')
+        .sort(sortOptions)
+        .limit(limiteNum)
+        .skip((pageNum - 1) * limiteNum),
+      Avis.countDocuments(query),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: 'Mes avis récupérés avec succès',
+      data: { avis },
+      pagination: {
+        pageActuelle: pageNum,
+        totalPages: Math.ceil(total / limiteNum),
+        totalAvis: total,
+        avisParPage: limiteNum,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Créer un nouvel avis
 // @route   POST /api/avis
 // @access  Private
@@ -298,6 +358,12 @@ router.get('/plat/:platId',
 );
 
 // Routes protégées
+router.get('/mes-avis',
+  protegerRoute,
+  validerPagination,
+  obtenirMesAvis
+);
+
 router.post('/', 
   protegerRoute,
   validerAvis,

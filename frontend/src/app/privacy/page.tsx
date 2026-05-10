@@ -22,7 +22,7 @@ export default function PrivacyPage() {
               <section>
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">1. Introduction</h2>
                 <p className="text-gray-700 leading-relaxed">
-                  Afro-Eats s'engage à protéger votre vie privée. Cette politique de confidentialité 
+                  Afro-food s'engage à protéger votre vie privée. Cette politique de confidentialité 
                   explique comment nous collectons, utilisons et protégeons vos données personnelles 
                   conformément au Règlement Général sur la Protection des Données (RGPD).
                 </p>

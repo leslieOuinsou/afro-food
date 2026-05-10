@@ -7,6 +7,7 @@ import { apiGet } from '@/lib/api';
 export interface PublicStats {
   nombrePlats: number;
   nombreCategories: number;
+  nombrePays?: number;
   nombreTotalCommandes: number;
   nombreUtilisateursActifs: number;
   nombreAvis: number;
@@ -19,6 +20,7 @@ export interface AdminStatsData {
     commandesLivrees: number;
     commandesAnnulees: number;
     panierMoyen: number;
+    /** Le backend expose actuellement noteMovenne (orthographe historique). */
     noteMovenne: number;
   };
   statsParStatut?: Array<{ _id: string; nombre: number; montantTotal: number }>;
@@ -27,6 +29,10 @@ export interface AdminStatsData {
     nombreCommandes: number;
     revenus: number;
   }>;
+}
+
+function isUnauthorizedStatus(status?: number): boolean {
+  return status === 401 || status === 403;
 }
 
 /** Statistiques publiques (sans auth) */
@@ -48,6 +54,9 @@ export async function getAdminCommandesStats(
   const res = await apiGet<AdminStatsData>(
     `/api/commandes/statistiques/general${query ? `?${query}` : ''}`
   );
+  if (!res.success && isUnauthorizedStatus(res.status)) {
+    return null;
+  }
   if (res.success && res.data) return res.data as AdminStatsData;
   return null;
 }

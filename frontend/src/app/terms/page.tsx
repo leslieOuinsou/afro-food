@@ -22,7 +22,7 @@ export default function TermsPage() {
               <section>
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">1. Acceptation des conditions</h2>
                 <p className="text-gray-700 leading-relaxed">
-                  En accédant et en utilisant le site web Afro-Eats, vous acceptez d'être lié par ces 
+                  En accédant et en utilisant le site web Afro-food, vous acceptez d'être lié par ces 
                   Conditions Générales d'Utilisation. Si vous n'acceptez pas ces conditions, veuillez 
                   ne pas utiliser notre service.
                 </p>
@@ -31,7 +31,7 @@ export default function TermsPage() {
               <section>
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">2. Description du service</h2>
                 <p className="text-gray-700 leading-relaxed mb-4">
-                  Afro-Eats est une plateforme de commande en ligne de plats africains authentiques. 
+                  Afro-food est une plateforme de commande en ligne de plats africains authentiques. 
                   Nous proposons :
                 </p>
                 <ul className="list-disc list-inside space-y-2 text-gray-700 ml-4">
@@ -100,7 +100,7 @@ export default function TermsPage() {
               <section>
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">6. Propriété intellectuelle</h2>
                 <p className="text-gray-700 leading-relaxed">
-                  Tous les contenus du site (textes, images, logos, etc.) sont la propriété d'Afro-Eats 
+                  Tous les contenus du site (textes, images, logos, etc.) sont la propriété d'Afro-food 
                   ou de ses partenaires et sont protégés par les lois sur la propriété intellectuelle. 
                   Toute reproduction non autorisée est interdite.
                 </p>
@@ -109,7 +109,7 @@ export default function TermsPage() {
               <section>
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">7. Limitation de responsabilité</h2>
                 <p className="text-gray-700 leading-relaxed">
-                  Afro-Eats ne saurait être tenu responsable des dommages indirects résultant de 
+                  Afro-food ne saurait être tenu responsable des dommages indirects résultant de 
                   l'utilisation ou de l'impossibilité d'utiliser notre service. Notre responsabilité 
                   est limitée au montant de votre commande.
                 </p>

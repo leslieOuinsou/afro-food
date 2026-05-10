@@ -25,10 +25,10 @@ export default function CommandeAdminPage() {
 
   useEffect(() => {
     let cancelled = false;
-    getCommandes({ limite: 100 }).then(({ commandes: list }) => {
+    getCommandes({ limite: 100 }).then(({ commandes: list, error: errMsg }) => {
       if (!cancelled) {
         setCommandes(list || []);
-        setError(null);
+        setError(errMsg || null);
       }
       if (!cancelled) setLoading(false);
     }).catch(() => {
@@ -57,14 +57,17 @@ export default function CommandeAdminPage() {
   };
 
 const changerStatut = async (commandeId: string, nouveauStatut: string) => {
-    const ok = await updateStatut(commandeId, nouveauStatut);
-    if (ok) {
+    const res = await updateStatut(commandeId, nouveauStatut);
+    if (res.success) {
       setCommandes(prev => prev.map(commande =>
         commande.id === commandeId ? { ...commande, statut: nouveauStatut } : commande
       ));
       if (commandeSelectionnee?.id === commandeId) {
         setCommandeSelectionnee(prev => prev ? { ...prev, statut: nouveauStatut } : null);
       }
+      setError(null);
+    } else {
+      setError(res.error || "Impossible de modifier le statut de la commande.");
     }
   };
 
@@ -90,9 +93,9 @@ const changerStatut = async (commandeId: string, nouveauStatut: string) => {
 
   const refetch = () => {
     setLoading(true);
-    getCommandes({ limite: 100 }).then(({ commandes: list }) => {
+    getCommandes({ limite: 100 }).then(({ commandes: list, error: errMsg }) => {
       setCommandes(list || []);
-      setError(null);
+      setError(errMsg || null);
       setLoading(false);
     }).catch(() => {
       setCommandes([]);

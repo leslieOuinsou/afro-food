@@ -106,7 +106,7 @@ export async function getCommandes(params: {
   dateDebut?: string;
   dateFin?: string;
   numeroCommande?: string;
-}): Promise<{ commandes: CommandeAdmin[]; pagination?: { totalCommandes: number; totalPages: number } }> {
+}): Promise<{ commandes: CommandeAdmin[]; pagination?: { totalCommandes: number; totalPages: number }; error?: string }> {
   const search = new URLSearchParams();
   if (params.page != null) search.set('page', String(params.page));
   if (params.limite != null) search.set('limite', String(params.limite));
@@ -117,7 +117,10 @@ export async function getCommandes(params: {
   const query = search.toString();
   const res = await apiGet<{ commandes: CommandeApi[] }>(`/api/commandes${query ? `?${query}` : ''}`);
   if (!res.success || !res.data) {
-    return { commandes: [] };
+    return {
+      commandes: [],
+      error: res.message || 'Impossible de charger les commandes (accès admin requis).',
+    };
   }
   const data = res.data as { commandes?: CommandeApi[] };
   const list = Array.isArray(data.commandes) ? data.commandes : [];
@@ -126,10 +129,13 @@ export async function getCommandes(params: {
   return { commandes, pagination };
 }
 
-export async function updateStatut(commandeId: string, statut: string): Promise<boolean> {
+export async function updateStatut(
+  commandeId: string,
+  statut: string
+): Promise<{ success: boolean; error?: string }> {
   const res = await apiPatch<{ commande: CommandeApi }>(
     `/api/commandes/${commandeId}/statut`,
     { statut }
   );
-  return res.success === true;
+  return { success: res.success === true, error: res.success ? undefined : res.message };
 }

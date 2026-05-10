@@ -1,6 +1,6 @@
-# Backend Afro-Eats 🍽️
+# Backend Afro-food 🍽️
 
-API RESTful complète pour l'application Afro-Eats, développée avec Node.js, Express et MongoDB.
+API RESTful complète pour l'application Afro-food, développée avec Node.js, Express et MongoDB.
 Spécialisée dans la livraison de plats authentiques du Cameroun et du Bénin.
 
 ## 🎯 Fonctionnalités
@@ -318,5 +318,5 @@ Configuration CORS incluse pour `http://localhost:3000`.
 
 ---
 
-**Développé avec ❤️ pour Afro-Eats**  
+**Développé avec ❤️ pour Afro-food**  
 *Apportant les saveurs authentiques du Cameroun et du Bénin à votre porte*

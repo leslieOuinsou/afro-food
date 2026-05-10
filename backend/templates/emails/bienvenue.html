@@ -1,0 +1,192 @@
+<!--
+  Template statique — E-mail Bienvenue Afro-food.
+  HTML + CSS inline. Variante dynamique : welcomeEmail() dans emailTemplates.js
+-->
+<!DOCTYPE html>
+<html lang="fr" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bienvenue — Afro-food</title>
+  <!--[if mso]>
+  <style type="text/css">table{border-collapse:collapse;}td{font-family:Arial,Helvetica,sans-serif;}</style>
+  <![endif]-->
+</head>
+<body style="margin:0;padding:0;background-color:#FAF3E0;-webkit-text-size-adjust:100%;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+    Bienvenue dans la communauté Afro-food — découvrez le catalogue et votre offre de bienvenue.
+  </div>
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FAF3E0;">
+    <tr>
+      <td align="center" style="padding:0;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:600px;background-color:#FAF3E0;">
+
+          <!-- Header plein largeur : bois + motif SVG -->
+          <tr>
+            <td style="padding:0;background-color:#2C1A0E;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="600" height="88" viewBox="0 0 600 88" preserveAspectRatio="xMidYMid slice" style="display:block;width:100%;max-width:600px;height:auto;">
+                <defs>
+                  <pattern id="welcomeKente" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+                    <path d="M0 12h24M12 0v24" stroke="#C2610F" stroke-width="1.2" opacity="0.35"/>
+                    <path d="M0 0l24 24M24 0L0 24" stroke="#FAF3E0" stroke-width="0.8" opacity="0.12"/>
+                    <rect x="0" y="0" width="24" height="24" fill="none" stroke="#C2610F" stroke-width="0.5" opacity="0.2"/>
+                  </pattern>
+                </defs>
+                <rect width="600" height="88" fill="#2C1A0E"/>
+                <rect width="600" height="88" fill="url(#welcomeKente)"/>
+              </svg>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td align="center" style="padding:8px 20px 28px 20px;">
+                    <img src="https://example.com/logo-afro-eats.png" width="56" height="56" alt="Afro-food" style="display:block;border:0;border-radius:14px;background-color:#FAF3E0;padding:5px;" />
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Titre Cormorant (Georgia) -->
+          <tr>
+            <td style="padding:28px 24px 8px 24px;background-color:#FAF3E0;">
+              <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:28px;line-height:1.2;font-weight:700;color:#2C1A0E;text-align:center;">
+                Bienvenue dans notre communauté
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Message -->
+          <tr>
+            <td style="padding:12px 24px 20px 24px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.65;color:#2C1A0E;background-color:#FAF3E0;">
+              <p style="margin:0 0 12px 0;">Bonjour <strong style="color:#2C1A0E;">Marie</strong>,</p>
+              <p style="margin:0;">
+                Nous sommes ravis de vous accueillir sur <strong style="color:#C2610F;">Afro-food</strong>. Ici, les terroirs se rencontrent : épices, plats du marché, boissons artisanales et une sélection passionnée — tout près de vous.
+              </p>
+            </td>
+          </tr>
+
+          <!-- 3 blocs icônes -->
+          <tr>
+            <td style="padding:8px 16px 20px 16px;background-color:#FAF3E0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td width="33%" valign="top" style="padding:8px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e8dcc4;border-radius:12px;">
+                      <tr>
+                        <td align="center" style="padding:16px 10px 8px 10px;">
+                          <span style="font-size:28px;line-height:1;" aria-hidden="true">🛒</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="center" style="padding:0 8px 8px 8px;font-family:Georgia,serif;font-size:15px;font-weight:700;color:#2C1A0E;">Catalogue</td>
+                      </tr>
+                      <tr>
+                        <td align="center" style="padding:0 8px 16px 8px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.45;color:#2C1A0E;opacity:0.82;">Parcourez plats, épices et produits frais.</td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td width="33%" valign="top" style="padding:8px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e8dcc4;border-radius:12px;">
+                      <tr>
+                        <td align="center" style="padding:16px 10px 8px 10px;">
+                          <span style="font-size:28px;line-height:1;" aria-hidden="true">📦</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="center" style="padding:0 8px 8px 8px;font-family:Georgia,serif;font-size:15px;font-weight:700;color:#2C1A0E;">Livraison</td>
+                      </tr>
+                      <tr>
+                        <td align="center" style="padding:0 8px 16px 8px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.45;color:#2C1A0E;opacity:0.82;">Suivi simple et créneaux clairs.</td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td width="33%" valign="top" style="padding:8px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e8dcc4;border-radius:12px;">
+                      <tr>
+                        <td align="center" style="padding:16px 10px 8px 10px;">
+                          <span style="font-size:28px;line-height:1;" aria-hidden="true">📖</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="center" style="padding:0 8px 8px 8px;font-family:Georgia,serif;font-size:15px;font-weight:700;color:#2C1A0E;">Blog</td>
+                      </tr>
+                      <tr>
+                        <td align="center" style="padding:0 8px 16px 8px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.45;color:#2C1A0E;opacity:0.82;">Recettes, portraits et actus gourmandes.</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Liens texte sous les blocs (accessibles) -->
+          <tr>
+            <td style="padding:0 24px 20px 24px;background-color:#FAF3E0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:13px;">
+                    <a href="https://example.com/catalogue" style="color:#C2610F;font-weight:700;text-decoration:underline;">Découvrir le catalogue</a>
+                    <span style="color:#c4b8a8;"> &nbsp;·&nbsp; </span>
+                    <a href="https://example.com/help" style="color:#C2610F;font-weight:700;text-decoration:underline;">Centre d’aide</a>
+                    <span style="color:#c4b8a8;"> &nbsp;·&nbsp; </span>
+                    <a href="https://example.com/blog" style="color:#C2610F;font-weight:700;text-decoration:underline;">Lire le blog</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Offre première commande -->
+          <tr>
+            <td style="padding:8px 24px 24px 24px;background-color:#FAF3E0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:linear-gradient(135deg,rgba(194,97,15,0.14) 0%,rgba(139,58,42,0.1) 100%);background-color:#fdebd5;border:2px solid #C2610F;border-radius:14px;">
+                <tr>
+                  <td style="padding:20px 22px;text-align:center;">
+                    <p style="margin:0 0 8px 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#8B3A2A;">Offre première commande</p>
+                    <p style="margin:0 0 14px 0;font-family:Georgia,serif;font-size:18px;font-weight:700;color:#2C1A0E;">−10&nbsp;% sur votre premier panier</p>
+                    <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#2C1A0E;opacity:0.88;">
+                      Code promo :
+                      <span style="display:inline-block;margin-top:8px;padding:10px 20px;font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:800;letter-spacing:0.08em;color:#FAF3E0;background-color:#C2610F;border-radius:8px;">BIENVENUE10</span>
+                    </p>
+                    <p style="margin:12px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#2C1A0E;opacity:0.65;">Valable une fois, dès 35&nbsp;€ d’achat.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- CTA -->
+          <tr>
+            <td align="center" style="padding:8px 24px 32px 24px;background-color:#FAF3E0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" style="border-radius:999px;background-color:#C2610F;">
+                    <a href="https://example.com/catalogue" style="font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;display:inline-block;padding:15px 36px;border-radius:999px;">Commencer à explorer</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer réseaux -->
+          <tr>
+            <td align="center" style="padding:20px 16px 28px 16px;border-top:1px solid #e8dcc4;background-color:#FAF3E0;">
+              <p style="margin:0 0 12px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;color:#2C1A0E;opacity:0.75;">Suivez-nous</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
+                <tr>
+                  <td style="padding:0 8px;"><a href="https://facebook.com" style="text-decoration:none;font-size:20px;" title="Facebook">📘</a></td>
+                  <td style="padding:0 8px;"><a href="https://instagram.com" style="text-decoration:none;font-size:20px;" title="Instagram">📸</a></td>
+                  <td style="padding:0 8px;"><a href="https://twitter.com" style="text-decoration:none;font-size:20px;" title="X">🐦</a></td>
+                  <td style="padding:0 8px;"><a href="https://tiktok.com" style="text-decoration:none;font-size:20px;" title="TikTok">🎵</a></td>
+                </tr>
+              </table>
+              <p style="margin:16px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#2C1A0E;opacity:0.45;">© 2026 Afro-food</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

@@ -161,11 +161,16 @@ export const creerCommande = async (req, res, next) => {
     
     // Mettre à jour les compteurs des plats et les quantités
     for (const article of articlesCommande) {
+      const platCommande = await Plat.findById(article.plat).select('quantiteDisponible');
+      if (!platCommande) continue;
+
+      const incPayload = { nombreCommandes: article.quantite };
+      if (platCommande.quantiteDisponible !== null) {
+        incPayload.quantiteDisponible = -article.quantite;
+      }
+
       await Plat.findByIdAndUpdate(article.plat, {
-        $inc: { 
-          nombreCommandes: article.quantite,
-          ...(plat.quantiteDisponible !== null && { quantiteDisponible: -article.quantite })
-        }
+        $inc: incPayload
       });
     }
     

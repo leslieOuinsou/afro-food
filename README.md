@@ -1,6 +1,6 @@
 # Afro-Food
 
-Application de commande de plats africains (Afro-Eats).
+Application de commande de plats africains (Afro-food).
 
 ## Structure du projet
 

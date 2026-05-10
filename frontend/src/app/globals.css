@@ -1,26 +1,96 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Palette chaleureuse terreuse */
+  --background: #faf3e0; /* crème ivoire */
+  --foreground: #2c1a0e; /* bois sombre */
+  --ochre: #c2610f; /* ocre brûlé */
+  --brick: #8b3a2a; /* accent brique */
+  --wood: #2c1a0e;
+  --ivory: #faf3e0;
+  --paper: #fff7ea;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-ui);
+  /* Afro-food — palette terreuse */
+  --color-af-wood: #1e0d02;
+  --color-af-ivory: #fef9f2;
+  --color-af-ocre: #d4651a;
+  --color-af-saffron: #ef9f27;
+  --color-af-savanna: #1a6040;
+  --color-af-bordeaux: #7a1e2e;
+  --color-af-mud: #8f6642;
+  --color-af-earth: #6e4a2a;
+  --color-af-sand: #b39070;
+  --color-earth-100: #f7e8d0;
+  --color-earth-200: #edcfa0;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Option simple: garder l'identité de marque en sombre */
+    --background: #140c07;
+    --foreground: #faf3e0;
+    --paper: #1a100a;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-family: var(--font-ui), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+.font-title {
+  font-family: var(--font-title), ui-serif, Georgia, "Times New Roman", Times,
+    serif;
+}
+
+.font-ui {
+  font-family: var(--font-ui), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    "Noto Sans";
+}
+
+.font-body {
+  font-family: var(--font-body), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    "Noto Sans";
+}
+
+@keyframes toast-progress-shrink {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes promo-digit-pop {
+  0% {
+    transform: translateY(-5px) scale(0.96);
+    opacity: 0.65;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }

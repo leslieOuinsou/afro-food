@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import { useToast } from '@/context/ToastContext';
 
 export interface CartItem {
   id: string;
@@ -8,10 +9,11 @@ export interface CartItem {
   prixUnitaire: number;
   quantite: number;
   image: string;
+  /** null = pas de limite connue (illimité côté panier) ; 0 = ne pas commander */
+  quantiteMax?: number | null;
 }
 
 const CART_STORAGE_KEY = 'afro_eats_cart';
-const TOAST_DURATION_MS = 2500;
 
 interface CartContextType {
   items: CartItem[];
@@ -29,7 +31,11 @@ function loadFromStorage(): CartItem[] {
     const raw = localStorage.getItem(CART_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((row: CartItem) => ({
+      ...row,
+      quantiteMax: row.quantiteMax === undefined ? null : row.quantiteMax,
+    }));
   } catch {
     return [];
   }
@@ -42,11 +48,16 @@ function saveToStorage(items: CartItem[]) {
   } catch {}
 }
 
+function capQuantite(q: number, max: number | null | undefined): number {
+  if (max === 0) return 0;
+  if (max == null) return Math.max(0, q);
+  return Math.max(0, Math.min(q, max));
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
+  const { toast } = useToast();
   const [items, setItems] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setItems(loadFromStorage());
@@ -57,68 +68,104 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (hydrated) saveToStorage(items);
   }, [items, hydrated]);
 
-  useEffect(() => {
-    return () => {
-      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-    };
-  }, []);
+  const addItem = useCallback(
+    (item: Omit<CartItem, 'quantite'> | CartItem) => {
+      const quantiteDemandee =
+        'quantite' in item && typeof item.quantite === 'number' && item.quantite > 0
+          ? Math.floor(item.quantite)
+          : 1;
+      const max = item.quantiteMax;
 
-  const addItem = useCallback((item: Omit<CartItem, 'quantite'> | CartItem) => {
-    const quantite = 'quantite' in item ? item.quantite : 1;
-    setItems((prev) => {
-      const existing = prev.find((i) => i.id === item.id);
-      if (existing) {
-        return prev.map((i) =>
-          i.id === item.id ? { ...i, quantite: i.quantite + quantite } : i
-        );
+      if (max === 0) {
+        toast.error('Ce produit n’est pas disponible pour le moment.', 'Stock');
+        return;
       }
-      return [...prev, { ...item, quantite } as CartItem];
-    });
-    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-    setToastMessage(`${item.nom} ajouté au panier`);
-    toastTimeoutRef.current = setTimeout(() => {
-      setToastMessage(null);
-      toastTimeoutRef.current = null;
-    }, TOAST_DURATION_MS);
-  }, []);
+
+      setItems((prev) => {
+        const existing = prev.find((i) => i.id === item.id);
+        const maxMerged = max ?? existing?.quantiteMax ?? null;
+        const prevQty = existing?.quantite ?? 0;
+        const mergedRaw = existing ? prevQty + quantiteDemandee : quantiteDemandee;
+        const merged = capQuantite(mergedRaw, maxMerged);
+
+        if (merged < 1) {
+          queueMicrotask(() =>
+            toast.info('Impossible d’ajouter cette quantité (stock insuffisant).', 'Panier')
+          );
+          return prev;
+        }
+
+        if (existing && merged === prevQty && quantiteDemandee > 0) {
+          queueMicrotask(() =>
+            toast.info('Quantité maximum déjà atteinte pour cet article.', 'Panier')
+          );
+          return prev;
+        }
+
+        if (merged < mergedRaw) {
+          queueMicrotask(() =>
+            toast.info(
+              maxMerged != null
+                ? `Quantité limitée au stock disponible (${maxMerged}).`
+                : 'Quantité ajustée.',
+              'Panier'
+            )
+          );
+        }
+
+        const nextItem: CartItem = {
+          id: item.id,
+          nom: item.nom,
+          prixUnitaire: item.prixUnitaire,
+          image: item.image,
+          quantiteMax: maxMerged,
+          quantite: merged,
+        };
+
+        queueMicrotask(() =>
+          toast.success(`${item.nom} a été ajouté au panier.`, 'Produit ajouté au panier')
+        );
+
+        if (existing) {
+          return prev.map((i) => (i.id === item.id ? nextItem : i));
+        }
+        return [...prev, nextItem];
+      });
+    },
+    [toast]
+  );
 
   const removeItem = useCallback((id: string) => {
     setItems((prev) => prev.filter((i) => i.id !== id));
   }, []);
 
-  const updateQuantity = useCallback((id: string, quantite: number) => {
-    if (quantite < 1) {
-      setItems((prev) => prev.filter((i) => i.id !== id));
-      return;
-    }
-    setItems((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, quantite } : i))
-    );
-  }, []);
+  const updateQuantity = useCallback(
+    (id: string, quantite: number) => {
+      setItems((prev) => {
+        const row = prev.find((i) => i.id === id);
+        if (!row) return prev;
+        const max = row.quantiteMax;
+        if (quantite < 1) {
+          return prev.filter((i) => i.id !== id);
+        }
+        const capped = capQuantite(quantite, max);
+        if (capped < quantite && max != null) {
+          toast.info(`Quantité maximale pour « ${row.nom} » : ${max}.`, 'Stock');
+        }
+        if (capped < 1) {
+          return prev.filter((i) => i.id !== id);
+        }
+        return prev.map((i) => (i.id === id ? { ...i, quantite: capped } : i));
+      });
+    },
+    [toast]
+  );
 
   const clearCart = useCallback(() => setItems([]), []);
 
   return (
-    <CartContext.Provider
-      value={{ items, addItem, removeItem, updateQuantity, clearCart }}
-    >
+    <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart }}>
       {children}
-      {toastMessage && (
-        <div
-          role="alert"
-          className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-6 py-4 bg-white text-gray-900 text-base font-semibold rounded-xl shadow-2xl border-2 border-orange-500 min-w-[280px]"
-          style={{ boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}
-        >
-          <span className="flex items-center gap-3">
-            <span className="flex-shrink-0 w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </span>
-            <span>{toastMessage}</span>
-          </span>
-        </div>
-      )}
     </CartContext.Provider>
   );
 }

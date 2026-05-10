@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import {
   getMessages,
   getMessageById,
+  marquerCommeLu,
   repondreMessage,
   type MessageContact,
-  type ReponseMessage
+  type ReponseMessage,
 } from '@/services/adminMessages';
 
 const statutLabel: Record<string, string> = {
@@ -43,39 +44,46 @@ export default function AdminMessageriePage() {
   const [error, setError] = useState<string | null>(null);
   const [filterStatut, setFilterStatut] = useState<string>('');
 
-  const loadMessages = () => {
+  const loadMessages = useCallback(async (statut = filterStatut) => {
     setLoading(true);
     setError(null);
-    getMessages({ statut: filterStatut || undefined, limite: 100 })
-      .then((result) => {
-        setMessages(result.messages || []);
-        if (result.error) setError(result.error);
-        const list = result.messages;
-        if (selectedId && list && !list.find((m) => m._id === selectedId)) {
-          setSelectedId(null);
-          setSelectedMessage(null);
-        }
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : 'Impossible de charger les messages. Vérifiez que le backend est démarré et que SKIP_MESSAGERIE_AUTH=true si vous n\'êtes pas connecté admin.');
-      })
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    loadMessages();
-  }, [filterStatut]);
-
-  useEffect(() => {
-    if (!selectedId) {
-      setSelectedMessage(null);
-      return;
+    try {
+      const result = await getMessages({ statut: statut || undefined, limite: 100 });
+      const list = result.messages || [];
+      setMessages(list);
+      if (result.error) {
+        setError(result.error);
+      }
+      if (selectedId && !list.find((m) => m._id === selectedId)) {
+        setSelectedId(null);
+        setSelectedMessage(null);
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Impossible de charger les messages. Vérifiez que le backend est démarré et que SKIP_MESSAGERIE_AUTH=true si vous n'êtes pas connecté admin."
+      );
+    } finally {
+      setLoading(false);
     }
-    getMessageById(selectedId).then((msg) => {
-      setSelectedMessage(msg || null);
-      setReplyText('');
+  }, [filterStatut, selectedId]);
+
+  useEffect(() => {
+    // Décale le chargement initial hors phase immédiate de l'effet.
+    queueMicrotask(() => {
+      void loadMessages('');
     });
-  }, [selectedId]);
+  }, [loadMessages]);
+
+  const handleSelectMessage = useCallback(async (id: string) => {
+    setSelectedId(id);
+    setReplyText('');
+    const msg = await getMessageById(id);
+    setSelectedMessage(msg || null);
+    // Le GET détail marque déjà non_lu -> lu côté backend, on resynchronise la liste.
+    await loadMessages();
+  }, [loadMessages]);
 
   const handleReply = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,9 +94,18 @@ export default function AdminMessageriePage() {
     if (res.success && res.message) {
       setSelectedMessage(res.message);
       setReplyText('');
-      loadMessages();
+      await loadMessages();
     }
   };
+
+  const handleMarkAsRead = useCallback(async () => {
+    if (!selectedId) return;
+    const ok = await marquerCommeLu(selectedId);
+    if (!ok) return;
+    const msg = await getMessageById(selectedId);
+    setSelectedMessage(msg || null);
+    await loadMessages();
+  }, [selectedId, loadMessages]);
 
   const nonLus = messages.filter((m) => m.statut === 'non_lu').length;
 
@@ -104,7 +121,7 @@ export default function AdminMessageriePage() {
       {error && (
         <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 flex items-center justify-between">
           <span>{error}</span>
-          <button type="button" onClick={loadMessages} className="text-amber-700 font-medium hover:underline">
+          <button type="button" onClick={() => void loadMessages()} className="text-amber-700 font-medium hover:underline">
             Réessayer
           </button>
         </div>
@@ -124,7 +141,11 @@ export default function AdminMessageriePage() {
           <div className="p-2 border-b border-gray-100">
             <select
               value={filterStatut}
-              onChange={(e) => setFilterStatut(e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value;
+                setFilterStatut(next);
+                void loadMessages(next);
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white text-sm"
             >
               <option value="">Tous les statuts</option>
@@ -143,7 +164,9 @@ export default function AdminMessageriePage() {
                 <button
                   key={msg._id}
                   type="button"
-                  onClick={() => setSelectedId(msg._id)}
+                  onClick={() => {
+                    void handleSelectMessage(msg._id);
+                  }}
                   className={`w-full text-left p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
                     selectedId === msg._id ? 'bg-orange-50 border-l-4 border-l-orange-500' : ''
                   } ${msg.statut === 'non_lu' ? 'font-semibold' : ''}`}
@@ -173,9 +196,22 @@ export default function AdminMessageriePage() {
               <div className="p-6 border-b border-gray-200 overflow-y-auto flex-1">
                 <div className="flex justify-between items-start mb-4">
                   <h2 className="text-xl font-bold text-gray-900">{selectedMessage.sujet}</h2>
-                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${statutColor[selectedMessage.statut] || 'bg-gray-100'}`}>
-                    {statutLabel[selectedMessage.statut]}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${statutColor[selectedMessage.statut] || 'bg-gray-100'}`}>
+                      {statutLabel[selectedMessage.statut]}
+                    </span>
+                    {selectedMessage.statut === 'non_lu' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void handleMarkAsRead();
+                        }}
+                        className="px-2 py-1 text-xs font-medium rounded bg-blue-100 text-blue-800 hover:bg-blue-200"
+                      >
+                        Marquer lu
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-2 text-sm text-gray-700 mb-4">
                   <p><strong>De :</strong> {selectedMessage.nom} &lt;{selectedMessage.email}&gt;</p>

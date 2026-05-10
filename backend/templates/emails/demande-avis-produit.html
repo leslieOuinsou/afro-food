@@ -1,0 +1,152 @@
+<!--
+  Template statique — E-mail Demande d'avis produit Afro-food.
+  HTML + CSS inline. Variante dynamique : productReviewRequestEmail() dans emailTemplates.js
+-->
+<!DOCTYPE html>
+<html lang="fr" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Votre avis compte — Afro-food</title>
+  <!--[if mso]>
+  <style type="text/css">table{border-collapse:collapse;}td{font-family:Arial,Helvetica,sans-serif;}</style>
+  <![endif]-->
+</head>
+<body style="margin:0;padding:0;background-color:#FAF3E0;-webkit-text-size-adjust:100%;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+    Une minute pour noter votre plat — votre avis aide toute la communauté.
+  </div>
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FAF3E0;">
+    <tr>
+      <td align="center" style="padding:0;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:600px;background-color:#FAF3E0;">
+
+          <!-- Header : bois + motif + logo -->
+          <tr>
+            <td style="padding:0;background-color:#2C1A0E;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="600" height="72" viewBox="0 0 600 72" preserveAspectRatio="xMidYMid slice" style="display:block;width:100%;max-width:600px;height:auto;">
+                <defs>
+                  <pattern id="avisKente" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+                    <path d="M0 12h24M12 0v24" stroke="#C2610F" stroke-width="1.2" opacity="0.35"/>
+                    <path d="M0 0l24 24M24 0L0 24" stroke="#FAF3E0" stroke-width="0.8" opacity="0.12"/>
+                    <rect x="0" y="0" width="24" height="24" fill="none" stroke="#C2610F" stroke-width="0.5" opacity="0.2"/>
+                  </pattern>
+                </defs>
+                <rect width="600" height="72" fill="#2C1A0E"/>
+                <rect width="600" height="72" fill="url(#avisKente)"/>
+              </svg>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td align="center" style="padding:8px 20px 22px 20px;">
+                    <img src="https://example.com/logo-afro-eats.png" width="52" height="52" alt="Afro-food" style="display:block;border:0;border-radius:12px;background-color:#FAF3E0;padding:4px;" />
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:26px 24px 10px 24px;background-color:#FAF3E0;">
+              <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:26px;line-height:1.2;font-weight:700;color:#2C1A0E;text-align:center;">
+                Votre avis compte !
+              </h1>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:8px 24px 18px 24px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.65;color:#2C1A0E;background-color:#FAF3E0;">
+              <p style="margin:0 0 14px 0;">Bonjour <strong style="color:#2C1A0E;">Aminata</strong>,</p>
+              <p style="margin:0;">
+                Vous avez goûté à un plat préparé avec soin — un petit mot de votre part, ce serait précieux pour le cuisinier et pour les prochains curieux du marché. Rien d’obligatoire : juste votre sincérité.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Produit -->
+          <tr>
+            <td style="padding:8px 20px 16px 20px;background-color:#FAF3E0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border:1px solid #e8dcc4;border-radius:14px;overflow:hidden;">
+                <tr>
+                  <td width="120" valign="middle" style="padding:0;width:120px;background-color:#f5efe3;">
+                    <img src="https://images.unsplash.com/photo-1604329760661-e71dc83f8f26?w=240&amp;q=80" width="120" height="120" alt="" style="display:block;width:120px;height:120px;object-fit:cover;border:0;" />
+                  </td>
+                  <td valign="middle" style="padding:16px 18px;font-family:Georgia,serif;font-size:18px;font-weight:700;color:#2C1A0E;line-height:1.35;">
+                    Mafé de bœuf &amp; riz parfumé
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Étoiles cliquables (exemple : liens vers la page avis avec ?note= ) -->
+          <tr>
+            <td align="center" style="padding:6px 20px 8px 20px;background-color:#FAF3E0;">
+              <p style="margin:0 0 10px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#2C1A0E;opacity:0.85;">En un clic, donnez une première note :</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
+                <tr>
+                  <td style="padding:0 4px;"><a href="https://example.com/avis/demo-produit?note=1" style="display:inline-block;text-decoration:none;color:#C2610F;font-size:34px;line-height:1;" title="1 étoile" aria-label="Noter 1 sur 5">★</a></td>
+                  <td style="padding:0 4px;"><a href="https://example.com/avis/demo-produit?note=2" style="display:inline-block;text-decoration:none;color:#C2610F;font-size:34px;line-height:1;" title="2 étoiles" aria-label="Noter 2 sur 5">★</a></td>
+                  <td style="padding:0 4px;"><a href="https://example.com/avis/demo-produit?note=3" style="display:inline-block;text-decoration:none;color:#C2610F;font-size:34px;line-height:1;" title="3 étoiles" aria-label="Noter 3 sur 5">★</a></td>
+                  <td style="padding:0 4px;"><a href="https://example.com/avis/demo-produit?note=4" style="display:inline-block;text-decoration:none;color:#C2610F;font-size:34px;line-height:1;" title="4 étoiles" aria-label="Noter 4 sur 5">★</a></td>
+                  <td style="padding:0 4px;"><a href="https://example.com/avis/demo-produit?note=5" style="display:inline-block;text-decoration:none;color:#C2610F;font-size:34px;line-height:1;" title="5 étoiles" aria-label="Noter 5 sur 5">★</a></td>
+                </tr>
+              </table>
+              <p style="margin:10px 0 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#2C1A0E;opacity:0.55;">Chaque étoile ouvre la page avis avec cette note déjà sélectionnée.</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:12px 24px 8px 24px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#2C1A0E;background-color:#FAF3E0;">
+              <p style="margin:0;">
+                Que ce soit une étoile ou cinq, ce qui compte pour nous, c’est votre vécu : le goût, la portion, l’emballage… Les détails font la différence entre une bonne adresse et une adresse qu’on garde.
+              </p>
+            </td>
+          </tr>
+
+          <!-- CTA -->
+          <tr>
+            <td align="center" style="padding:16px 24px 24px 24px;background-color:#FAF3E0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" style="border-radius:999px;background-color:#C2610F;">
+                    <a href="https://example.com/avis/demo-produit" style="font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;display:inline-block;padding:14px 32px;border-radius:999px;">Laisser un avis complet</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Remerciement -->
+          <tr>
+            <td style="padding:0 20px 24px 20px;background-color:#FAF3E0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#f0e6d4;border-left:4px solid #C2610F;border-radius:0 12px 12px 0;">
+                <tr>
+                  <td style="padding:18px 20px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65;color:#2C1A0E;">
+                    <p style="margin:0 0 8px 0;font-family:Georgia,serif;font-size:16px;font-weight:700;color:#2C1A0E;">Un petit mot pour vous</p>
+                    <p style="margin:0;">
+                      Merci d’avoir goûté à ce plat. Votre retour nous aide à garder la même exigence — et si quelque chose n’était pas comme vous l’imaginiez, écrivez-nous : on préfère toujours savoir.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="padding:18px 16px 28px 16px;border-top:1px solid #e8dcc4;background-color:#FAF3E0;">
+              <p style="margin:0 0 8px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#2C1A0E;opacity:0.75;">
+                <a href="https://example.com/contact" style="color:#C2610F;text-decoration:underline;">Une question ?</a>
+                <span style="color:#c4b8a8;"> · </span>
+                <a href="https://example.com/help" style="color:#C2610F;text-decoration:underline;">Aide</a>
+              </p>
+              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#2C1A0E;opacity:0.45;">© 2026 Afro-food — Saveurs authentiques, qualité avant tout</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

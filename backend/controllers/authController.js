@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/index.js';
 
@@ -475,6 +476,101 @@ export const verifierAuthentification = async (req, res, next) => {
       }
     });
   } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Demander une réinitialisation de mot de passe
+// @route   POST /api/auth/mot-de-passe-oublie
+// @access  Public
+export const motDePasseOublie = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      const error = new Error('L’email est obligatoire');
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    const utilisateur = await User.findOne({ email: email.toLowerCase().trim() });
+
+    // Réponse neutre pour éviter l’énumération de comptes
+    if (!utilisateur) {
+      return res.status(200).json({
+        success: true,
+        message: 'Si un compte existe avec cet e-mail, un lien de réinitialisation a été envoyé.',
+        data: null
+      });
+    }
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const hashedResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+    utilisateur.tokenResetMotDePasse = hashedResetToken;
+    utilisateur.expirationTokenReset = new Date(Date.now() + 60 * 60 * 1000); // 1h
+    await utilisateur.save({ validateBeforeSave: false });
+
+    const responseData = process.env.NODE_ENV === 'development' ? { resetToken } : null;
+
+    return res.status(200).json({
+      success: true,
+      message: 'Si un compte existe avec cet e-mail, un lien de réinitialisation a été envoyé.',
+      data: responseData
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Réinitialiser le mot de passe avec token
+// @route   POST /api/auth/reinitialiser-mot-de-passe
+// @access  Public
+export const reinitialiserMotDePasse = async (req, res, next) => {
+  try {
+    const { token, motDePasse, confirmationMotDePasse } = req.body;
+
+    if (!token || !motDePasse || !confirmationMotDePasse) {
+      const error = new Error('Token et mots de passe sont obligatoires');
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    if (motDePasse !== confirmationMotDePasse) {
+      const error = new Error('Les mots de passe ne correspondent pas');
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+    const utilisateur = await User.findOne({
+      tokenResetMotDePasse: hashedToken,
+      expirationTokenReset: { $gt: new Date() }
+    }).select('+motDePasse');
+
+    if (!utilisateur) {
+      const error = new Error('Lien de réinitialisation invalide ou expiré');
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    utilisateur.motDePasse = motDePasse;
+    utilisateur.tokenResetMotDePasse = undefined;
+    utilisateur.expirationTokenReset = undefined;
+    await utilisateur.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Mot de passe réinitialisé avec succès',
+      data: null
+    });
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(err => err.message);
+      const customError = new Error(messages.join(', '));
+      customError.statusCode = 400;
+      return next(customError);
+    }
     next(error);
   }
 };

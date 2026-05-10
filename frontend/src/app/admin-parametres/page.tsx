@@ -6,7 +6,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 const STORAGE_KEY = 'afro_admin_parametres';
 
 const defaultSettings = {
-  nomRestaurant: 'Afro-Eats',
+  nomRestaurant: 'Afro-food',
   email: 'contact@afrimiam.com',
   telephone: '+33 1 23 45 67 89',
   adresse: '123 Rue de la Gastronomie, 75001 Paris',

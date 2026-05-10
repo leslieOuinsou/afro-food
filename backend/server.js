@@ -92,6 +92,8 @@ const corsOptions = {
       process.env.FRONTEND_URL || 'http://localhost:3000',
       'http://localhost:3000',
       'http://localhost:3001',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3001',
       'https://afro-food.vercel.app',
       'https://afrofood.vercel.app',
       'https://frontend-nine-beta-45.vercel.app',
@@ -100,6 +102,18 @@ const corsOptions = {
     if (origin && origin.endsWith('.vercel.app')) {
       callback(null, true);
       return;
+    }
+    // En dev : localhost et 127.0.0.1 sur tout port (Next peut être sur 3000, 3001, etc.)
+    if (process.env.NODE_ENV !== 'production') {
+      try {
+        const u = new URL(origin);
+        if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') {
+          callback(null, true);
+          return;
+        }
+      } catch {
+        /* origine invalide */
+      }
     }
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
@@ -126,7 +140,7 @@ app.use(cors(corsOptions));
 app.get('/', (req, res) => {
   res.json({ 
     success: true,
-    message: 'Bienvenue sur l\'API Afro-Eats!',
+    message: 'Bienvenue sur l\'API Afro-food!',
     version: '1.0.0',
     status: 'OK',
     timestamp: new Date().toISOString(),
@@ -227,13 +241,27 @@ export { app, connectDB };
 // Démarrer le serveur uniquement en local (pas sur Vercel)
 if (!isVercel) {
   const skipDB = process.env.SKIP_DB_CONNECTION === 'true' && process.env.NODE_ENV !== 'production';
+
+  function attachListenError(server) {
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(
+          `\n❌ Le port ${PORT} est déjà utilisé. Ferme l’autre terminal (Ctrl+C) ou : netstat -ano | findstr :${PORT} puis taskkill /PID <PID> /F\n`
+        );
+      } else {
+        console.error(err);
+      }
+      process.exit(1);
+    });
+  }
+
   console.log('\n═══════════════════════════════════════');
   console.log('🚀 Démarrage du serveur backend...');
   console.log('═══════════════════════════════════════\n');
 
   connectDB()
     .then(() => {
-      app.listen(PORT, () => {
+      const server = app.listen(PORT, () => {
         process.stdout.write('\n');
         process.stdout.write('═══════════════════════════════════════\n');
         process.stdout.write('✅ SERVEUR BACKEND ACTIF\n');
@@ -243,11 +271,13 @@ if (!isVercel) {
         console.log(skipDB ? '⚠️  MongoDB non connecté (mode sans DB)' : '📡 MongoDB connecté avec succès');
         console.log('═══════════════════════════════════════\n');
       });
+      attachListenError(server);
     })
     .catch((error) => {
       if (skipDB) {
         console.warn('\n⚠️  Mode sans base de données (SKIP_DB_CONNECTION=true)');
-        app.listen(PORT, () => console.log(`🚀 Serveur sur le port ${PORT}`));
+        const server = app.listen(PORT, () => console.log(`🚀 Serveur sur le port ${PORT}`));
+        attachListenError(server);
       } else {
         console.error('\n❌ Erreur de connexion à la base de données:', error.message);
         process.exit(1);

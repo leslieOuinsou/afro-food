@@ -158,6 +158,7 @@ const userSchema = new mongoose.Schema({
 }, {
   timestamps: true, // Ajoute createdAt et updatedAt automatiquement
   toJSON: {
+    virtuals: true,
     transform: function(doc, ret) {
       delete ret.motDePasse;
       delete ret.tokenVerificationEmail;
@@ -166,7 +167,21 @@ const userSchema = new mongoose.Schema({
       delete ret.expirationTokenReset;
       return ret;
     }
-  }
+  },
+  toObject: { virtuals: true }
+});
+
+// Relations inverses (pas de tableau stocké sur User : Commande.client / Avis.utilisateur)
+userSchema.virtual('commandes', {
+  ref: 'Commande',
+  localField: '_id',
+  foreignField: 'client'
+});
+
+userSchema.virtual('avis', {
+  ref: 'Avis',
+  localField: '_id',
+  foreignField: 'utilisateur'
 });
 
 // Index pour améliorer les performances de recherche (email a déjà unique: true)

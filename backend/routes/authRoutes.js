@@ -3,7 +3,9 @@ import {
   inscription,
   connexion,
   deconnexion,
+  motDePasseOublie,
   obtenirProfil,
+  reinitialiserMotDePasse,
   mettreAJourProfil,
   changerMotDePasse,
   ajouterAdresse,
@@ -49,6 +51,8 @@ router.post('/connexion',
   validerConnexion,
   connexion
 );
+router.post('/mot-de-passe-oublie', limiteurTaux(5, 15 * 60 * 1000), motDePasseOublie);
+router.post('/reinitialiser-mot-de-passe', limiteurTaux(5, 15 * 60 * 1000), reinitialiserMotDePasse);
 
 // Routes protégées
 router.use(protegerRoute); // Toutes les routes suivantes nécessitent l'authentification

@@ -5,16 +5,17 @@
 
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import path from 'path';
 import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 import Plat from '../models/Plat.js';
+import { platsBenin, imagesCommons } from './data/platsBenin.js';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const __dirname = path.dirname(__filename);
 
-dotenv.config({ path: join(__dirname, '..', '.env') });
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
-const platsDemo = [
+const platsDemoBase = [
   {
     nom: 'Jollof Rice au Poulet',
     slug: 'jollof-rice-au-poulet',
@@ -22,7 +23,7 @@ const platsDemo = [
     prix: 15.5,
     categorie: 'plats-principaux',
     origineAfricaine: { pays: 'senegal', traditionnel: true },
-    images: { principale: '/images/plats/jollof.jpg' },
+    images: { principale: imagesCommons.jollofRiz },
     disponible: true
   },
   {
@@ -32,7 +33,7 @@ const platsDemo = [
     prix: 17,
     categorie: 'plats-principaux',
     origineAfricaine: { pays: 'senegal', traditionnel: true },
-    images: { principale: '/images/plats/mafe.jpg' },
+    images: { principale: 'https://upload.wikimedia.org/wikipedia/commons/8/8e/Domoda.jpg' },
     disponible: true
   },
   {
@@ -42,7 +43,7 @@ const platsDemo = [
     prix: 6.5,
     categorie: 'accompagnements',
     origineAfricaine: { pays: 'cote-ivoire', traditionnel: true },
-    images: { principale: '/images/plats/alloco.jpg' },
+    images: { principale: imagesCommons.alloco },
     disponible: true
   },
   {
@@ -52,7 +53,37 @@ const platsDemo = [
     prix: 4,
     categorie: 'boissons',
     origineAfricaine: { pays: 'senegal', traditionnel: true },
-    images: { principale: '/images/plats/bissap.jpg' },
+    images: { principale: imagesCommons.jusBissap },
+    disponible: true
+  },
+  {
+    nom: 'Jus de baobab',
+    slug: 'jus-de-baobab',
+    description: 'Jus onctueux à base de pulpe de baobab, riche en vitamine C et légèrement acidulé. Rafraîchissant.',
+    prix: 4.5,
+    categorie: 'boissons',
+    origineAfricaine: { pays: 'senegal', traditionnel: true },
+    images: { principale: imagesCommons.baobabFruit },
+    disponible: true
+  },
+  {
+    nom: 'Jus de pastèque',
+    slug: 'jus-de-pasteque',
+    description: 'Jus frais et léger, sucré et désaltérant, parfait avec les plats épicés.',
+    prix: 4,
+    categorie: 'boissons',
+    origineAfricaine: { pays: 'cote-ivoire', traditionnel: true },
+    images: { principale: imagesCommons.pasteque },
+    disponible: true
+  },
+  {
+    nom: 'Jus d\'ananas',
+    slug: 'jus-d-ananas',
+    description: 'Jus d’ananas pressé, parfumé et acidulé, boisson tropicale pleine de soleil.',
+    prix: 4.5,
+    categorie: 'boissons',
+    origineAfricaine: { pays: 'benin', traditionnel: true },
+    images: { principale: imagesCommons.ananas },
     disponible: true
   },
   {
@@ -62,10 +93,12 @@ const platsDemo = [
     prix: 16.5,
     categorie: 'specialites-africaines',
     origineAfricaine: { pays: 'senegal', traditionnel: true },
-    images: { principale: '/images/plats/yassa.jpg' },
+    images: { principale: 'https://upload.wikimedia.org/wikipedia/commons/d/dd/Poulet_yassa.jpg' },
     disponible: true
   }
 ];
+
+export const platsDemo = [...platsDemoBase, ...platsBenin];
 
 async function seed() {
   try {
@@ -94,4 +127,8 @@ async function seed() {
   }
 }
 
-seed();
+const isMain =
+  typeof process !== 'undefined' &&
+  process.argv[1] &&
+  path.normalize(fileURLToPath(import.meta.url)) === path.normalize(process.argv[1]);
+if (isMain) seed();

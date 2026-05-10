@@ -132,10 +132,10 @@ export default function AdminPlatsPage() {
         setFormData((prev) => ({ ...prev, image: data.url }));
         setImagePreview(data.url);
       } else {
-        setFormData((prev) => ({ ...prev, image: reader.result as string }));
+        setError(data?.error || "Upload impossible. Utilisez une URL d'image publique.");
       }
     } catch {
-      setFormData((prev) => ({ ...prev, image: reader.result as string }));
+      setError("Upload impossible. Utilisez une URL d'image publique.");
     } finally {
       setUploading(false);
     }

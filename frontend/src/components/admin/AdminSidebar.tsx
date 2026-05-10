@@ -110,12 +110,12 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
             <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-lg">
               <img 
                 src="/logo-afro-eats.png" 
-                alt="Afro-Eats Logo" 
+                alt="Afro-food" 
                 className="w-full h-full object-contain p-1"
               />
             </div>
             <div>
-              <span className="font-bold text-xl block">Afro-Eats</span>
+              <span className="font-bold text-xl block">Afro-food</span>
               <span className="text-xs text-blue-200">Administration</span>
             </div>
           </Link>

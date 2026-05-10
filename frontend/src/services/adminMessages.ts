@@ -65,5 +65,6 @@ export async function marquerCommeLu(id: string): Promise<boolean> {
 
 export async function repondreMessage(id: string, corps: string): Promise<{ success: boolean; message?: MessageContact }> {
   const res = await apiPost<{ message: MessageContact }>(`/api/messages/${id}/reply`, { corps });
-  return { success: res.success === true, message: res.data as MessageContact | undefined };
+  const payload = res.data as { message?: MessageContact } | undefined;
+  return { success: res.success === true, message: payload?.message };
 }

@@ -1,0 +1,197 @@
+<!--
+  Template statique — E-mail Expédition / « en route » Afro-food.
+  HTML + CSS inline, tables. Variante dynamique : expeditionEmail() dans emailTemplates.js
+-->
+<!DOCTYPE html>
+<html lang="fr" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Votre commande est en route — Afro-food</title>
+  <!--[if mso]>
+  <style type="text/css">
+    table { border-collapse: collapse; }
+    td { font-family: Arial, Helvetica, sans-serif; }
+  </style>
+  <![endif]-->
+</head>
+<body style="margin:0;padding:0;width:100%;background-color:#FAF3E0;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+  <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">
+    Votre colis est expédié — suivez la livraison de votre commande Afro-food.
+  </div>
+
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FAF3E0;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:600px;width:100%;background-color:#FAF3E0;border-radius:12px;overflow:hidden;">
+
+          <!-- Header -->
+          <tr>
+            <td align="center" style="background-color:#2C1A0E;padding:26px 24px 22px 24px;border-radius:12px 12px 0 0;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td align="center" style="padding-bottom:14px;">
+                    <img src="https://example.com/logo-afro-eats.png" width="52" height="52" alt="Afro-food" style="display:block;border:0;width:52px;height:52px;border-radius:12px;background-color:#FAF3E0;padding:4px;" />
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="font-family:Georgia,'Times New Roman',serif;font-size:25px;line-height:1.2;font-weight:700;color:#FAF3E0;padding:0 8px;">
+                    Votre commande est en route !
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.45;color:#FAF3E0;padding:10px 8px 0 8px;opacity:0.88;">
+                    Bon appétit dans les starting-blocks — votre colis a quitté nos partenaires.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Illustration colis (SVG statique ; remplacer par &lt;img src="...gif"&gt; pour une animation) -->
+          <tr>
+            <td align="center" style="background-color:#FAF3E0;padding:24px 20px 8px 20px;border-left:1px solid #e8dcc4;border-right:1px solid #e8dcc4;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;background-color:#ffffff;border-radius:16px;border:1px solid #e8dcc4;overflow:hidden;">
+                <tr>
+                  <td align="center" style="padding:20px 24px;">
+                    <svg width="200" height="120" viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Colis en livraison" style="display:block;max-width:100%;height:auto;">
+                      <rect width="200" height="120" fill="#FFF7EA"/>
+                      <rect x="28" y="48" width="96" height="56" rx="6" fill="#C2610F" opacity="0.92"/>
+                      <rect x="36" y="56" width="36" height="14" rx="2" fill="#FAF3E0" opacity="0.95"/>
+                      <path d="M124 72h48l12 20v12h-60V72z" fill="#2C1A0E"/>
+                      <circle cx="56" cy="108" r="10" fill="#2C1A0E"/>
+                      <circle cx="132" cy="108" r="10" fill="#2C1A0E"/>
+                      <rect x="148" y="56" width="24" height="8" rx="2" fill="#8B3A2A"/>
+                      <path d="M40 40 L100 40 L96 48 L44 48 Z" fill="#8B3A2A" opacity="0.85"/>
+                    </svg>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Infos suivi -->
+          <tr>
+            <td style="background-color:#FAF3E0;padding:12px 24px 8px 24px;border-left:1px solid #e8dcc4;border-right:1px solid #e8dcc4;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border-radius:10px;border:1px solid #e8dcc4;">
+                <tr>
+                  <td style="padding:16px 18px;">
+                    <p style="margin:0 0 10px 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;color:#2C1A0E;">
+                      Bonjour <strong style="color:#2C1A0E;">Marie</strong>,
+                    </p>
+                    <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#2C1A0E;opacity:0.88;">
+                      La commande <strong style="color:#C2610F;">#CMD-2026-004892</strong> est en cours d’acheminement.
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="border-top:1px solid #efe6d4;padding:14px 18px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tr>
+                        <td style="font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#C2610F;padding-bottom:6px;">Numéro de suivi</td>
+                      </tr>
+                      <tr>
+                        <td style="font-family:Arial,Helvetica,sans-serif;font-size:17px;font-weight:700;">
+                          <a href="https://example.com/suivi/AFRO1Z9999999999" style="color:#C2610F;text-decoration:underline;">AFRO1Z9999999999</a>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding-top:14px;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#C2610F;padding-bottom:4px;">Transporteur</td>
+                      </tr>
+                      <tr>
+                        <td style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#2C1A0E;">Chronopost</td>
+                      </tr>
+                      <tr>
+                        <td style="padding-top:14px;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#C2610F;padding-bottom:4px;">Livraison estimée</td>
+                      </tr>
+                      <tr>
+                        <td style="font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:700;color:#2C1A0E;">Jeudi 10 avril, avant 18h</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Récap condensé -->
+          <tr>
+            <td style="background-color:#FAF3E0;padding:8px 24px 8px 24px;border-left:1px solid #e8dcc4;border-right:1px solid #e8dcc4;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#ffffff;border-radius:10px;border:1px solid #e8dcc4;">
+                <tr>
+                  <td style="padding:12px 16px;background-color:#2C1A0E;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#FAF3E0;">
+                    Contenu (aperçu)
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:12px 16px 14px 16px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.65;color:#2C1A0E;">
+                    · Jollof rice au poulet × 2<br />
+                    · Bissap artisanal × 1<br />
+                    <span style="color:#2C1A0E;opacity:0.65;">+ 1 autre article</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- CTA -->
+          <tr>
+            <td align="center" style="background-color:#FAF3E0;padding:16px 24px 12px 24px;border-left:1px solid #e8dcc4;border-right:1px solid #e8dcc4;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+                <tr>
+                  <td align="center" style="border-radius:999px;background-color:#C2610F;">
+                    <a href="https://example.com/commandes/suivi" target="_blank" style="font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;display:inline-block;padding:14px 28px;border-radius:999px;">Suivre le colis</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Conseils réception -->
+          <tr>
+            <td style="background-color:#FAF3E0;padding:8px 24px 16px 24px;border-left:1px solid #e8dcc4;border-right:1px solid #e8dcc4;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFF7EA;border-radius:10px;border:1px solid #e8dcc4;">
+                <tr>
+                  <td style="padding:14px 16px;">
+                    <p style="margin:0 0 8px 0;font-family:Georgia,'Times New Roman',serif;font-size:16px;font-weight:700;color:#2C1A0E;">Conseils à la réception</p>
+                    <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#2C1A0E;opacity:0.9;">
+                      Vérifiez l’état du colis avant signature. En cas de produit frais ou réfrigéré, placez-le rapidement au frais. Pour toute anomalie, contactez-nous sous 48&nbsp;h avec photos.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Service client -->
+          <tr>
+            <td align="center" style="background-color:#FAF3E0;padding:8px 24px 24px 24px;border-left:1px solid #e8dcc4;border-right:1px solid #e8dcc4;border-radius:0 0 12px 12px;">
+              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#2C1A0E;">
+                Une question sur la livraison ?<br />
+                <a href="https://example.com/contact" style="color:#C2610F;font-weight:700;text-decoration:underline;">Service client</a>
+                <span style="color:#2C1A0E;opacity:0.5;"> · </span>
+                <a href="https://example.com/help" style="color:#C2610F;font-weight:600;text-decoration:underline;">Centre d’aide</a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="padding:18px 16px 28px 16px;">
+              <p style="margin:0 0 10px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#2C1A0E;opacity:0.7;">
+                <a href="https://example.com/compte/notifications?unsubscribe=1" style="color:#C2610F;text-decoration:underline;">Se désabonner</a>
+                <span style="color:#c4b8a8;"> · </span>
+                <a href="https://example.com/terms" style="color:#C2610F;text-decoration:underline;">CGV</a>
+              </p>
+              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#2C1A0E;opacity:0.45;">
+                © 2026 Afro-food — Marketplace de nourriture africaine
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

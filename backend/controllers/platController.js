@@ -13,6 +13,7 @@ export const obtenirPlats = async (req, res, next) => {
       pays,
       prixMin,
       prixMax,
+      noteMin,
       niveauEpice,
       vegetarien,
       disponibleSeulement = 'true',
@@ -40,6 +41,10 @@ export const obtenirPlats = async (req, res, next) => {
     if (prixMax != null && !isNaN(parseFloat(prixMax))) {
       query.prix = query.prix || {};
       query.prix.$lte = parseFloat(prixMax);
+    }
+    if (noteMin != null && !isNaN(parseFloat(noteMin))) {
+      const n = parseFloat(noteMin);
+      query.notemoyenne = { $gte: n };
     }
 
     const useTextSearch = recherche && typeof recherche === 'string' && recherche.trim().length > 0;
