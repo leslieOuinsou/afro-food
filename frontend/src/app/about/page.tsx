@@ -122,13 +122,11 @@ export default function AboutPage() {
           </p>
         </div>
 
-        <div className="mx-auto mt-14 grid max-w-[920px] grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-6 lg:gap-8">
+        {/* Portraits volontairement compacts (thumbnail) pour un bloc « histoire » lisible */}
+        <div className="mx-auto mt-14 grid max-w-[720px] grid-cols-1 justify-items-center gap-10 sm:grid-cols-3 sm:gap-8 lg:gap-10">
           {TEAM.map((person) => (
-            <figure
-              key={person.name}
-              className="flex flex-col overflow-hidden rounded-[24px] border border-[var(--wood)]/12 bg-white shadow-[0_12px_40px_rgba(44,26,14,.06)]"
-            >
-              <div className="relative aspect-[3/4] w-full shrink-0 bg-[var(--wood)]/5">
+            <figure key={person.name} className="flex w-full max-w-[280px] flex-col items-center">
+              <div className="relative h-[168px] w-[126px] shrink-0 overflow-hidden rounded-2xl border border-[var(--wood)]/12 bg-[var(--wood)]/5 shadow-sm ring-1 ring-[var(--wood)]/5 sm:h-[184px] sm:w-[138px]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={person.image}
@@ -136,9 +134,9 @@ export default function AboutPage() {
                   className="h-full w-full object-cover object-top"
                 />
               </div>
-              <figcaption className="flex flex-1 flex-col gap-1 border-t border-[var(--wood)]/10 bg-[var(--ivory)] px-4 py-5">
-                <p className="font-title text-lg font-semibold text-[var(--wood)]">{person.name}</p>
-                <p className="font-ui text-xs font-bold uppercase tracking-[0.12em] text-[var(--ochre)]">{person.role}</p>
+              <figcaption className="mt-4 w-full text-center">
+                <p className="font-title text-base font-semibold text-[var(--wood)]">{person.name}</p>
+                <p className="font-ui text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--ochre)]">{person.role}</p>
                 <p className="mt-2 font-ui text-sm leading-relaxed text-[var(--wood)]/90">{person.caption}</p>
               </figcaption>
             </figure>
