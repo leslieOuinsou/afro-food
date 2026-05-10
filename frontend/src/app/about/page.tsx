@@ -44,51 +44,27 @@ function useInViewOnce<T extends HTMLElement>() {
   return { ref, inView };
 }
 
-const TIMELINE = [
-  {
-    year: '2023',
-    title: 'L’idée',
-    text: 'Constat : les saveurs africaines méritent une vitrine digne des producteurs. Esquisse d’une marketplace pensée comme un magazine.',
-  },
-  {
-    year: '2024',
-    title: 'Première sélection',
-    text: 'Montée en puissance du catalogue : épices, plats maison, boissons. Fiches produits détaillées et traçabilité renforcée.',
-  },
-  {
-    year: '2025',
-    title: 'Ouverture élargie',
-    text: 'Nouvelles régions, outils pour les artisans, et communauté qui grandit autour des commandes et des histoires.',
-  },
-  {
-    year: '2026',
-    title: 'Aujourd’hui',
-    text: 'Afro-food propose une expérience éditoriale, chaleureuse et ancrée dans le réel, autour des saveurs africaines.',
-  },
-];
-
-const TEAM = [
+/** Trois visages pour « Notre histoire » — cartouches lisibles sous chaque portrait */
+const FONDATEURS = [
   {
     name: 'Amara K.',
     role: 'Direction & vision',
     image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800&q=80',
+    caption: 'Pilote la vision plateforme et les engagements terrain.',
   },
   {
     name: 'Fatou D.',
     role: 'Partenariats producteurs',
     image: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=800&q=80',
+    caption: 'Tisse les liens avec les artisans et coopératives.',
   },
   {
     name: 'Kofi T.',
     role: 'Expérience produit',
     image: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=800&q=80',
+    caption: 'Fait dialoguer catalogue, livraison et retours clients.',
   },
-  {
-    name: 'Léa M.',
-    role: 'Contenu & communauté',
-    image: 'https://images.unsplash.com/photo-1594744803329-e58b31de8bf5?w=800&q=80',
-  },
-];
+] as const;
 
 export default function AboutPage() {
   const statsRef = useInViewOnce<HTMLDivElement>();
@@ -123,26 +99,51 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Histoire — timeline verticale */}
-      <section className="mx-auto max-w-[720px] px-6 py-20 lg:px-12 lg:py-24">
-        <h2 className="font-title text-center text-4xl text-[var(--wood)] lg:text-5xl">Notre histoire</h2>
-        <p className="mx-auto mt-4 max-w-xl text-center text-sm text-[var(--wood)]/70">
-          De l’idée à la plateforme : les étapes qui ont façonné Afro-food.
+      {/* Notre histoire — récit lisible + trois portraits */}
+      <section className="mx-auto max-w-[1100px] px-6 py-20 lg:px-12 lg:py-24">
+        <h2 className="font-title text-center text-4xl tracking-tight text-[var(--wood)] lg:text-5xl">Notre histoire</h2>
+        <p className="mx-auto mt-4 max-w-2xl text-center text-base font-medium text-[var(--wood)]/85">
+          De l’idée à la plateforme : une équipe qui a façonné Afro-food étape par étape.
         </p>
-        <ul className="relative mt-16 space-y-0 border-l-2 border-[var(--wood)]/12 pl-8">
-          {TIMELINE.map((item) => (
-            <li key={item.year} className="relative pb-14 last:pb-0">
-              <span className="absolute -left-[9px] top-1.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-[var(--ochre)]/60 bg-[var(--ivory)] ring-4 ring-[var(--ivory)]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[var(--ochre)]" />
-              </span>
-              <article className="rounded-[24px] border border-[var(--wood)]/10 bg-white/55 p-6 shadow-sm backdrop-blur">
-                <p className="font-title text-3xl text-[var(--ochre)]">{item.year}</p>
-                <h3 className="font-title mt-2 text-xl text-[var(--wood)]">{item.title}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-[var(--wood)]/75">{item.text}</p>
-              </article>
-            </li>
+
+        <div className="mx-auto mt-12 max-w-[720px] space-y-5 rounded-[28px] border border-[var(--wood)]/12 bg-white px-6 py-8 shadow-sm sm:px-10 sm:py-10">
+          <p className="font-ui text-[15px] leading-relaxed text-[var(--wood)]">
+            <strong className="text-[var(--wood)]">2023 — L’idée.</strong> Constat : les saveurs africaines méritaient une
+            vitrine digne des producteurs. Première esquisse d’une marketplace pensée comme un magazine vivant.
+          </p>
+          <p className="font-ui text-[15px] leading-relaxed text-[var(--wood)]">
+            <strong className="text-[var(--wood)]">2024 — Première sélection.</strong> Montée en puissance du catalogue :
+            épices, plats maison, boissons ; fiches détaillées et traçabilité renforcée pour chaque produit.
+          </p>
+          <p className="font-ui text-[15px] leading-relaxed text-[var(--wood)]">
+            <strong className="text-[var(--wood)]">2025 &amp; 2026.</strong> Ouverture sur de nouvelles régions, outils pour
+            les artisans, et une communauté qui grandit — jusqu’à une expérience chaleureuse et ancrée dans le réel,
+            autour des saveurs africaines.
+          </p>
+        </div>
+
+        <div className="mx-auto mt-14 grid max-w-[920px] grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-6 lg:gap-8">
+          {FONDATEURS.map((person) => (
+            <figure
+              key={person.name}
+              className="flex flex-col overflow-hidden rounded-[24px] border border-[var(--wood)]/12 bg-white shadow-[0_12px_40px_rgba(44,26,14,.06)]"
+            >
+              <div className="relative aspect-[3/4] w-full shrink-0 bg-[var(--wood)]/5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={person.image}
+                  alt={person.name}
+                  className="h-full w-full object-cover object-top"
+                />
+              </div>
+              <figcaption className="flex flex-1 flex-col gap-1 border-t border-[var(--wood)]/10 bg-[var(--ivory)] px-4 py-5">
+                <p className="font-title text-lg font-semibold text-[var(--wood)]">{person.name}</p>
+                <p className="font-ui text-xs font-bold uppercase tracking-[0.12em] text-[var(--ochre)]">{person.role}</p>
+                <p className="mt-2 font-ui text-sm leading-relaxed text-[var(--wood)]/90">{person.caption}</p>
+              </figcaption>
+            </figure>
           ))}
-        </ul>
+        </div>
       </section>
 
       {/* Valeurs — 3 colonnes */}
@@ -187,42 +188,6 @@ export default function AboutPage() {
               </article>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* Équipe — grille éditoriale */}
-      <section className="mx-auto max-w-[1200px] px-6 py-20 lg:px-12 lg:py-24">
-        <h2 className="font-title text-4xl text-[var(--wood)] lg:text-5xl">L’équipe</h2>
-        <p className="mt-3 max-w-2xl text-sm text-[var(--wood)]/70">
-          Des profils complémentaires, une même obsession : faire vivre la cuisine africaine avec exigence et chaleur.
-        </p>
-        <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:grid-rows-2 lg:gap-5">
-          {TEAM.map((m, i) => (
-            <figure
-              key={m.name}
-              className={`group overflow-hidden rounded-[24px] border border-[var(--wood)]/10 bg-white/50 shadow-sm ${
-                i === 0 ? 'sm:col-span-2 lg:col-span-2 lg:row-span-2' : ''
-              } ${i === 3 ? 'sm:col-span-2 lg:col-span-2 lg:col-start-3 lg:row-start-2' : ''}`}
-            >
-              <div
-                className={
-                  i === 0
-                    ? 'aspect-[4/3] min-h-[220px] lg:aspect-auto lg:min-h-[min(100%,420px)]'
-                    : 'aspect-[4/5] min-h-[200px]'
-                }
-              >
-                <img
-                  src={m.image}
-                  alt=""
-                  className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
-                />
-              </div>
-              <figcaption className="border-t border-[var(--wood)]/08 bg-[var(--paper)]/90 px-4 py-4">
-                <p className="font-title text-lg text-[var(--wood)]">{m.name}</p>
-                <p className="text-xs font-medium uppercase tracking-wide text-[var(--brick)]">{m.role}</p>
-              </figcaption>
-            </figure>
-          ))}
         </div>
       </section>
 
