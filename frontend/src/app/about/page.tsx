@@ -45,7 +45,7 @@ function useInViewOnce<T extends HTMLElement>() {
 }
 
 /** Trois visages pour « Notre histoire » — cartouches lisibles sous chaque portrait */
-const FONDATEURS = [
+const TEAM = [
   {
     name: 'Amara K.',
     role: 'Direction & vision',
@@ -123,7 +123,7 @@ export default function AboutPage() {
         </div>
 
         <div className="mx-auto mt-14 grid max-w-[920px] grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-6 lg:gap-8">
-          {FONDATEURS.map((person) => (
+          {TEAM.map((person) => (
             <figure
               key={person.name}
               className="flex flex-col overflow-hidden rounded-[24px] border border-[var(--wood)]/12 bg-white shadow-[0_12px_40px_rgba(44,26,14,.06)]"
