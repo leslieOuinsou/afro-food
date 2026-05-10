@@ -148,6 +148,15 @@ app.get('/', (req, res) => {
   });
 });
 
+// Favicon / assets racine : les clients les demandent sur l’hôte de l’API (ex. URL Vercel du backend).
+// Sans ces routes → 404 + logs [API Error] inutiles. L’icône réelle est servie par le frontend Next.js.
+app.get(
+  ['/favicon.ico', '/favicon.png', '/apple-touch-icon.png', '/apple-touch-icon-precomposed.png', '/robots.txt', '/site.webmanifest'],
+  (req, res) => {
+    res.status(204).end();
+  }
+);
+
 // Route de santé pour vérifier l'état du serveur et de la base de données
 app.get('/health', async (req, res) => {
   try {
