@@ -1,9 +1,9 @@
 import { app, connectDB } from '../server.js';
 
 export default async function handler(req, res) {
-  // Connexion DB assurée
-  await connectDB();
-
-  // On passe la main à l'app Express qui gère le CORS
+  // Preflight : ne pas attendre MongoDB (sinon timeout / erreur sans headers CORS côté edge)
+  if (req.method !== 'OPTIONS') {
+    await connectDB();
+  }
   return app(req, res);
 }

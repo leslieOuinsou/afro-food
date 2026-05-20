@@ -19,20 +19,80 @@ const app = express();
 
 // Configuration du port (par défaut 5000 si PORT n'est pas défini dans .env)
 const PORT = process.env.PORT || 5000;
-
-// Sur Vercel, connecter la DB au premier requête (car le serveur n'appelle pas connectDB au démarrage)
 const isVercel = process.env.VERCEL === '1';
-if (isVercel) {
-  let dbConnectPromise = null;
-  app.use(async (req, res, next) => {
-    if (!dbConnectPromise) dbConnectPromise = connectDB();
-    await dbConnectPromise;
-    next();
-  });
-}
 
 // Trust proxy si derrière un reverse proxy (Nginx, Cloudflare, etc.)
 app.set('trust proxy', 1);
+
+/**
+ * CORS en tout premier : sur Vercel, si `connectDB()` échoue ou timeoute avant les headers CORS,
+ * le navigateur voit « No Access-Control-Allow-Origin » sur le preflight OPTIONS.
+ */
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+
+    const allowedOrigins = [
+      process.env.FRONTEND_URL || 'http://localhost:3000',
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3001',
+      'https://afro-food.vercel.app',
+      'https://afrofood.vercel.app',
+      'https://frontend-nine-beta-45.vercel.app',
+    ];
+    if (origin && origin.endsWith('.vercel.app')) {
+      callback(null, true);
+      return;
+    }
+    if (process.env.NODE_ENV !== 'production') {
+      try {
+        const u = new URL(origin);
+        if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') {
+          callback(null, true);
+          return;
+        }
+      } catch {
+        /* origine invalide */
+      }
+    }
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Non autorisé par CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Origin',
+    'X-Requested-With',
+    'Content-Type',
+    'Accept',
+    'Authorization',
+    'Cache-Control',
+    'Pragma',
+  ],
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+
+// Sur Vercel, connecter la DB après CORS ; ne pas bloquer le preflight OPTIONS sur MongoDB
+if (isVercel) {
+  let dbConnectPromise = null;
+  app.use(async (req, res, next) => {
+    if (req.method === 'OPTIONS') return next();
+    if (!dbConnectPromise) dbConnectPromise = connectDB();
+    try {
+      await dbConnectPromise;
+      next();
+    } catch (err) {
+      next(err);
+    }
+  });
+}
 
 // Middlewares de sécurité
 app.use(helmet({
@@ -60,9 +120,10 @@ const limiteGenerale = rateLimit({
   standardHeaders: true, // Retourner les informations de rate limit dans les headers `RateLimit-*`
   legacyHeaders: false, // Désactiver les headers `X-RateLimit-*`
   skip: (req) => {
-    // Ignorer la limitation pour les routes de santé
+    // Ne pas compter le preflight CORS (sinon 429 sans headers CORS → erreur navigateur trompeuse)
+    if (req.method === 'OPTIONS') return true;
     return req.path === '/api/health' || req.path === '/api/health/full' || req.path === '/health';
-  }
+  },
 });
 
 app.use(limiteGenerale);
@@ -81,60 +142,6 @@ app.use(express.urlencoded({
   extended: true, 
   limit: '10mb' 
 }));
-
-// Middleware CORS - permet à notre frontend (Next.js) de communiquer avec le backend
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Permettre les requêtes sans origine (mobile apps, postman, etc.)
-    if (!origin) return callback(null, true);
-    
-    const allowedOrigins = [
-      process.env.FRONTEND_URL || 'http://localhost:3000',
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://127.0.0.1:3000',
-      'http://127.0.0.1:3001',
-      'https://afro-food.vercel.app',
-      'https://afrofood.vercel.app',
-      'https://frontend-nine-beta-45.vercel.app',
-    ];
-    // Autoriser tous les sous-domaines Vercel (*.vercel.app)
-    if (origin && origin.endsWith('.vercel.app')) {
-      callback(null, true);
-      return;
-    }
-    // En dev : localhost et 127.0.0.1 sur tout port (Next peut être sur 3000, 3001, etc.)
-    if (process.env.NODE_ENV !== 'production') {
-      try {
-        const u = new URL(origin);
-        if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') {
-          callback(null, true);
-          return;
-        }
-      } catch {
-        /* origine invalide */
-      }
-    }
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Non autorisé par CORS'));
-    }
-  },
-  credentials: true, // Permet l'envoi de cookies/credentials
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: [
-    'Origin',
-    'X-Requested-With',
-    'Content-Type',
-    'Accept',
-    'Authorization',
-    'Cache-Control',
-    'Pragma'
-  ]
-};
-
-app.use(cors(corsOptions));
 
 // Route racine pour vérifier que l'API fonctionne
 app.get('/', (req, res) => {
