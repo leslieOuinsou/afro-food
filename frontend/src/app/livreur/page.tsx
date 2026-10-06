@@ -19,6 +19,9 @@ type CommandeLivreur = {
   montants: { total: number };
   methodePaiement?: string;
   statutPaiement?: string;
+  dates?: { livraison?: string };
+  updatedAt?: string;
+  evaluation?: { note: number } | null;
 };
 
 const money = (n: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n);
@@ -44,12 +47,19 @@ export default function LivreurPage() {
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState('');
   const [occupe, setOccupe] = useState<string | null>(null);
+  const [historique, setHistorique] = useState<CommandeLivreur[]>([]);
+  const [nbVisibles, setNbVisibles] = useState(10);
   const [partage, setPartage] = useState(false);
   const [infoGps, setInfoGps] = useState('');
   const dernierEnvoi = useRef(0);
   const idsEnCours = useRef<string[]>([]);
   const pretesConnues = useRef<Set<string> | null>(null);
   const titreInitial = useRef('');
+
+  const chargerHistorique = useCallback(async () => {
+    const res = await apiGet<{ commandes: CommandeLivreur[] }>('/api/commandes?statut=livree&limite=100');
+    if (res.success) setHistorique(res.data?.commandes ?? []);
+  }, []);
 
   const charger = useCallback(async () => {
     const res = await apiGet<{ commandes: CommandeLivreur[] }>('/api/commandes?limite=50');
@@ -101,23 +111,52 @@ export default function LivreurPage() {
       return;
     }
     void charger();
+    void chargerHistorique();
     const t = window.setInterval(() => {
       if (document.visibilityState === 'visible') void charger();
     }, 8000);
-    return () => window.clearInterval(t);
-  }, [authLoading, user, router, charger]);
+    const th = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void chargerHistorique();
+    }, 60000);
+    return () => {
+      window.clearInterval(t);
+      window.clearInterval(th);
+    };
+  }, [authLoading, user, router, charger, chargerHistorique]);
 
   const changer = async (c: CommandeLivreur, statut: 'en_livraison' | 'livree') => {
     setOccupe(c._id);
     const res = await apiPatch(`/api/commandes/${c._id}/statut`, { statut });
     setOccupe(null);
     if (!res.success) setErreur(res.message || 'Mise à jour impossible.');
-    else await charger();
+    else {
+      await charger();
+      if (statut === 'livree') await chargerHistorique();
+    }
   };
 
   const aPrendre = commandes.filter((c) => c.statut === 'prete');
   const enCours = commandes.filter((c) => c.statut === 'en_livraison');
   idsEnCours.current = enCours.map((c) => c._id);
+
+  const dateLivraison = (c: CommandeLivreur) => {
+    const iso = c.dates?.livraison ?? c.updatedAt;
+    return iso
+      ? new Date(iso).toLocaleString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : '';
+  };
+  const maintenant = new Date();
+  const statsHistorique = historique.reduce(
+    (acc, c) => {
+      const iso = c.dates?.livraison ?? c.updatedAt;
+      const d = iso ? new Date(iso) : null;
+      if (d && d.toDateString() === maintenant.toDateString()) acc.aujourdhui += 1;
+      if (d && d.getMonth() === maintenant.getMonth() && d.getFullYear() === maintenant.getFullYear()) acc.ceMois += 1;
+      acc.montant += c.montants.total;
+      return acc;
+    },
+    { aujourdhui: 0, ceMois: 0, montant: 0 }
+  );
 
   // Partage de la position GPS : envoyée au plus toutes les 8 s pour chaque commande en livraison
   useEffect(() => {
@@ -255,6 +294,63 @@ export default function LivreurPage() {
             <div className="mt-3 space-y-4">
               {aPrendre.length ? aPrendre.map(carte) : <p className="text-sm text-[var(--wood)]/60">Aucune commande prête.</p>}
             </div>
+
+            <h2 className="mt-10 font-title text-2xl">Mon historique ({historique.length})</h2>
+            {historique.length === 0 ? (
+              <p className="mt-3 text-sm text-[var(--wood)]/60">Tu n’as pas encore livré de commande.</p>
+            ) : (
+              <>
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {[
+                    ['Livraisons', String(historique.length)],
+                    ["Aujourd'hui", String(statsHistorique.aujourdhui)],
+                    ['Ce mois-ci', String(statsHistorique.ceMois)],
+                    ['Montant livré', money(statsHistorique.montant)],
+                  ].map(([libelle, valeur]) => (
+                    <div key={libelle} className="rounded-2xl border border-[var(--wood)]/10 bg-white/60 p-4">
+                      <p className="text-xs uppercase tracking-wide text-[var(--wood)]/60">{libelle}</p>
+                      <p className="mt-1 text-xl font-semibold">{valeur}</p>
+                    </div>
+                  ))}
+                </div>
+                <ul className="mt-4 space-y-3">
+                  {historique.slice(0, nbVisibles).map((c) => (
+                    <li key={c._id} className="rounded-2xl border border-[var(--wood)]/10 bg-white/60 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <p className="font-mono text-sm font-semibold">{c.numeroCommande}</p>
+                          <p className="text-xs text-[var(--wood)]/60">{dateLivraison(c)}</p>
+                        </div>
+                        <p className="text-sm font-semibold">{money(c.montants.total)}</p>
+                      </div>
+                      <p className="mt-2 text-sm">
+                        {c.informationsClient.prenom} {c.informationsClient.nom}
+                      </p>
+                      {c.adresseLivraison?.adresse && (
+                        <p className="text-sm text-[var(--wood)]/75">
+                          {c.adresseLivraison.adresse}, {c.adresseLivraison.codePostal} {c.adresseLivraison.ville}
+                        </p>
+                      )}
+                      {c.evaluation && (
+                        <p className="mt-1 text-sm text-amber-600" aria-label={`Note du client : ${c.evaluation.note} sur 5`}>
+                          {'★'.repeat(c.evaluation.note)}
+                          <span className="text-[var(--wood)]/25">{'★'.repeat(5 - c.evaluation.note)}</span>
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                {historique.length > nbVisibles && (
+                  <button
+                    type="button"
+                    onClick={() => setNbVisibles((n) => n + 10)}
+                    className="mt-4 rounded-full border border-[var(--wood)]/20 px-5 py-2 text-sm font-semibold hover:bg-white"
+                  >
+                    Voir plus
+                  </button>
+                )}
+              </>
+            )}
           </>
         )}
       </main>
