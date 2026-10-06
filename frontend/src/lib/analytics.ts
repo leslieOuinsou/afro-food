@@ -91,7 +91,21 @@ export function trackContact(): void {
 }
 
 export function trackPromo(code: string, succes: boolean): void {
-  trackEvent(succes ? 'promo_applied' : 'promo_rejected', { coupon: code });
+  // Les codes « MERCI-… » sont les codes offerts après une commande de plus de 30 €
+  trackEvent(succes ? 'promo_applied' : 'promo_rejected', {
+    coupon: code,
+    code_recompense: code.toUpperCase().startsWith('MERCI-'),
+  });
+}
+
+/** Arrivée sur la page de notation depuis l'e-mail de remerciement. */
+export function trackReviewEmailClick(note: number | null): void {
+  trackEvent('review_email_click', { note_preselectionnee: note ?? undefined });
+}
+
+/** Note envoyée par le client après livraison. */
+export function trackReviewSubmitted(note: number, avecCommentaire: boolean): void {
+  trackEvent('review_submitted', { note, commentaire: avecCommentaire });
 }
 
 /** Étapes du parcours « mot de passe oublié » : demande, renvoi, réinitialisation réussie. */

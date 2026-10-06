@@ -1,7 +1,13 @@
 import nodemailer from 'nodemailer';
 import { fileURLToPath } from 'url';
 import path from 'path';
-import { orderConfirmationEmail, orderStatusEmail, passwordResetEmail } from './emailTemplates.js';
+import {
+  orderConfirmationEmail,
+  orderStatusEmail,
+  passwordResetEmail,
+  thankYouEmail,
+  promoRewardEmail,
+} from './emailTemplates.js';
 
 let transporter = null;
 
@@ -134,5 +140,27 @@ export async function envoyerEmailNouvelleCommandeAdmin(email, commande) {
     subject: `Nouvelle commande ${numero} — ${total} €`,
     text: `Nouvelle commande ${numero}${client ? ` de ${client}` : ''} : ${total} €. À traiter : ${lien}`,
     html: `<p><strong>Nouvelle commande ${numero}</strong>${client ? ` de ${client}` : ''}.</p><p>Total : <strong>${total}&nbsp;€</strong></p><p><a href="${lien}">Ouvrir la gestion des commandes</a></p>`,
+  });
+}
+
+/** Remerciement après livraison, avec lien de notation. */
+export async function envoyerEmailMerciLivraison(email, commande) {
+  const front = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+  const id = commande._id || commande.id;
+  return envoyerEmail({
+    to: email,
+    subject: `Merci pour votre commande ${commande.numeroCommande} — donnez-nous votre avis`,
+    text: `Votre commande ${commande.numeroCommande} a été livrée. Merci ! Notez-la en un clic : ${front}/commande/${id}?noter=5`,
+    html: thankYouEmail(commande, { ...commande.informationsClient, email }),
+  });
+}
+
+/** Annonce du code promo offert (−10 % + livraison offerte). */
+export async function envoyerEmailCodePromoMerci(email, commande, promo) {
+  return envoyerEmail({
+    to: email,
+    subject: 'Un cadeau pour vous : −10 % et livraison offerte — Afro-food',
+    text: `Merci pour votre commande ${commande.numeroCommande} ! Votre code ${promo.code} : −10 % et livraison offerte sur vos prochaines commandes.`,
+    html: promoRewardEmail({ ...commande.informationsClient, email }, promo, commande),
   });
 }

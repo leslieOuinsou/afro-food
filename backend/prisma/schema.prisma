@@ -395,6 +395,9 @@ model PromoCode {
   montantMinimum  Float?                          // sous-total minimum du panier
   usageParClient  Int?                            // null = illimité
   premiereCommandeSeulement Boolean @default(false)
+  livraisonOfferte Boolean  @default(false)       // en plus de la remise : frais de livraison offerts
+  clientId        String?                         // code personnel : réservé à ce client
+  sourceCommandeId String?  @unique               // commande qui a déclenché ce code (récompense)
   categories      String[]  @default([])          // vide = tout le catalogue
   actif           Boolean   @default(true)
   dateDebut       DateTime  @default(now())

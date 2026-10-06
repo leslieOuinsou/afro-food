@@ -6,8 +6,8 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useAuth } from '@/context/AuthContext';
-import { trackPurchase } from '@/lib/analytics';
-import { annulerCommande, getCommande, type CommandeDetail } from '@/services/commandes';
+import { trackPurchase, trackReviewEmailClick, trackReviewSubmitted } from '@/lib/analytics';
+import { annulerCommande, evaluerCommande, getCommande, type CommandeDetail } from '@/services/commandes';
 
 const ETAPES = [
   { statut: 'en_attente', label: 'Commande reçue' },
@@ -40,6 +40,37 @@ const urlCarte = (lat: number, lng: number) => {
 const heureCourte = (iso: string) =>
   new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
+function Etoiles({
+  valeur,
+  onChoisir,
+  lecture = false,
+}: {
+  valeur: number;
+  onChoisir?: (n: number) => void;
+  lecture?: boolean;
+}) {
+  return (
+    <div className="flex gap-1" role={lecture ? 'img' : 'radiogroup'} aria-label={`Note : ${valeur} sur 5`}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          type="button"
+          disabled={lecture}
+          onClick={() => onChoisir?.(n)}
+          role={lecture ? undefined : 'radio'}
+          aria-checked={lecture ? undefined : valeur === n}
+          aria-label={`${n} étoile${n > 1 ? 's' : ''}`}
+          className={`text-4xl leading-none transition ${lecture ? 'cursor-default' : 'hover:scale-110'} ${
+            n <= valeur ? 'text-[#E9A23B]' : 'text-[var(--wood)]/20'
+          }`}
+        >
+          ★
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function SuiviContent() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -49,6 +80,11 @@ function SuiviContent() {
   const [commande, setCommande] = useState<CommandeDetail | null>(null);
   const [erreur, setErreur] = useState('');
   const [annulation, setAnnulation] = useState(false);
+  const noteUrl = Number(searchParams.get('noter')) || 0;
+  const [note, setNote] = useState(noteUrl >= 1 && noteUrl <= 5 ? noteUrl : 0);
+  const [avis, setAvis] = useState('');
+  const [envoiAvis, setEnvoiAvis] = useState(false);
+  const [erreurAvis, setErreurAvis] = useState('');
 
   const charger = useCallback(async () => {
     const res = await getCommande(id);
@@ -63,7 +99,8 @@ function SuiviContent() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      router.replace(`/login?redirect=${encodeURIComponent(`/commande/${id}`)}`);
+      const qs = searchParams.toString();
+      router.replace(`/login?redirect=${encodeURIComponent(`/commande/${id}${qs ? `?${qs}` : ''}`)}`);
       return;
     }
     void charger();
@@ -86,6 +123,35 @@ function SuiviContent() {
       document.removeEventListener('visibilitychange', auRetour);
     };
   }, [commande, charger]);
+
+  // GA4 : arrivée depuis l'e-mail de remerciement (une seule fois par visite)
+  const venuDeLEmail = searchParams.get('noter') !== null;
+  useEffect(() => {
+    if (!venuDeLEmail) return;
+    const cle = `afro_ga_review_click_${id}`;
+    try {
+      if (sessionStorage.getItem(cle)) return;
+      sessionStorage.setItem(cle, '1');
+    } catch {
+      /* ignore */
+    }
+    trackReviewEmailClick(noteUrl >= 1 && noteUrl <= 5 ? noteUrl : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [venuDeLEmail]);
+
+  const envoyerAvis = async () => {
+    if (!commande || note < 1) return;
+    setEnvoiAvis(true);
+    setErreurAvis('');
+    const res = await evaluerCommande(commande._id, note, avis);
+    setEnvoiAvis(false);
+    if (res.success) {
+      trackReviewSubmitted(note, avis.trim().length > 0);
+      await charger();
+    } else {
+      setErreurAvis(res.message || "Impossible d'enregistrer votre avis.");
+    }
+  };
 
   // GA4 « purchase » : une seule fois par commande, uniquement après paiement en ligne confirmé
   const paiementOk = searchParams.get('paiement') === 'ok';
@@ -214,6 +280,50 @@ function SuiviContent() {
                 <p className="mt-2 text-sm text-[var(--wood)]/70">
                   Le livreur n&apos;a pas encore partagé sa position. Elle s&apos;affichera ici dès qu&apos;elle sera disponible.
                 </p>
+              )}
+            </section>
+          )}
+
+          {commande.statut === 'livree' && (
+            <section
+              id="avis"
+              className="mt-6 rounded-[24px] border border-[var(--ochre)]/30 bg-[color:rgba(233,162,59,.10)] p-6"
+            >
+              {commande.evaluation ? (
+                <>
+                  <h2 className="font-title text-2xl">Merci pour votre avis !</h2>
+                  <div className="mt-3">
+                    <Etoiles valeur={commande.evaluation.note} lecture />
+                  </div>
+                  {commande.evaluation.commentaire ? (
+                    <p className="mt-3 text-sm italic text-[var(--wood)]/80">« {commande.evaluation.commentaire} »</p>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <h2 className="font-title text-2xl">Comment était votre commande ?</h2>
+                  <p className="mt-1 text-sm text-[var(--wood)]/70">Merci de nous noter, cela nous aide beaucoup.</p>
+                  <div className="mt-4">
+                    <Etoiles valeur={note} onChoisir={setNote} />
+                  </div>
+                  <textarea
+                    value={avis}
+                    onChange={(e) => setAvis(e.target.value)}
+                    rows={3}
+                    maxLength={500}
+                    placeholder="Un commentaire ? (facultatif)"
+                    className="mt-4 w-full rounded-2xl border border-[var(--wood)]/15 bg-white px-4 py-3 text-sm outline-none focus:border-[var(--ochre)]"
+                  />
+                  {erreurAvis && <p className="mt-2 text-sm text-red-700">{erreurAvis}</p>}
+                  <button
+                    type="button"
+                    onClick={() => void envoyerAvis()}
+                    disabled={note < 1 || envoiAvis}
+                    className="mt-4 rounded-full bg-[var(--ochre)] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#a6500c] disabled:opacity-50"
+                  >
+                    {envoiAvis ? 'Envoi…' : 'Envoyer mon avis'}
+                  </button>
+                </>
               )}
             </section>
           )}

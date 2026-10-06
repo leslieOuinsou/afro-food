@@ -96,8 +96,20 @@ export type CommandeDetail = CommandeClient & {
   codePromo?: string | null;
   adresseLivraison?: { nom?: string; adresse?: string; ville?: string; codePostal?: string };
   livraison?: { positionLivreur?: { lat: number; lng: number; date: string } };
+  evaluation?: { note: number; commentaire?: string | null; dateEvaluation?: string } | null;
   historiqueStatut?: HistoriqueStatut[];
 };
+
+export async function evaluerCommande(
+  id: string,
+  note: number,
+  commentaire?: string
+): Promise<ApiResponse<{ commande: CommandeDetail }>> {
+  return apiPost<{ commande: CommandeDetail }>(`/api/commandes/${id}/evaluer`, {
+    note,
+    commentaire: commentaire?.trim() || undefined,
+  });
+}
 
 export async function getCommande(id: string): Promise<ApiResponse<{ commande: CommandeDetail }>> {
   return apiGet<{ commande: CommandeDetail }>(`/api/commandes/${id}`);

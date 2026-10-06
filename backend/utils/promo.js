@@ -25,7 +25,10 @@ export function calculerRemise(promo, base, fraisLivraison = 0) {
     remise = base * (promo.valeur / 100);
     if (promo.montantMax != null) remise = Math.min(remise, promo.montantMax);
   }
-  return Math.round(Math.min(remise, base) * 100) / 100;
+  remise = Math.min(remise, base);
+  // Code « récompense » : remise sur les plats + frais de livraison offerts
+  if (promo.livraisonOfferte) remise += Math.max(0, fraisLivraison);
+  return Math.round(remise * 100) / 100;
 }
 
 /**
@@ -46,6 +49,9 @@ export function evaluerPromo(promo, ctx) {
     return refus('epuise', "Ce code promo n'est plus disponible");
   }
 
+  if (promo.clientId && promo.clientId !== ctx.clientId) {
+    return refus('personnel', 'Ce code est personnel : il est réservé au client à qui il a été envoyé');
+  }
   if (promo.premiereCommandeSeulement && ctx.nbCommandesClient > 0) {
     return refus('premiere_commande', 'Ce code est réservé à la première commande');
   }
@@ -73,7 +79,7 @@ export function evaluerPromo(promo, ctx) {
     }
   }
 
-  if (promo.typeRemise === 'livraison' && !(ctx.fraisLivraison > 0)) {
+  if (promo.typeRemise === 'livraison' && !promo.livraisonOfferte && !(ctx.fraisLivraison > 0)) {
     return refus('livraison_deja_offerte', 'La livraison est déjà offerte pour cette commande');
   }
 
@@ -90,6 +96,7 @@ export function decrirePromo(promo) {
       `${promo.valeur} % de remise${promo.montantMax != null ? ` (plafonnée à ${fmt(promo.montantMax)})` : ''}`
     );
   }
+  if (promo.livraisonOfferte && promo.typeRemise !== 'livraison') lignes.push('Livraison offerte');
   if (promo.montantMinimum != null) lignes.push(`Dès ${fmt(promo.montantMinimum)} d'achat`);
   if (promo.premiereCommandeSeulement) lignes.push('Première commande uniquement');
   if (promo.usageParClient != null) lignes.push(`${promo.usageParClient} utilisation(s) par client`);

@@ -7,8 +7,11 @@ import {
   envoyerEmailStatutCommande,
   envoyerEmailCommandePrete,
   envoyerEmailNouvelleCommandeAdmin,
+  envoyerEmailMerciLivraison,
+  envoyerEmailCodePromoMerci,
 } from '../utils/email.js';
 import { pushVersRole, pushVersUtilisateur } from '../utils/push.js';
+import { genererCodeRecompense } from '../utils/recompenses.js';
 
 const TRANSITIONS_VALIDES = {
   en_attente: ['confirmee', 'annulee'],
@@ -82,6 +85,7 @@ async function appliquerPromo(codePromo, clientId, panier) {
     })),
     nbCommandesClient,
     nbUsagesClient,
+    clientId,
   });
 
   if (!verdict.ok) {
@@ -245,9 +249,27 @@ async function changerStatutInterne(commande, nouveauStatut, commentaire, modifi
 
   const emailClient = miseAJour.informationsClient?.email;
   if (emailClient) {
-    envoyerEmailStatutCommande(emailClient, miseAJour, commentaire).catch((err) =>
-      console.warn('Email statut commande non envoyé:', err.message)
-    );
+    // Livrée : e-mail de remerciement avec notation (remplace le simple e-mail de statut)
+    const envoi =
+      nouveauStatut === 'livree'
+        ? envoyerEmailMerciLivraison(emailClient, miseAJour)
+        : envoyerEmailStatutCommande(emailClient, miseAJour, commentaire);
+    envoi.catch((err) => console.warn('Email statut commande non envoyé:', err.message));
+  }
+
+  // Commande de plus de 30 € confirmée : code promo offert (−10 % + livraison offerte) + e-mail
+  if (nouveauStatut === 'confirmee') {
+    genererCodeRecompense(miseAJour)
+      .then(async (promo) => {
+        if (!promo) return;
+        if (emailClient) await envoyerEmailCodePromoMerci(emailClient, miseAJour, promo);
+        await pushVersUtilisateur(miseAJour.clientId, {
+          titre: 'Un cadeau pour vous 🎁',
+          corps: `Code ${promo.code} : −10 % et livraison offerte sur vos prochaines commandes.`,
+          url: '/panier',
+        });
+      })
+      .catch((err) => console.warn('Code récompense non généré:', err.message));
   }
 
   // Notifications push (appareils où l'utilisateur les a activées)

@@ -1241,7 +1241,74 @@ export const abandonedCartEmail = (options = {}) => {
 </html>`;
 };
 
+
+// Email de remerciement après livraison, avec notation en un clic (1 à 5 étoiles)
+export const thankYouEmail = (commande, client) => {
+  const prenom = escapeHtml(client?.prenom || commande?.informationsClient?.prenom || '');
+  const numero = escapeHtml(commande.numeroCommande || '');
+  const id = encodeURIComponent(String(commande._id || commande.id || ''));
+  const base = `${FRONTEND}/commande/${id}`;
+  const etoiles = [1, 2, 3, 4, 5]
+    .map(
+      (n) =>
+        `<a href="${base}?noter=${n}&utm_source=email&utm_medium=merci" style="display:inline-block;text-decoration:none;font-size:38px;line-height:1;color:#E9A23B;padding:0 3px;" title="${n} étoile${n > 1 ? 's' : ''}">★</a>`
+    )
+    .join('');
+
+  const content = `
+    <h2>Merci${prenom ? ` ${prenom}` : ''} !</h2>
+    <p>Votre commande <strong>${numero}</strong> vient d'être livrée. Toute l'équipe Afro-food vous remercie pour votre confiance : nous espérons que vous vous êtes régalé·e.</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0;">
+      <tr>
+        <td align="center" style="background-color:#F4EBDD;border-radius:16px;padding:24px 16px;">
+          <div style="font-family:Georgia,'Times New Roman',serif;font-size:20px;font-weight:700;color:#2C1A0E;margin-bottom:6px;">Comment était votre commande ?</div>
+          <div style="font-size:13px;color:#8A7664;margin-bottom:14px;">Touchez une étoile pour nous noter, cela prend 5 secondes.</div>
+          <div>${etoiles}</div>
+        </td>
+      </tr>
+    </table>
+    <p style="text-align:center;margin:8px 0 0;"><a href="${base}?noter=5&utm_source=email&utm_medium=merci" class="button" style="display:inline-block;background-color:#C2610F;color:#FFFFFF;padding:14px 32px;text-decoration:none;border-radius:999px;font-weight:700;">Donner mon avis</a></p>
+    <p style="margin-top:22px;font-size:13px;color:#8A7664;">Votre avis aide les autres clients et nous permet de nous améliorer.</p>
+  `;
+  return baseTemplate(content, 'Merci pour votre commande - Afro-food');
+};
+
+// Email annonçant le code promo offert après une commande de plus de 30 €
+export const promoRewardEmail = (client, promo, commande) => {
+  const prenom = escapeHtml(client?.prenom || commande?.informationsClient?.prenom || '');
+  const code = escapeHtml(promo.code);
+  const numero = escapeHtml(commande?.numeroCommande || '');
+  const fin = promo.dateFin
+    ? new Date(promo.dateFin).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
+  const utilisations = promo.utilisationsMax || null;
+
+  const content = `
+    <h2>Un cadeau pour vous${prenom ? `, ${prenom}` : ''} 🎁</h2>
+    <p>Merci pour votre commande <strong>${numero}</strong> ! Pour vous remercier d'avoir commandé plus de 30&nbsp;€, nous vous offrons un code personnel :</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0;">
+      <tr>
+        <td align="center" style="background-color:#2C1A0E;border-radius:16px;padding:26px 16px;">
+          <div style="font-size:12px;letter-spacing:3px;text-transform:uppercase;color:#E9B26B;">Votre code</div>
+          <div style="font-family:'Courier New',monospace;font-size:30px;font-weight:700;letter-spacing:3px;color:#FFFDF8;margin:8px 0;">${code}</div>
+          <div style="font-size:14px;color:#E9B26B;">−10&nbsp;% sur vos plats <strong style="color:#FFFDF8;">+ livraison offerte</strong></div>
+        </td>
+      </tr>
+    </table>
+    <ul style="padding-left:20px;margin:0 0 18px;">
+      <li>Valable sur vos prochaines commandes${utilisations ? ` (${utilisations} utilisations maximum)` : ''}</li>
+      ${fin ? `<li>Utilisable jusqu'au ${fin}</li>` : ''}
+      <li>Code personnel : il fonctionne uniquement avec votre compte</li>
+      <li>À saisir dans le champ « Code promo » du panier</li>
+    </ul>
+    <p style="text-align:center;margin:26px 0 8px;"><a href="${FRONTEND}/catalogue?utm_source=email&utm_medium=code_merci" class="button" style="display:inline-block;background-color:#C2610F;color:#FFFFFF;padding:14px 32px;text-decoration:none;border-radius:999px;font-weight:700;">Découvrir le menu</a></p>
+  `;
+  return baseTemplate(content, 'Votre code promo offert - Afro-food');
+};
+
 export default {
+  thankYouEmail,
+  promoRewardEmail,
   welcomeEmail,
   orderConfirmationEmail,
   expeditionEmail,

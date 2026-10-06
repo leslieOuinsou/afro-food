@@ -117,3 +117,19 @@ test('décrit les conditions pour le client', () => {
   assert.match(lignes[0], /10 % de remise \(plafonnée à 10,00 €\)/);
   assert.ok(lignes.includes('Première commande uniquement'));
 });
+
+test('code récompense : −10 % + livraison offerte', () => {
+  const promo = { ...base, livraisonOfferte: true };
+  // 40 € de plats, 3,90 € de livraison → 4 € + 3,90 € de remise
+  assert.equal(calculerRemise(promo, 40, 3.9), 7.9);
+  // livraison déjà gratuite : seulement les 10 %
+  assert.equal(calculerRemise(promo, 40, 0), 4);
+});
+
+test('code personnel : réservé à son client', async () => {
+  const { evaluerPromo } = await import('../utils/promo.js');
+  const promo = { ...base, livraisonOfferte: true, clientId: 'client-a' };
+  const ctx = { sousTotal: 20, fraisLivraison: 3.9, lignes: [], nbCommandesClient: 1, nbUsagesClient: 0, maintenant };
+  assert.equal(evaluerPromo(promo, { ...ctx, clientId: 'client-b' }).ok, false);
+  assert.equal(evaluerPromo(promo, { ...ctx, clientId: 'client-a' }).ok, true);
+});
