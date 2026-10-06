@@ -23,6 +23,20 @@ type CommandeLivreur = {
 
 const money = (n: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n);
 
+/** Message clair selon l'erreur du GPS (avec le code pour le diagnostic). */
+function messageGps(err: GeolocationPositionError): string {
+  const enApp = /FBAN|FBAV|Instagram|WhatsApp|Line\/|Snapchat|; wv\)/i.test(navigator.userAgent);
+  if (err.code === err.PERMISSION_DENIED) {
+    return enApp
+      ? 'Localisation refusée (code 1). Tu es dans le navigateur intégré d’une application : ouvre ce lien directement dans Safari ou Chrome.'
+      : 'Localisation refusée (code 1). iPhone : Réglages > Confidentialité > Service de localisation > Safari (ou Chrome) > « Lorsque l’app est active ». Puis dans Safari : aA > Réglages du site web > Position > Autoriser, et recharge la page.';
+  }
+  if (err.code === err.POSITION_UNAVAILABLE) {
+    return 'Position introuvable (code 2). Va dehors ou près d’une fenêtre, vérifie que le Service de localisation est activé, puis réessaie.';
+  }
+  return 'Délai dépassé (code 3). Réessaie, en gardant l’écran allumé.';
+}
+
 export default function LivreurPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
@@ -125,11 +139,7 @@ export default function LivreurPage() {
         setInfoGps(`Position envoyée à ${new Date().toLocaleTimeString('fr-FR')}`);
       },
       (err) => {
-        setInfoGps(
-          err.code === err.PERMISSION_DENIED
-            ? 'Autorisation refusée : active la localisation pour ce site dans ton navigateur.'
-            : 'Position indisponible pour le moment.'
-        );
+        setInfoGps(messageGps(err));
         if (err.code === err.PERMISSION_DENIED) setPartage(false);
       },
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 }
@@ -210,7 +220,21 @@ export default function LivreurPage() {
                   onClick={() => {
                     setInfoGps('');
                     dernierEnvoi.current = 0;
-                    setPartage((v) => !v);
+                    if (partage) {
+                      setPartage(false);
+                      return;
+                    }
+                    if (!('geolocation' in navigator)) {
+                      setInfoGps("La géolocalisation n'est pas disponible sur cet appareil.");
+                      return;
+                    }
+                    // La demande d'autorisation doit partir directement du clic (obligatoire sur iPhone/Safari)
+                    setInfoGps('Autorise la localisation quand le téléphone te le demande…');
+                    navigator.geolocation.getCurrentPosition(
+                      () => setPartage(true),
+                      (err) => setInfoGps(messageGps(err)),
+                      { enableHighAccuracy: false, maximumAge: 60000, timeout: 20000 }
+                    );
                   }}
                   className={`rounded-full px-5 py-2 text-sm font-semibold text-white ${
                     partage ? 'bg-[var(--brick)]' : 'bg-[var(--ochre)] hover:bg-[#a6500c]'
