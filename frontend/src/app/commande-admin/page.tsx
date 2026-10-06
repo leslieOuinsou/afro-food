@@ -143,7 +143,7 @@ const changerStatut = async (commandeId: string, nouveauStatut: string) => {
   return (
     <AdminLayout>
       <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestion des Commandes</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Gestion des Commandes</h1>
             <p className="text-gray-600">Gérez et suivez toutes les commandes de votre restaurant</p>
             <p className="mt-2 text-sm text-gray-500">Actualisation automatique toutes les 8 secondes.</p>
           </div>
@@ -159,24 +159,24 @@ const changerStatut = async (commandeId: string, nouveauStatut: string) => {
           )}
 
           {/* Statistiques */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-6 mb-8">
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border">
               <h3 className="text-sm font-medium text-gray-500 mb-2">Total Commandes</h3>
               <p className="text-3xl font-bold text-gray-900">{statistiques.total}</p>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border">
               <h3 className="text-sm font-medium text-gray-500 mb-2">En Attente</h3>
               <p className="text-3xl font-bold text-yellow-600">{statistiques.enAttente}</p>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border">
               <h3 className="text-sm font-medium text-gray-500 mb-2">En Préparation</h3>
               <p className="text-3xl font-bold text-orange-600">{statistiques.enPreparation}</p>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border">
               <h3 className="text-sm font-medium text-gray-500 mb-2">En Livraison</h3>
               <p className="text-3xl font-bold text-purple-600">{statistiques.enLivraison}</p>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border">
               <h3 className="text-sm font-medium text-gray-500 mb-2">Revenus Livrés</h3>
               <p className="text-3xl font-bold text-green-600">{statistiques.revenus.toFixed(2)} €</p>
             </div>
