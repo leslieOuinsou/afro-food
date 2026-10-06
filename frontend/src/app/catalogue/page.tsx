@@ -579,7 +579,7 @@ function CataloguePageInner() {
               <span className="block text-[var(--ochre)]">Afro-food</span>
             </h1>
             <p className="mt-3 max-w-2xl text-sm text-[var(--wood)]/75 lg:text-base">
-              Recherche, tri et filtres — une grille 3 colonnes responsive, pensée “éditorial grand écran”.
+              Plats camerounais et béninois, boissons et spécialités : filtrez par région, catégorie ou budget.
             </p>
           </div>
 

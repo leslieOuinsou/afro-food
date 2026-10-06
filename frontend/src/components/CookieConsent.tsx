@@ -81,7 +81,7 @@ export default function CookieConsent() {
   if (vue === 'ferme') return null;
 
   const boutonBase =
-    'rounded-full px-5 py-2.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ochre)]';
+    'rounded-full px-3 py-2 text-sm font-semibold transition sm:px-5 sm:py-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ochre)]';
   // « Refuser » et « Accepter » ont le même poids visuel (exigence CNIL)
   const boutonPrincipal = `${boutonBase} bg-[var(--wood)] text-[var(--ivory)] hover:bg-[var(--wood)]/90`;
   const boutonSecondaire = `${boutonBase} border border-[var(--wood)]/25 text-[var(--wood)] hover:bg-[var(--wood)]/5`;
@@ -92,13 +92,13 @@ export default function CookieConsent() {
         role="dialog"
         aria-modal="false"
         aria-labelledby="cookie-titre"
-        className="fixed inset-x-0 bottom-0 z-[200] p-3 sm:p-4"
+        className="fixed inset-x-0 bottom-0 z-[200] p-2 sm:p-4"
       >
-        <div className="mx-auto max-w-4xl rounded-[24px] border border-[var(--wood)]/10 bg-[var(--ivory)] p-5 shadow-[0_18px_60px_rgba(44,26,14,.25)] sm:p-6">
-          <h2 id="cookie-titre" className="font-title text-2xl text-[var(--wood)]">
+        <div className="mx-auto max-w-4xl rounded-[20px] border border-[var(--wood)]/10 bg-[var(--ivory)] p-4 shadow-[0_18px_60px_rgba(44,26,14,.25)] sm:rounded-[24px] sm:p-6">
+          <h2 id="cookie-titre" className="font-title text-xl text-[var(--wood)] sm:text-2xl">
             Vos choix sur les cookies
           </h2>
-          <p className="mt-2 text-sm leading-relaxed text-[var(--wood)]/80">
+          <p className="mt-1.5 text-xs leading-snug text-[var(--wood)]/80 sm:mt-2 sm:text-sm sm:leading-relaxed">
             Nous utilisons des cookies indispensables au fonctionnement du site (connexion, panier). Avec votre accord,
             nous pouvons aussi en utiliser pour mesurer l&apos;audience et personnaliser nos offres. Vous pouvez changer
             d&apos;avis à tout moment.{' '}
@@ -106,8 +106,8 @@ export default function CookieConsent() {
               En savoir plus
             </Link>
           </p>
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
-            <button type="button" className={boutonSecondaire} onClick={() => setVue('preferences')}>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-4 sm:flex sm:flex-row sm:justify-end">
+            <button type="button" className={`${boutonSecondaire} col-span-2 sm:col-span-1`} onClick={() => setVue('preferences')}>
               Personnaliser
             </button>
             <button type="button" className={boutonPrincipal} onClick={() => valider(CONSENT_REFUSE)}>
