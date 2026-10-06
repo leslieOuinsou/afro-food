@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { getCommandes } from '@/services/adminCommandes';
+import { getAvis } from '@/services/adminAvis';
 import {
   NOTIFS_UPDATED_EVENT,
   ajouterNotif,
@@ -18,6 +19,7 @@ const money = (n: number) => new Intl.NumberFormat('fr-FR', { style: 'currency',
  */
 export default function AdminNotifier() {
   const idsConnus = useRef<Set<string> | null>(null);
+  const avisConnus = useRef<Set<string> | null>(null);
   const titreInitial = useRef('');
 
   useEffect(() => {
@@ -49,6 +51,25 @@ export default function AdminNotifier() {
           }
         }
         idsConnus.current = new Set(commandes.map((c) => c.id));
+
+        // Nouveaux avis clients
+        const res = await getAvis({ limite: 10 });
+        if (res.success && res.data) {
+          const cles = res.data.avis.map((a) => `${a.commandeId}-${a.note}`);
+          if (avisConnus.current) {
+            const fraisAvis = res.data.avis.filter((a) => !avisConnus.current!.has(`${a.commandeId}-${a.note}`));
+            fraisAvis.forEach((a) =>
+              ajouterNotif('admin', {
+                id: `avis-${a.commandeId}`,
+                titre: `Nouvel avis ${'★'.repeat(a.note)}${'☆'.repeat(5 - a.note)}`,
+                detail: `${a.client.nom || 'Client'}${a.commentaire ? ` · ${a.commentaire}` : ''}`,
+                href: '/admin-avis',
+              })
+            );
+            if (fraisAvis.length && sonActif('admin')) jouerBip();
+          }
+          avisConnus.current = new Set(cles);
+        }
       } catch {
         /* on réessaie au prochain passage */
       }

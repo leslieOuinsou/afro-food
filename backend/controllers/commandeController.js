@@ -9,6 +9,7 @@ import {
   envoyerEmailNouvelleCommandeAdmin,
   envoyerEmailMerciLivraison,
   envoyerEmailCodePromoMerci,
+  envoyerEmailAvisNegatif,
 } from '../utils/email.js';
 import { pushVersRole, pushVersUtilisateur } from '../utils/push.js';
 import { genererCodeRecompense } from '../utils/recompenses.js';
@@ -726,6 +727,23 @@ export const evaluerCommande = async (req, res, next) => {
       include: commandeInclude,
     });
 
+    // Alerte admin : push pour tout avis, e-mail si la note est de 2 étoiles ou moins
+    const eval_ = miseAJour.evaluation;
+    pushVersRole('admin', {
+      titre: `Nouvel avis ${'★'.repeat(note)}${'☆'.repeat(5 - note)}`,
+      corps: `${miseAJour.numeroCommande}${commentaire ? ` · ${String(commentaire).slice(0, 80)}` : ''}`,
+      url: '/admin-avis',
+    }).catch((err) => console.warn('Push avis non envoyé:', err.message));
+    if (note <= 2) {
+      const adresseAdmin = process.env.ADMIN_NOTIFICATION_EMAIL?.trim();
+      (adresseAdmin
+        ? Promise.resolve([{ email: adresseAdmin }])
+        : prisma.user.findMany({ where: { role: 'admin', estActif: true }, select: { email: true } })
+      )
+        .then((admins) => Promise.all(admins.map((a) => envoyerEmailAvisNegatif(a.email, miseAJour, eval_))))
+        .catch((err) => console.warn('Email avis négatif non envoyé:', err.message));
+    }
+
     res.status(200).json({
       success: true,
       message: 'Évaluation ajoutée avec succès',
@@ -1085,6 +1103,66 @@ export const mettreAJourPositionLivreur = async (req, res, next) => {
     });
 
     res.status(200).json({ success: true, message: 'Position enregistrée', data: null });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/commandes/avis — liste des avis clients (admin) avec note moyenne et répartition.
+ * Query : note (1-5, filtre), limite (≤ 100).
+ */
+export const obtenirAvis = async (req, res, next) => {
+  try {
+    const noteFiltre = parseInt(req.query.note, 10);
+    const limite = Math.max(1, Math.min(100, parseInt(req.query.limite, 10) || 50));
+
+    const commandes = await prisma.commande.findMany({
+      where: { evaluation: { not: null } },
+      select: {
+        id: true,
+        numeroCommande: true,
+        total: true,
+        evaluation: true,
+        informationsClient: true,
+        createdAt: true,
+      },
+    });
+
+    const tous = commandes
+      .filter((c) => typeof c.evaluation?.note === 'number')
+      .map((c) => ({
+        commandeId: c.id,
+        numeroCommande: c.numeroCommande,
+        total: c.total,
+        note: c.evaluation.note,
+        commentaire: c.evaluation.commentaire || null,
+        date: c.evaluation.dateEvaluation || c.createdAt,
+        client: {
+          nom: [c.informationsClient?.prenom, c.informationsClient?.nom].filter(Boolean).join(' '),
+          email: c.informationsClient?.email || null,
+        },
+      }))
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    const repartition = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    tous.forEach((a) => {
+      repartition[a.note] = (repartition[a.note] || 0) + 1;
+    });
+    const moyenne = tous.length ? tous.reduce((n, a) => n + a.note, 0) / tous.length : null;
+
+    const avis = (noteFiltre >= 1 && noteFiltre <= 5 ? tous.filter((a) => a.note === noteFiltre) : tous).slice(0, limite);
+
+    res.status(200).json({
+      success: true,
+      message: 'Avis récupérés avec succès',
+      data: {
+        avis,
+        total: tous.length,
+        moyenne: moyenne == null ? null : Math.round(moyenne * 10) / 10,
+        repartition,
+      },
+    });
   } catch (error) {
     next(error);
   }

@@ -9,6 +9,7 @@ const pageTitles: Record<string, string> = {
   '/commande-admin': 'Commandes',
   '/admin-plats': 'Gestion des Plats',
   '/admin-promos': 'Codes promo',
+  '/admin-avis': 'Avis clients',
   '/admin-messagerie': 'Messagerie',
   '/admin-parametres': 'Paramètres'
 };

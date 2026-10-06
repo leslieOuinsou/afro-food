@@ -10,7 +10,8 @@ import {
   changerStatutCommande,
   obtenirStatistiques,
   exporterCommandesCsv,
-  mettreAJourPositionLivreur
+  mettreAJourPositionLivreur,
+  obtenirAvis
 } from '../controllers/commandeController.js';
 import {
   protegerRoute,
@@ -50,6 +51,11 @@ router.get('/export/csv',
 router.get('/statistiques/general',
   restreindreAcces('admin'),
   obtenirStatistiques
+);
+
+router.get('/avis',
+  restreindreAcces('admin'),
+  obtenirAvis
 );
 
 router.get('/:id',
