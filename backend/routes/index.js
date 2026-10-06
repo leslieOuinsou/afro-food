@@ -9,6 +9,7 @@ import promoRoutes from './promoRoutes.js';
 import favoriRoutes from './favoriRoutes.js';
 import paiementRoutes from './paiementRoutes.js';
 import pushRoutes from './pushRoutes.js';
+import { obtenirAvisPublics } from '../controllers/commandeController.js';
 import { creerMessage } from '../controllers/contactMessageController.js';
 import { subscribe } from '../controllers/newsletterController.js';
 import {
@@ -47,6 +48,7 @@ router.use('/favoris', favoriRoutes);
 router.use('/paiements', paiementRoutes);
 router.use('/push', pushRoutes);
 
+router.get('/avis-publics', obtenirAvisPublics);
 router.post('/contact', creerMessage);
 router.post('/newsletter', subscribe);
 

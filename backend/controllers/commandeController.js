@@ -1167,3 +1167,47 @@ export const obtenirAvis = async (req, res, next) => {
     next(error);
   }
 };
+
+/** Note minimale d'un commentaire pour être affiché publiquement (la moyenne, elle, compte tous les avis). */
+const NOTE_MIN_AFFICHAGE_PUBLIC = 4;
+
+/**
+ * GET /api/avis-publics — note moyenne et derniers commentaires, sans authentification.
+ * Données minimales : prénom + initiale du nom, note, commentaire, date. Jamais d'e-mail.
+ */
+export const obtenirAvisPublics = async (req, res, next) => {
+  try {
+    const limite = Math.max(1, Math.min(12, parseInt(req.query.limite, 10) || 6));
+    const commandes = await prisma.commande.findMany({
+      where: { evaluation: { not: null } },
+      select: { evaluation: true, informationsClient: true, createdAt: true },
+    });
+    const tous = commandes
+      .filter((c) => typeof c.evaluation?.note === 'number')
+      .map((c) => {
+        const prenom = c.informationsClient?.prenom || '';
+        const initiale = (c.informationsClient?.nom || '').trim().charAt(0).toUpperCase();
+        return {
+          note: c.evaluation.note,
+          commentaire: (c.evaluation.commentaire || '').trim(),
+          date: c.evaluation.dateEvaluation || c.createdAt,
+          auteur: prenom ? `${prenom}${initiale ? ` ${initiale}.` : ''}` : 'Client',
+        };
+      });
+
+    const moyenne = tous.length ? tous.reduce((n, a) => n + a.note, 0) / tous.length : null;
+    const avis = tous
+      .filter((a) => a.commentaire && a.note >= NOTE_MIN_AFFICHAGE_PUBLIC)
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, limite);
+
+    res.set('Cache-Control', 'public, max-age=60, s-maxage=120');
+    res.status(200).json({
+      success: true,
+      message: 'Avis publics',
+      data: { moyenne: moyenne == null ? null : Math.round(moyenne * 10) / 10, total: tous.length, avis },
+    });
+  } catch (error) {
+    next(error);
+  }
+};

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import AvisClients from '@/components/AvisClients';
 import { useCart } from '@/context/CartContext';
 import {
   fetchCategories,
@@ -855,6 +856,7 @@ function CataloguePageInner() {
           </div>
         </div>
       </main>
+      <AvisClients />
       <Footer />
     </div>
   );
