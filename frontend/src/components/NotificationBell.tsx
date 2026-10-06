@@ -119,7 +119,7 @@ export default function NotificationBell({ role }: { role: NotifRole }) {
         <div
           role="dialog"
           aria-label="Notifications"
-          className="absolute right-0 top-12 z-[400] w-[min(92vw,360px)] overflow-hidden rounded-2xl bg-white text-gray-900 shadow-2xl ring-1 ring-gray-200"
+          className="fixed inset-x-2 top-[4.25rem] z-[400] max-h-[calc(100dvh-5.5rem)] overflow-hidden rounded-2xl bg-white text-gray-900 shadow-2xl ring-1 ring-gray-200 sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-[360px] sm:max-h-none"
         >
           <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-4 py-3">
             <p className="text-sm font-semibold">Notifications</p>
@@ -139,7 +139,7 @@ export default function NotificationBell({ role }: { role: NotifRole }) {
               )}
             </div>
           </div>
-          <ul className="max-h-[60vh] divide-y divide-gray-100 overflow-y-auto">
+          <ul className="max-h-[calc(100dvh-16rem)] divide-y divide-gray-100 overflow-y-auto sm:max-h-[60vh]">
             {notifs.length === 0 ? (
               <li className="px-4 py-8 text-center text-sm text-gray-500">Aucune notification pour le moment.</li>
             ) : (
