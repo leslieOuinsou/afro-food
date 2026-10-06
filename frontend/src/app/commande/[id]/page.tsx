@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import SuiviLivreurMap from '@/components/SuiviLivreurMap';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useAuth } from '@/context/AuthContext';
@@ -21,7 +22,7 @@ const ETAPES = [
 const STATUTS_FINAUX = ['livree', 'annulee', 'remboursee'];
 const POLL_MS = 15000;
 // Pendant la livraison : suivi plus fréquent pour voir le livreur avancer
-const POLL_LIVRAISON_MS = 5000;
+const POLL_LIVRAISON_MS = 4000;
 
 const money = (n?: number) =>
   new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n ?? 0);
@@ -30,12 +31,6 @@ const dateHeure = (iso?: string) =>
   iso
     ? new Date(iso).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
     : '';
-
-const urlCarte = (lat: number, lng: number) => {
-  const d = 0.008;
-  const bbox = [lng - d, lat - d, lng + d, lat + d].map((n) => n.toFixed(5)).join('%2C');
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat.toFixed(5)}%2C${lng.toFixed(5)}`;
-};
 
 const heureCourte = (iso: string) =>
   new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -265,15 +260,21 @@ function SuiviContent() {
               <h2 className="font-title text-2xl">Votre livreur est en route</h2>
               {commande.livraison?.positionLivreur ? (
                 <>
-                  <iframe
-                    title="Position du livreur"
-                    className="mt-4 h-72 w-full rounded-2xl border border-[var(--wood)]/10"
-                    loading="lazy"
-                    src={urlCarte(commande.livraison.positionLivreur.lat, commande.livraison.positionLivreur.lng)}
-                  />
+                  <div className="mt-4">
+                    <SuiviLivreurMap
+                      position={commande.livraison.positionLivreur}
+                      adresse={[
+                        commande.adresseLivraison?.adresse,
+                        commande.adresseLivraison?.codePostal,
+                        commande.adresseLivraison?.ville,
+                      ]
+                        .filter(Boolean)
+                        .join(', ')}
+                    />
+                  </div>
                   <p className="mt-2 text-xs text-[var(--wood)]/60">
-                    Position mise à jour à {heureCourte(commande.livraison.positionLivreur.date)} · la carte se
-                    rafraîchit automatiquement.
+                    Position mise à jour à {heureCourte(commande.livraison.positionLivreur.date)} · le scooter
+                    se déplace en direct sur la carte.
                   </p>
                 </>
               ) : (

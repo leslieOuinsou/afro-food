@@ -116,7 +116,7 @@ export default function LivreurPage() {
     const id = navigator.geolocation.watchPosition(
       (pos) => {
         const now = Date.now();
-        if (now - dernierEnvoi.current < 8000) return;
+        if (now - dernierEnvoi.current < 4000) return;
         dernierEnvoi.current = now;
         const { latitude: lat, longitude: lng } = pos.coords;
         idsEnCours.current.forEach((cid) => {
