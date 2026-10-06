@@ -1,9 +1,12 @@
 'use client';
 
+import { openCookieSettings } from '@/lib/consent';
+import { trackNewsletter } from '@/lib/analytics';
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useToast } from '@/context/ToastContext';
+import { subscribeNewsletter } from '@/services/newsletter';
 
 const WOOD = '#2C1A0E';
 const IVORY = '#FAF3E0';
@@ -104,7 +107,7 @@ export default function Footer() {
   const [lang, setLang] = useState('fr');
   const [busy, setBusy] = useState(false);
 
-  const onNewsletterSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const onNewsletterSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const trimmed = email.trim();
     if (!trimmed) {
@@ -112,11 +115,20 @@ export default function Footer() {
       return;
     }
     setBusy(true);
-    window.setTimeout(() => {
+    try {
+      const res = await subscribeNewsletter(trimmed);
+      if (res.success) {
+        trackNewsletter('footer');
+        setEmail('');
+        toast.success(res.message || 'Vous êtes inscrit·e à notre lettre d’information.', 'Merci !');
+      } else {
+        toast.info(res.message || 'Inscription impossible pour le moment.', 'Newsletter');
+      }
+    } catch {
+      toast.info('Inscription impossible pour le moment.', 'Newsletter');
+    } finally {
       setBusy(false);
-      setEmail('');
-      toast.success('Vous êtes inscrit·e à notre lettre d’information.', 'Merci !');
-    }, 400);
+    }
   };
 
   const year = new Date().getFullYear();
@@ -243,6 +255,16 @@ export default function Footer() {
                 <Link href="/privacy" className={linkClassName()}>
                   Confidentialité
                 </Link>
+              </li>
+              <li>
+                <Link href="/cookies" className={linkClassName()}>
+                  Politique de cookies
+                </Link>
+              </li>
+              <li>
+                <button type="button" onClick={openCookieSettings} className={linkClassName()}>
+                  Gérer les cookies
+                </button>
               </li>
             </ul>
           </div>

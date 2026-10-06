@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { trackViewItem } from '@/lib/analytics';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -151,7 +152,11 @@ export default function ProduitPage({ params }: { params: { id: string } }) {
     fetchPlatById(params.id)
       .then((res) => {
         if (cancelled) return;
-        if (res.success && res.data) setProduct(toView(res.data as Plat));
+        if (res.success && res.data) {
+          const vue = toView(res.data as Plat);
+          setProduct(vue);
+          trackViewItem({ item_id: vue.id, item_name: vue.nom, price: vue.prixUnitaire, quantity: 1 });
+        }
         else setProduct(fallback);
       })
       .catch(() => setProduct(fallback))

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {
   createContext,
   useCallback,
@@ -21,6 +22,10 @@ export type ToastOptions = {
   variant?: ToastVariant;
   /** Durée d’affichage en ms (défaut 3000) */
   duration?: number;
+  /** Vignette affichée à gauche (ex. photo du produit) */
+  image?: string;
+  /** Lien d’action à droite du message */
+  action?: { label: string; href: string };
 };
 
 type ToastRecord = ToastOptions & {
@@ -119,7 +124,7 @@ type ToastItemProps = {
 };
 
 function ToastItem({ record, onDismiss }: ToastItemProps) {
-  const { id, title, message, variant = 'info', duration } = record;
+  const { id, title, message, variant = 'info', duration, image, action } = record;
   const styles = variantStyles(variant);
   const [entered, setEntered] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -164,20 +169,35 @@ function ToastItem({ record, onDismiss }: ToastItemProps) {
       aria-live={live}
       aria-atomic="true"
       className={`relative pointer-events-auto w-full max-w-[min(100vw-2rem,22rem)] rounded-2xl border shadow-[0_12px_40px_rgba(44,26,14,.14)] transition-all duration-300 ease-out ${
-        entered && !leaving ? 'translate-x-0 opacity-100' : 'translate-x-[calc(100%+1rem)] opacity-0'
+        entered && !leaving ? 'translate-x-0 opacity-100' : 'translate-y-2 opacity-0 sm:translate-x-[calc(100%+1rem)] sm:translate-y-0'
       } ${styles.wrap}`}
     >
-      <div className="flex gap-3 p-4 pr-10">
-        <span className={`mt-0.5 ${styles.icon}`}>{variantIcon(variant)}</span>
+      <div className="flex items-center gap-3 p-3 pr-10 sm:p-4 sm:pr-10">
+        {image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={image} alt="" className="h-12 w-12 shrink-0 rounded-xl object-cover ring-1 ring-[var(--wood)]/10" />
+        ) : (
+          <span className={`mt-0.5 ${styles.icon}`}>{variantIcon(variant)}</span>
+        )}
         <div className="min-w-0 flex-1">
           {title ? (
-            <p className="font-ui text-sm font-semibold leading-snug text-[var(--wood)]">{title}</p>
+            <p className={`font-ui text-sm font-semibold leading-snug text-[var(--wood)] ${image ? 'truncate' : ''}`}>{title}</p>
           ) : null}
           <p
             className={`font-ui text-sm leading-relaxed text-[var(--wood)]/90 ${title ? 'mt-1' : ''}`}
           >
+            {image && variant === 'success' ? <span className={`mr-1 font-bold ${styles.icon}`}>✓</span> : null}
             {message}
           </p>
+          {action ? (
+            <Link
+              href={action.href}
+              onClick={handleManualClose}
+              className="mt-1.5 inline-block font-ui text-xs font-bold text-[var(--ochre)] underline-offset-2 hover:underline"
+            >
+              {action.label} →
+            </Link>
+          ) : null}
         </div>
       </div>
       <div className="h-0.5 w-full overflow-hidden bg-[var(--wood)]/10">
@@ -246,7 +266,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
       <div
-        className="pointer-events-none fixed bottom-0 right-0 z-[250] flex max-h-[100dvh] w-full flex-col-reverse items-end gap-3 overflow-visible p-4 sm:p-5"
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-[250] flex max-h-[100dvh] flex-col-reverse items-center gap-2 overflow-visible p-3 sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-20 sm:w-auto sm:flex-col sm:items-end sm:gap-3 sm:p-5"
         aria-label="Notifications"
       >
         {toasts.map((t) => (

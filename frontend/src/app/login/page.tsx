@@ -1,6 +1,9 @@
 'use client';
 
 import { Suspense, useCallback, useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { accueilPourRole, cheminAutorise } from '@/components/RoleGuard';
+import { trackLogin } from '@/lib/analytics';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { login, TOKEN_KEY } from '@/services/auth';
@@ -25,13 +28,15 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const redirect = searchParams.get('redirect') || '/';
+  const { refresh } = useAuth();
+  const redirect = searchParams.get('redirect') || '/catalogue';
   const apresInscription = searchParams.get('inscription') === 'ok';
   const apresResetMotDePasse = searchParams.get('reset') === 'ok';
 
   const [email, setEmail] = useState('');
   const [motDePasse, setMotDePasse] = useState('');
   const [remember, setRemember] = useState(true);
+  const [afficherMdp, setAfficherMdp] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [erreurGlobal, setErreurGlobal] = useState('');
@@ -66,7 +71,19 @@ function LoginForm() {
             /* ignore */
           }
         }
-        router.push(redirect);
+        trackLogin();
+        // Sans destination demandée : le livreur et l'admin arrivent directement dans leur espace
+        // Chaque rôle arrive dans son espace : client → catalogue, admin → gestion, livreur → livraisons
+        const role = res.data.user?.role;
+        const demande = searchParams.get('redirect');
+        const destination =
+          demande && cheminAutorise(role, demande)
+            ? demande
+            : role === 'admin' || role === 'livreur'
+              ? accueilPourRole(role)
+              : demande || accueilPourRole(role);
+        await refresh(); // le profil est chargé avant d'entrer dans l'espace (évite un renvoi vers /login)
+        router.push(destination);
         router.refresh();
         return;
       }
@@ -173,9 +190,10 @@ function LoginForm() {
                   Mot de passe oublié ?
                 </Link>
               </div>
+              <div className="relative">
               <input
                 id="login-password"
-                type="password"
+                type={afficherMdp ? 'text' : 'password'}
                 autoComplete="current-password"
                 value={motDePasse}
                 onChange={(e) => {
@@ -185,13 +203,32 @@ function LoginForm() {
                 onBlur={() => runPasswordValidation(motDePasse)}
                 aria-invalid={!!passwordError}
                 aria-describedby={passwordError ? 'login-password-error' : undefined}
-                className={`w-full rounded-2xl border bg-white px-4 py-3 font-ui text-sm text-[#2C1A0E] outline-none transition placeholder:text-[#2C1A0E]/35 focus:ring-2 ${
+                className={`w-full rounded-2xl border bg-white py-3 pl-4 pr-12 font-ui text-sm text-[#2C1A0E] outline-none transition placeholder:text-[#2C1A0E]/35 focus:ring-2 ${
                   passwordError
                     ? 'border-red-400 focus:border-red-500 focus:ring-red-200'
                     : 'border-[#2C1A0E]/12 focus:border-[#C2610F]/50 focus:ring-[#C2610F]/20'
                 }`}
                 placeholder="••••••••"
               />
+              <button
+                type="button"
+                onClick={() => setAfficherMdp((v) => !v)}
+                aria-label={afficherMdp ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                aria-pressed={afficherMdp}
+                className="absolute inset-y-0 right-0 flex w-12 items-center justify-center rounded-r-2xl text-[#2C1A0E]/55 transition hover:text-[#C2610F] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C2610F]/40"
+              >
+                {afficherMdp ? (
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" aria-hidden>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18M10.6 10.6a2 2 0 002.8 2.8M9.9 5.1A9.8 9.8 0 0112 5c4.5 0 8.3 2.9 9.5 7a10.4 10.4 0 01-2.7 4.3M6.6 6.6A10.4 10.4 0 002.5 12c1.2 4.1 5 7 9.5 7 1.7 0 3.3-.4 4.7-1.2" />
+                  </svg>
+                ) : (
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" aria-hidden>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.5 12C3.7 7.9 7.5 5 12 5s8.3 2.9 9.5 7c-1.2 4.1-5 7-9.5 7s-8.3-2.9-9.5-7z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+              </div>
               {passwordError ? (
                 <p id="login-password-error" className="mt-1.5 font-ui text-xs font-medium text-red-700" role="alert">
                   {passwordError}

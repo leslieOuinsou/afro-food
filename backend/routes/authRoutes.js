@@ -23,7 +23,7 @@ import {
   validerProfilUpdate,
   validerChangementMotDePasse,
   validerAdresse,
-  validerIdMongoDB
+  validerId
 } from '../middleware/validation.js';
 
 const router = express.Router();
@@ -65,6 +65,6 @@ router.get('/verifier', verifierAuthentification);
 
 // Routes pour la gestion des adresses
 router.post('/adresses', validerAdresse, ajouterAdresse);
-router.delete('/adresses/:adresseId', validerIdMongoDB('adresseId'), supprimerAdresse);
+router.delete('/adresses/:adresseId', validerId('adresseId'), supprimerAdresse);
 
 export default router;

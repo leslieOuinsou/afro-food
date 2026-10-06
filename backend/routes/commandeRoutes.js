@@ -1,13 +1,16 @@
 import express from 'express';
 import {
   creerCommande,
+  validerCodePromo,
   obtenirMesCommandes,
   obtenirCommandeParId,
   annulerCommande,
   evaluerCommande,
   obtenirToutesCommandes,
   changerStatutCommande,
-  obtenirStatistiques
+  obtenirStatistiques,
+  exporterCommandesCsv,
+  mettreAJourPositionLivreur
 } from '../controllers/commandeController.js';
 import {
   protegerRoute,
@@ -16,7 +19,7 @@ import {
 } from '../middleware/auth.js';
 import {
   validerCommande,
-  validerIdMongoDB,
+  validerId,
   validerPagination
 } from '../middleware/validation.js';
 
@@ -27,6 +30,7 @@ router.use(protegerRoute);
 
 // Routes pour les clients
 router.post('/', validerCommande, creerCommande);
+router.post('/promo/valider', validerCodePromo);
 
 router.get('/mes-commandes',
   validerPagination,
@@ -39,30 +43,40 @@ router.get('/',
   validerPagination,
   obtenirToutesCommandes
 );
+router.get('/export/csv',
+  restreindreAcces('admin'),
+  exporterCommandesCsv
+);
 router.get('/statistiques/general',
   restreindreAcces('admin'),
   obtenirStatistiques
 );
 
 router.get('/:id',
-  validerIdMongoDB(),
+  validerId(),
   obtenirCommandeParId
 );
 
 router.patch('/:id/annuler',
-  validerIdMongoDB(),
+  validerId(),
   annulerCommande
 );
 
 router.post('/:id/evaluer',
-  validerIdMongoDB(),
+  validerId(),
   evaluerCommande
 );
 
 router.patch('/:id/statut',
   restreindreAcces('admin', 'livreur'),
-  validerIdMongoDB(),
+  validerId(),
   changerStatutCommande
+);
+
+router.patch('/:id/position',
+  restreindreAcces('admin', 'livreur'),
+  validerId(),
+  mettreAJourPositionLivreur
 );
 
 export default router;

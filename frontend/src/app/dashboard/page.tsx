@@ -376,7 +376,11 @@ function DashboardContent() {
                       <tbody>
                         {orders.map((o) => (
                           <tr key={o.id} className="border-t border-[var(--wood)]/10">
-                            <td className="px-6 py-4 font-mono text-[var(--wood)]">{o.id}</td>
+                            <td className="px-6 py-4 font-mono text-[var(--wood)]">
+                              <Link href={`/commande/${o.backendId}`} className="hover:underline">
+                                {o.id}
+                              </Link>
+                            </td>
                             <td className="px-6 py-4 text-[var(--wood)]/80">{o.date}</td>
                             <td className="max-w-[240px] px-6 py-4 text-[var(--wood)]/80">{o.items}</td>
                             <td className="px-6 py-4 font-semibold">{o.total}</td>

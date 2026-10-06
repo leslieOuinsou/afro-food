@@ -1,17 +1,26 @@
 // Fichier principal des routes API
-// Ce fichier centralise toutes les routes de l'API Afro-Food
-
 import express from 'express';
 import authRoutes from './authRoutes.js';
 import platRoutes from './platRoutes.js';
 import commandeRoutes from './commandeRoutes.js';
 import avisRoutes from './avisRoutes.js';
 import messageRoutes from './messageRoutes.js';
+import promoRoutes from './promoRoutes.js';
+import favoriRoutes from './favoriRoutes.js';
+import paiementRoutes from './paiementRoutes.js';
+import pushRoutes from './pushRoutes.js';
 import { creerMessage } from '../controllers/contactMessageController.js';
+import { subscribe } from '../controllers/newsletterController.js';
+import {
+  obtenirParametres,
+  mettreAJourParametres,
+  obtenirParametresLivraison,
+} from '../controllers/settingsController.js';
+import { protegerRoute, restreindreAcces } from '../middleware/auth.js';
+import prisma from '../lib/prisma.js';
 
-const router = express.Router(); // Création d'un routeur Express pour gérer les routes
+const router = express.Router();
 
-// Middleware pour logger toutes les requêtes API en mode développement
 if (process.env.NODE_ENV === 'development') {
   router.use((req, res, next) => {
     console.log(`📡 API: ${req.method} ${req.originalUrl} - IP: ${req.ip}`);
@@ -19,57 +28,71 @@ if (process.env.NODE_ENV === 'development') {
   });
 }
 
-// Route de test pour vérifier que l'API fonctionne
 router.get('/test', (req, res) => {
-  res.json({ 
+  res.json({
     success: true,
     message: 'API Afro-Food fonctionnelle!',
     timestamp: new Date().toISOString(),
-    version: '1.0.0'
+    version: '1.0.0',
   });
 });
 
-// Routes principales de l'API
-router.use('/auth', authRoutes);           // Routes d'authentification
-router.use('/plats', platRoutes);          // Routes pour les plats
-router.use('/commandes', commandeRoutes);  // Routes pour les commandes
-router.use('/avis', avisRoutes);           // Routes pour les avis
-router.use('/messages', messageRoutes);    // Routes messagerie (admin)
+router.use('/auth', authRoutes);
+router.use('/plats', platRoutes);
+router.use('/commandes', commandeRoutes);
+router.use('/avis', avisRoutes);
+router.use('/messages', messageRoutes);
+router.use('/promos', promoRoutes);
+router.use('/favoris', favoriRoutes);
+router.use('/paiements', paiementRoutes);
+router.use('/push', pushRoutes);
 
-// Envoi message depuis la page contact (public)
 router.post('/contact', creerMessage);
+router.post('/newsletter', subscribe);
 
-// Route pour les statistiques générales (publique)
+router.get('/settings/livraison', obtenirParametresLivraison);
+router.get('/settings', protegerRoute, restreindreAcces('admin'), obtenirParametres);
+router.put('/settings', protegerRoute, restreindreAcces('admin'), mettreAJourParametres);
+
 router.get('/statistiques', async (req, res, next) => {
   try {
-    const { Plat, Commande, User, Avis } = await import('../models/index.js');
-    
-    // Statistiques basiques (sans informations sensibles)
-    const stats = {
-      nombrePlats: await Plat.countDocuments({ disponible: true }),
-      nombreCategories: (await Plat.distinct('categorie')).length,
-      nombrePays: (await Plat.distinct('origineAfricaine.pays')).filter(p => p !== 'multiple').length,
-      nombreTotalCommandes: await Commande.countDocuments({ statut: 'livree' }),
-      nombreUtilisateursActifs: await User.countDocuments({ estActif: true, role: 'client' }),
-      nombreAvis: await Avis.countDocuments({ statut: 'approuve' })
-    };
-    
+    const [nombrePlats, categories, platsPays, nombreTotalCommandes, nombreUtilisateursActifs, nombreAvis] =
+      await Promise.all([
+        prisma.plat.count({ where: { disponible: true } }),
+        prisma.plat.findMany({ select: { categorie: true }, distinct: ['categorie'] }),
+        prisma.plat.findMany({ select: { origineAfricaine: true } }),
+        prisma.commande.count({ where: { statut: 'livree' } }),
+        prisma.user.count({ where: { estActif: true, role: 'client' } }),
+        prisma.avis.count({ where: { statut: 'approuve' } }),
+      ]);
+
+    const paysSet = new Set();
+    for (const p of platsPays) {
+      const pays = p.origineAfricaine?.pays;
+      if (pays && pays !== 'multiple') paysSet.add(pays);
+    }
+
     res.json({
       success: true,
       message: 'Statistiques récupérées avec succès',
-      data: stats
+      data: {
+        nombrePlats,
+        nombreCategories: categories.length,
+        nombrePays: paysSet.size,
+        nombreTotalCommandes,
+        nombreUtilisateursActifs,
+        nombreAvis,
+      },
     });
-    
   } catch (error) {
     next(error);
   }
 });
 
-// Route pour obtenir les informations de l'API
 router.get('/info', (req, res) => {
   res.json({
     success: true,
-    message: 'Informations de l\'API Afro-Food',
+    message: "Informations de l'API Afro-Food",
     data: {
       nom: 'API Afro-Food',
       description: 'API RESTful pour application de commande de plats africains',
@@ -78,11 +101,14 @@ router.get('/info', (req, res) => {
         authentification: '/api/auth',
         plats: '/api/plats',
         commandes: '/api/commandes',
-        avis: '/api/avis'
+        avis: '/api/avis',
+        promos: '/api/promos',
+        newsletter: '/api/newsletter',
+        settings: '/api/settings',
       },
       documentation: 'https://api.afro-food.com/docs',
-      support: 'support@afro-food.com'
-    }
+      support: 'support@afro-food.com',
+    },
   });
 });
 

@@ -3,7 +3,8 @@
 import type { ReactNode } from 'react';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 import { getUnreadCount } from '@/services/adminMessages';
 
 interface NavItem {
@@ -37,6 +38,15 @@ const navItems: NavItem[] = [
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+      </svg>
+    )
+  },
+  {
+    href: '/admin-promos',
+    label: 'Codes promo',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5a1.99 1.99 0 011.414.586l7 7a2 2 0 010 2.828l-5 5a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" />
       </svg>
     )
   },
@@ -80,6 +90,8 @@ interface AdminSidebarProps {
 
 export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -176,6 +188,25 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
             <div className="space-y-1">
               {settingsItems.map((item) => {
                 const active = isActive(item.href);
+                if (item.href === '/login') {
+                  // Vraie déconnexion (efface la session) puis retour à la page de connexion
+                  return (
+                    <button
+                      key={item.href}
+                      type="button"
+                      onClick={async () => {
+                        handleLinkClick();
+                        await logout();
+                        router.push('/login');
+                        router.refresh();
+                      }}
+                      className="flex w-full items-center gap-3 px-4 py-3 rounded-lg text-left text-blue-100 transition-all duration-200 hover:bg-blue-800 hover:text-white"
+                    >
+                      <span>{item.icon}</span>
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                }
                 return (
                   <Link
                     key={item.href}
@@ -203,7 +234,7 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
             </div>
             <div className="flex-1">
               <p className="text-sm font-semibold text-white">Admin</p>
-              <p className="text-xs text-blue-200">admin@afrimiam.com</p>
+              <p className="text-xs text-blue-200">{user?.email ?? ''}</p>
             </div>
           </div>
         </div>

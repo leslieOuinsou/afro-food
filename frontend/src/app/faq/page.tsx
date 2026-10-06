@@ -105,11 +105,14 @@ const SECTIONS: FaqSection[] = [
       {
         id: 'pay-2',
         question: 'Puis-je utiliser un code promo ?',
-        searchText: 'code promo réduction afro10',
+        searchText: 'code promo réduction bienvenue première commande minimum',
         answer: (
           <AnswerP>
-            Oui : entrez votre code dans le récapitulatif du panier avant de valider. Les codes valides (ex. offres
-            promotionnelles) sont appliqués au sous-total. Consultez aussi nos{' '}
+            Oui : entrez votre code dans le récapitulatif du panier avant de valider. Chaque code a ses conditions
+            (montant minimum, première commande uniquement, nombre d&apos;utilisations par client, catégories de plats
+            concernées, date de fin), affichées dès qu&apos;il est appliqué. La remise s&apos;applique aux plats ; un code
+            « livraison offerte » prend en charge les frais de livraison. Si votre panier ne respecte plus les
+            conditions, le code est retiré automatiquement. Consultez aussi nos{' '}
             <Link href="/blog" className="font-semibold text-af-ocre underline decoration-af-ocre/40 underline-offset-2 hover:decoration-af-ocre">
               articles
             </Link>{' '}

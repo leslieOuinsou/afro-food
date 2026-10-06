@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { trackContact } from '@/lib/analytics';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { envoyerMessageContact } from '@/services/contact';
@@ -83,6 +84,7 @@ export default function ContactPage() {
     });
     setLoading(false);
     if (res.success) {
+      trackContact();
       showToast('Message envoyé — nous vous répondons très bientôt.');
       setNom('');
       setEmail('');

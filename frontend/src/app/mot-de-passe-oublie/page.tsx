@@ -1,8 +1,10 @@
 'use client';
 
 import { Suspense, useCallback, useEffect, useState } from 'react';
+import PasswordField from '@/components/PasswordField';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { trackPasswordReset } from '@/lib/analytics';
 import { forgotPassword, resetPassword } from '@/services/auth';
 
 function validateEmail(value: string): string | null {
@@ -127,6 +129,7 @@ function MotDePasseOublieContent() {
         );
         return;
       }
+      trackPasswordReset('demande');
     } catch (err) {
       setErreurGlobal(err instanceof Error ? err.message : 'Erreur réseau. Réessayez.');
       return;
@@ -143,6 +146,8 @@ function MotDePasseOublieContent() {
       const res = await forgotPassword(email);
       if (!res.success) {
         setErreurGlobal(res.message || 'Impossible de renvoyer l’e-mail maintenant.');
+      } else {
+        trackPasswordReset('renvoi');
       }
     } catch (err) {
       setErreurGlobal(err instanceof Error ? err.message : 'Erreur réseau. Réessayez.');
@@ -180,6 +185,7 @@ function MotDePasseOublieContent() {
         } catch {
           /* ignore */
         }
+        trackPasswordReset('reussie');
         router.push('/login?reset=ok');
         router.refresh();
         return;
@@ -342,9 +348,8 @@ function MotDePasseOublieContent() {
                   <label htmlFor="reset-mp" className="mb-1.5 block font-ui text-sm font-semibold">
                     Nouveau mot de passe
                   </label>
-                  <input
+                  <PasswordField
                     id="reset-mp"
-                    type="password"
                     autoComplete="new-password"
                     value={motDePasse}
                     onChange={(e) => {
@@ -369,9 +374,8 @@ function MotDePasseOublieContent() {
                   <label htmlFor="reset-mp2" className="mb-1.5 block font-ui text-sm font-semibold">
                     Confirmer le mot de passe
                   </label>
-                  <input
+                  <PasswordField
                     id="reset-mp2"
-                    type="password"
                     autoComplete="new-password"
                     value={confirmation}
                     onChange={(e) => {

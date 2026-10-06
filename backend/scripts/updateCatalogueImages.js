@@ -1,14 +1,11 @@
 /**
- * Met à jour images.principale (photos Wikimedia Commons, plats réels).
- * Gère les alias de slug selon la génération Mongoose (apostrophes, accents).
+ * Met à jour images.principale (photos Wikimedia Commons).
  * Usage : depuis backend → node scripts/updateCatalogueImages.js
  */
-
-import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import Plat from '../models/Plat.js';
+import prisma from '../lib/prisma.js';
 import { platsBenin, imagesCommons } from './data/platsBenin.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -23,12 +20,11 @@ const seedBaseSlugs = {
   'jus-de-bissap': imagesCommons.jusBissap,
   'jus-de-baobab': imagesCommons.baobabFruit,
   'jus-de-pasteque': imagesCommons.pasteque,
-  /** en base Mongoose génère souvent sans apostrophe */
   'jus-dananas': imagesCommons.ananas,
+  'jus-d-ananas': imagesCommons.ananas,
   'poulet-yassa': 'https://upload.wikimedia.org/wikipedia/commons/d/dd/Poulet_yassa.jpg',
 };
 
-/** Slugs en base ≠ slugs « canon » dans le code */
 const slugAliases = {
   'soupe-pistache-boeuf': ['soupe-pistache-au-buf'],
   'salade-avocat-crevettes': ['salade-davocat-aux-crevettes'],
@@ -47,16 +43,21 @@ async function setImageBySlug(slug, url) {
   const aliases = slugAliases[slug] || [];
   const trySlugs = [slug, ...aliases];
   for (const s of trySlugs) {
-    const r = await Plat.updateOne({ slug: s }, { $set: { 'images.principale': url } });
-    if (r.matchedCount) return true;
+    const plat = await prisma.plat.findUnique({ where: { slug: s } });
+    if (!plat) continue;
+    const images = typeof plat.images === 'object' && plat.images ? { ...plat.images } : {};
+    images.principale = url;
+    await prisma.plat.update({
+      where: { id: plat.id },
+      data: { images, derniereModification: new Date() },
+    });
+    return true;
   }
   return false;
 }
 
 async function run() {
-  const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/afro-food';
-  await mongoose.connect(mongoURI);
-  console.log('✅ Connecté à MongoDB\n');
+  console.log('✅ Connexion PostgreSQL (Prisma)\n');
 
   const map = buildSlugToUrl();
   let ok = 0;
@@ -73,22 +74,13 @@ async function run() {
     }
   }
 
-  await Plat.deleteMany({ nom: 'Jollof Rice au Poulet', $or: [{ slug: null }, { slug: { $exists: false } }] });
-  const jollof = await Plat.updateOne(
-    { slug: 'jollof-rice-au-poulet' },
-    { $set: { 'images.principale': imagesCommons.jollofRiz } }
-  );
-  if (jollof.matchedCount) {
-    console.log('✅ jollof-rice-au-poulet (image seule)');
-    ok += 1;
-  }
-
-  await mongoose.connection.close();
-  console.log(`\nTerminé. ${ok} mise(s) à jour, ${miss} slug(s) non trouvé(s) dans la base.`);
+  await prisma.$disconnect();
+  console.log(`\nTerminé. ${ok} mise(s) à jour, ${miss} slug(s) non trouvé(s).`);
   process.exit(0);
 }
 
-run().catch((err) => {
+run().catch(async (err) => {
   console.error('❌', err.message);
+  await prisma.$disconnect();
   process.exit(1);
 });

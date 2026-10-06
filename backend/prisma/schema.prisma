@@ -1,0 +1,456 @@
+// Afro-Food — schéma PostgreSQL via Prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  client
+  admin
+  livreur
+}
+
+enum RegimeAlimentaire {
+  aucun
+  vegetarien
+  vegan
+  halal
+  kasher
+}
+
+enum NiveauEpice {
+  doux
+  moyen
+  epicee
+  tres_epicee @map("tres-epicee")
+}
+
+enum CategoriePlat {
+  entrees
+  plats_principaux       @map("plats-principaux")
+  accompagnements
+  desserts
+  boissons
+  specialites_africaines @map("specialites-africaines")
+  vegetarien
+  vegan
+}
+
+enum PaysOrigine {
+  cameroun
+  benin
+  senegal
+  cote_ivoire  @map("cote-ivoire")
+  mali
+  burkina_faso @map("burkina-faso")
+  ghana
+  togo
+  niger
+  guinee
+  multiple
+}
+
+enum StatutCommande {
+  en_attente
+  confirmee
+  en_preparation
+  prete
+  en_livraison
+  livree
+  annulee
+  remboursee
+}
+
+enum MethodePaiement {
+  carte
+  especes
+  mobile
+  virement
+}
+
+enum StatutPaiement {
+  en_attente
+  valide
+  echec
+  rembourse
+}
+
+enum TypeLivraison {
+  domicile
+  point_relais
+  retrait_sur_place
+}
+
+enum StatutAvis {
+  en_attente
+  approuve
+  rejete
+  signale
+}
+
+enum StatutMessage {
+  non_lu
+  lu
+  repondu
+}
+
+model User {
+  id                     String    @id @default(cuid())
+  nom                    String
+  prenom                 String
+  email                  String    @unique
+  telephone              String    @unique
+  motDePasse             String
+  role                   Role      @default(client)
+  preferences            Json      @default("{\"allergies\":[],\"regimeAlimentaire\":\"aucun\",\"niveauEpice\":\"moyen\"}")
+  estActif               Boolean   @default(true)
+  emailVerifie           Boolean   @default(false)
+  telephoneVerifie       Boolean   @default(false)
+  tokenVerificationEmail String?
+  expirationTokenEmail   DateTime?
+  tokenResetMotDePasse   String?
+  expirationTokenReset   DateTime?
+  nombreCommandes        Int       @default(0)
+  montantTotalCommandes  Float     @default(0)
+  derniereConnexion      DateTime?
+  avatar                 String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  adresses           Adresse[]
+  commandes          Commande[]           @relation("ClientCommandes")
+  livraisons         Commande[]           @relation("LivreurCommandes")
+  avis               Avis[]
+  platsCrees         Plat[]               @relation("PlatAdmin")
+  votesAvis          AvisVote[]
+  signalementsAvis   AvisSignalement[]
+  historiqueStatuts  HistoriqueStatut[]
+  reponsesAvis       Avis[]               @relation("ReponseAvisAuteur")
+  favoris            Favori[]
+  pushSubscriptions  PushSubscription[]
+
+  @@index([role])
+  @@map("users")
+}
+
+model Adresse {
+  id         String  @id @default(cuid())
+  type       String  @default("domicile")
+  nom        String
+  adresse    String
+  ville      String
+  codePostal String
+  pays       String  @default("France")
+  parDefaut  Boolean @default(false)
+  userId     String
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("adresses")
+}
+
+model Plat {
+  id                  String        @id @default(cuid())
+  nom                 String
+  description         String
+  descriptionLongue   String?
+  prix                Float
+  prixPromo           Float?
+  categorie           String
+  sousCategorie       String?
+  origineAfricaine    Json
+  images              Json
+  nutrition           Json?
+  allergenes          String[]      @default([])
+  regimesCompatibles  String[]      @default([])
+  niveauEpice         String        @default("moyen")
+  ingredients         Json          @default("[]")
+  tempsPreparation    Int?
+  disponible          Boolean       @default(true)
+  enRupture           Boolean       @default(false)
+  quantiteDisponible  Int?
+  notemoyenne         Float         @default(0)
+  nombreAvis          Int           @default(0)
+  nombreCommandes     Int           @default(0)
+  tags                String[]      @default([])
+  slug                String        @unique
+  metaDescription     String?
+  creeParAdminId      String?
+  creeParAdmin        User?         @relation("PlatAdmin", fields: [creeParAdminId], references: [id], onDelete: SetNull)
+  derniereModification DateTime     @default(now())
+  estMisEnAvant       Boolean       @default(false)
+  estNouveaute        Boolean       @default(false)
+  dateFinNouveaute    DateTime?
+  variations          Json          @default("[]")
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  articles ArticleCommande[]
+  avis     Avis[]
+  favoris  Favori[]
+
+  @@index([categorie])
+  @@index([disponible, enRupture])
+  @@index([nombreCommandes])
+  @@index([notemoyenne])
+  @@index([nom])
+  @@map("plats")
+}
+
+model Commande {
+  id                  String         @id @default(cuid())
+  numeroCommande      String         @unique
+  clientId            String
+  client              User           @relation("ClientCommandes", fields: [clientId], references: [id])
+  informationsClient  Json
+  adresseLivraison    Json
+  montants            Json
+  statut              StatutCommande @default(en_attente)
+
+  // Colonnes typées (requêtes SQL / statistiques). Les Json montants/paiement restent pour l'API.
+  sousTotal           Float          @default(0)
+  fraisLivraison      Float          @default(0)
+  taxes               Float          @default(0)
+  remise              Float          @default(0)
+  total               Float          @default(0)
+  codePromo           String?
+  methodePaiement     MethodePaiement @default(carte)
+  statutPaiement      StatutPaiement  @default(en_attente)
+  paiementReference   String?
+
+  promoCodeId         String?
+  promoCode           PromoCode?     @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+
+  paiement            Json
+  livraison           Json
+  dates               Json
+  preferences         Json?
+  evaluation          Json?
+  serviceClient       Json?
+  source              String         @default("web")
+  deviceInfo          Json?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  // livreur optionnel (dénormalisé aussi dans livraison Json)
+  livreurId String?
+  livreur   User?   @relation("LivreurCommandes", fields: [livreurId], references: [id], onDelete: SetNull)
+
+  articles          ArticleCommande[]
+  historiqueStatuts HistoriqueStatut[]
+  avis              Avis[]
+
+  @@index([clientId, createdAt])
+  @@index([statut])
+  @@index([createdAt])
+  @@index([statutPaiement])
+  @@index([livreurId])
+  @@map("commandes")
+}
+
+model ArticleCommande {
+  id               String   @id @default(cuid())
+  commandeId       String
+  commande         Commande @relation(fields: [commandeId], references: [id], onDelete: Cascade)
+  platId           String
+  plat             Plat     @relation(fields: [platId], references: [id])
+  informationsPlat Json
+  quantite         Int
+  prixUnitaire     Float
+  variations       Json     @default("[]")
+  instructions     String?
+  sousTotal        Float
+
+  @@index([commandeId])
+  @@index([platId])
+  @@map("articles_commande")
+}
+
+model HistoriqueStatut {
+  id             String         @id @default(cuid())
+  commandeId     String
+  commande       Commande       @relation(fields: [commandeId], references: [id], onDelete: Cascade)
+  statut         StatutCommande
+  dateChangement DateTime       @default(now())
+  commentaire    String?
+  modifieParId   String?
+  modifiePar     User?          @relation(fields: [modifieParId], references: [id], onDelete: SetNull)
+
+  @@index([commandeId])
+  @@map("historique_statuts")
+}
+
+model Avis {
+  id                String     @id @default(cuid())
+  platId            String
+  plat              Plat       @relation(fields: [platId], references: [id], onDelete: Cascade)
+  utilisateurId     String
+  utilisateur       User       @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  commandeId        String
+  commande          Commande   @relation(fields: [commandeId], references: [id], onDelete: Cascade)
+  note              Int
+  titre             String?
+  commentaire       String
+  evaluations       Json?
+  recommande        Boolean
+  photos            Json       @default("[]")
+  tags              String[]   @default([])
+  statut            StatutAvis @default(en_attente)
+  dateApprobation   DateTime?
+  modereParId       String?
+  raisonRejet       String?
+  utile             Int        @default(0)
+  pasUtile          Int        @default(0)
+  reponseContenu    String?
+  reponseDate       DateTime?
+  reponseAuteurId   String?
+  reponseAuteur     User?      @relation("ReponseAvisAuteur", fields: [reponseAuteurId], references: [id], onDelete: SetNull)
+  langue            String     @default("fr")
+  adresseIP         String?
+  userAgent         String?
+  achatVerifie      Boolean    @default(false)
+  dateAchat         DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  votants       AvisVote[]
+  signalements  AvisSignalement[]
+
+  @@unique([utilisateurId, commandeId, platId])
+  @@index([platId, createdAt])
+  @@index([utilisateurId])
+  @@index([statut])
+  @@map("avis")
+}
+
+model AvisVote {
+  id            String   @id @default(cuid())
+  avisId        String
+  avis          Avis     @relation(fields: [avisId], references: [id], onDelete: Cascade)
+  utilisateurId String
+  utilisateur   User     @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  vote          String
+  dateVote      DateTime @default(now())
+
+  @@unique([avisId, utilisateurId])
+  @@map("avis_votes")
+}
+
+model AvisSignalement {
+  id               String   @id @default(cuid())
+  avisId           String
+  avis             Avis     @relation(fields: [avisId], references: [id], onDelete: Cascade)
+  utilisateurId    String
+  utilisateur      User     @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  raison           String
+  description      String?
+  dateSignalement  DateTime @default(now())
+  traite           Boolean  @default(false)
+
+  @@unique([avisId, utilisateurId])
+  @@map("avis_signalements")
+}
+
+model ContactMessage {
+  id          String        @id @default(cuid())
+  nom         String
+  email       String
+  sujet       String
+  message     String
+  statut      StatutMessage @default(non_lu)
+  dateLecture DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  reponses ContactReponse[]
+
+  @@index([createdAt])
+  @@index([statut])
+  @@map("contact_messages")
+}
+
+model ContactReponse {
+  id        String         @id @default(cuid())
+  messageId String
+  message   ContactMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  corps     String
+  auteur    String         @default("Admin")
+  date      DateTime       @default(now())
+
+  @@index([messageId])
+  @@map("contact_reponses")
+}
+
+model PromoCode {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  description     String?
+  typeRemise      String    @default("pourcentage") // pourcentage | fixe | livraison
+  valeur          Float     @default(0)
+  montantMax      Float?
+  montantMinimum  Float?                          // sous-total minimum du panier
+  usageParClient  Int?                            // null = illimité
+  premiereCommandeSeulement Boolean @default(false)
+  categories      String[]  @default([])          // vide = tout le catalogue
+  actif           Boolean   @default(true)
+  dateDebut       DateTime  @default(now())
+  dateFin         DateTime?
+  utilisationsMax Int?
+  utilisations    Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  commandes Commande[]
+
+  @@map("promo_codes")
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  cle       String   @unique
+  valeur    Json
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@map("settings")
+}
+
+model NewsletterSubscriber {
+  id         String   @id @default(cuid())
+  email      String   @unique
+  actif      Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("newsletter_subscribers")
+}
+
+model Favori {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platId    String
+  plat      Plat     @relation(fields: [platId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, platId])
+  @@index([userId, createdAt])
+  @@map("favoris")
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("push_subscriptions")
+}

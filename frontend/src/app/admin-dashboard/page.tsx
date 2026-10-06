@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { getPublicStats, getAdminCommandesStats } from '@/services/adminStats';
+import { getPublicStats, getAdminCommandesStats, telechargerExportCommandes } from '@/services/adminStats';
 import { getCommandes } from '@/services/adminCommandes';
 
 interface StatCard {
@@ -19,18 +19,6 @@ const statLabels: StatCard[] = [
   { title: 'Revenus (mois)', value: '—', change: 'Depuis le serveur', color: 'bg-green-500', icon: <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
   { title: 'Plats Disponibles', value: '—', change: 'Depuis le serveur', color: 'bg-orange-500', icon: <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg> },
   { title: 'Clients Actifs', value: '—', change: 'Depuis le serveur', color: 'bg-purple-500', icon: <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg> },
-];
-
-const recentOrdersFallback = [
-  { id: 'AM001', client: 'Fatoumata Diallo', montant: '45,50 €', status: 'Livrée', time: 'Il y a 2h' },
-  { id: 'AM002', client: 'Amadou Traoré', montant: '32,00 €', status: 'En cours', time: 'Il y a 3h' },
-  { id: 'AM003', client: 'Aissatou Ba', montant: '28,75 €', status: 'Nouvelle', time: 'Il y a 4h' },
-];
-
-const topPlatsFallback = [
-  { nom: 'Ndolé aux Crevettes', commandes: 45, revenu: '837,50 €' },
-  { nom: 'Poulet DG', commandes: 38, revenu: '646,00 €' },
-  { nom: 'Poisson Braisé', commandes: 32, revenu: '608,00 €' },
 ];
 
 function formatTimeAgo(dateStr: string): string {
@@ -49,9 +37,10 @@ const statusLabel: Record<string, string> = {
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<StatCard[]>(statLabels);
-  const [recentOrders, setRecentOrders] = useState(recentOrdersFallback);
-  const [topPlats, setTopPlats] = useState(topPlatsFallback);
-  const [evolutionRevenus, setEvolutionRevenus] = useState([120, 180, 150, 220, 200, 250, 280]);
+  const [recentOrders, setRecentOrders] = useState<Array<{ id: string; client: string; montant: string; status: string; time: string }>>([]);
+  const [topPlats, setTopPlats] = useState<Array<{ nom: string; commandes: number; revenu: string }>>([]);
+  const [evolutionRevenus, setEvolutionRevenus] = useState<Array<{ label: string; valeur: number }>>([]);
+  const [exportErreur, setExportErreur] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -71,10 +60,29 @@ export default function AdminDashboardPage() {
           { ...prev[3], value: String(publicStats.nombreUtilisateursActifs), change: 'Clients inscrits' },
         ]);
       }
-      if (adminStats?.evolutionQuotidienne && adminStats.evolutionQuotidienne.length > 0) {
-        const rev = adminStats.evolutionQuotidienne.slice(-7).map(e => e.revenus ?? 0);
-        setEvolutionRevenus(rev.length >= 7 ? rev : [...Array(7 - rev.length).fill(0), ...rev]);
-      }
+      const parJour = new Map(
+        (adminStats?.evolutionQuotidienne ?? []).map((e) => [
+          `${e._id.annee}-${e._id.mois}-${e._id.jour}`,
+          e.revenus ?? 0,
+        ])
+      );
+      setEvolutionRevenus(
+        Array.from({ length: 7 }, (_, i) => {
+          const d = new Date();
+          d.setDate(d.getDate() - (6 - i));
+          return {
+            label: d.toLocaleDateString('fr-FR', { weekday: 'short' }),
+            valeur: parJour.get(`${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`) ?? 0,
+          };
+        })
+      );
+      setTopPlats(
+        (adminStats?.topPlats ?? []).map((t) => ({
+          nom: t.nom,
+          commandes: t.quantite,
+          revenu: `${t.chiffreAffaires.toFixed(2)} €`,
+        }))
+      );
       if (commandesRes.commandes?.length) {
         setRecentOrders(commandesRes.commandes.slice(0, 5).map(c => ({
           id: c.numeroCommande,
@@ -101,6 +109,14 @@ export default function AdminDashboardPage() {
       <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-800 mb-2">Tableau de Bord</h1>
             <p className="text-gray-600">Vue d'ensemble de votre activité</p>
+            <button
+              type="button"
+              onClick={async () => setExportErreur((await telechargerExportCommandes()) ?? '')}
+              className="mt-3 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Exporter les commandes (CSV)
+            </button>
+            {exportErreur && <p className="mt-2 text-sm text-red-600">{exportErreur}</p>}
           </div>
 
           {/* Stats Cards */}
@@ -135,6 +151,9 @@ export default function AdminDashboardPage() {
                 </Link>
               </div>
               <div className="space-y-4">
+                {!loading && recentOrders.length === 0 && (
+                  <p className="text-sm text-gray-500">Aucune commande.</p>
+                )}
                 {recentOrders.map((order) => (
                   <div
                     key={order.id}
@@ -170,6 +189,9 @@ export default function AdminDashboardPage() {
                 </Link>
               </div>
               <div className="space-y-4">
+                {!loading && topPlats.length === 0 && (
+                  <p className="text-sm text-gray-500">Aucune vente sur la période.</p>
+                )}
                 {topPlats.map((plat, index) => (
                   <div
                     key={index}
@@ -195,21 +217,21 @@ export default function AdminDashboardPage() {
 
           {/* Graphique de Revenus */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-6">Revenus des 7 Derniers Jours</h2>
+            <h2 className="text-xl font-bold text-gray-800 mb-6">Revenus des 7 derniers jours</h2>
             <div className="h-64 flex items-end justify-between gap-2">
-              {(loading ? [120, 180, 150, 220, 200, 250, 280] : evolutionRevenus).map((height, index) => {
-                const maxVal = Math.max(...(loading ? [280] : evolutionRevenus), 1);
+              {evolutionRevenus.map((jour, index) => {
+                const maxVal = Math.max(...evolutionRevenus.map((j) => j.valeur), 1);
                 return (
-                <div key={index} className="flex-1 flex flex-col items-center">
-                  <div
-                    className="w-full bg-gradient-to-t from-orange-500 to-orange-400 rounded-t-lg mb-2 transition-all hover:opacity-80"
-                    style={{ height: `${(height / maxVal) * 100}%` }}
-                  ></div>
-                  <span className="text-xs text-gray-600">
-                    {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'][index]}
-                  </span>
-                </div>
-              ); })}
+                  <div key={index} className="flex-1 flex flex-col items-center justify-end h-full">
+                    <span className="text-[10px] text-gray-500 mb-1">{jour.valeur > 0 ? `${jour.valeur.toFixed(0)} €` : ''}</span>
+                    <div
+                      className="w-full bg-gradient-to-t from-orange-500 to-orange-400 rounded-t-lg mb-2 transition-all hover:opacity-80"
+                      style={{ height: `${(jour.valeur / maxVal) * 85}%`, minHeight: jour.valeur > 0 ? 4 : 0 }}
+                    ></div>
+                    <span className="text-xs text-gray-600">{jour.label}</span>
+                  </div>
+                );
+              })}
             </div>
             <div className="mt-4 flex items-center justify-center gap-4 text-sm text-gray-600">
               <div className="flex items-center gap-2">

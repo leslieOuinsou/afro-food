@@ -20,78 +20,54 @@ function formatMoneyEUR(n) {
   return `${v.toFixed(2).replace('.', ',')}\u00A0€`;
 }
 
-// Template de base pour tous les emails
-const baseTemplate = (content, title = 'Afro-food') => `
-<!DOCTYPE html>
+// Template de base (charte ivoire / bois / ocre, mise en page en tables pour les clients mail)
+const baseTemplate = (content, title = 'Afro-food') => `<!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${title}</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        .header {
-            text-align: center;
-            padding: 20px 0;
-            border-bottom: 2px solid #ff6b35;
-        }
-        .logo {
-            font-size: 28px;
-            font-weight: bold;
-            color: #ff6b35;
-        }
-        .content {
-            padding: 30px 0;
-        }
-        .button {
-            display: inline-block;
-            background: #ff6b35;
-            color: white;
-            padding: 12px 30px;
-            text-decoration: none;
-            border-radius: 5px;
-            margin: 20px 0;
-        }
-        .footer {
-            text-align: center;
-            padding: 20px 0;
-            border-top: 1px solid #eee;
-            color: #666;
-            font-size: 14px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${escapeHtml(title)}</title>
+  <style>
+    .afro-content h2 { font-family: Georgia, 'Times New Roman', serif; font-size: 26px; line-height: 1.25; color: #2C1A0E; margin: 0 0 16px; }
+    .afro-content p { margin: 0 0 14px; }
+    .afro-content strong { color: #2C1A0E; }
+    .button { display: inline-block; background: #C2610F; color: #FFFFFF !important; padding: 14px 32px; text-decoration: none; border-radius: 999px; font-weight: 700; font-size: 15px; }
+    @media only screen and (max-width: 620px) {
+      .afro-card { border-radius: 0 !important; }
+      .afro-pad { padding-left: 22px !important; padding-right: 22px !important; }
+    }
+  </style>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <div class="logo">Afro-food</div>
-            <p>Saveurs authentiques d'Afrique</p>
-        </div>
-        <div class="content">
-            ${content}
-        </div>
-        <div class="footer">
-            <p>© 2025 Afro-food. Tous droits réservés.</p>
-            <p>Si vous avez des questions, contactez-nous à support@afro-eats.com</p>
-        </div>
-    </div>
+<body style="margin:0;padding:0;background-color:#F4EBDD;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F4EBDD;">
+    <tr>
+      <td align="center" style="padding:28px 12px;">
+        <table role="presentation" class="afro-card" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background-color:#FFFDF8;border-radius:24px;overflow:hidden;border:1px solid #E8DCC4;">
+          <tr>
+            <td align="center" style="background-color:#2C1A0E;padding:28px 24px 24px;">
+              <img src="${FRONTEND}/logo-afro-eats.png" width="64" height="64" alt="Afro-food" style="display:block;width:64px;height:64px;border-radius:50%;margin:0 auto 12px;" />
+              <div style="font-family:Georgia,'Times New Roman',serif;font-size:30px;font-weight:700;color:#FFFDF8;letter-spacing:.5px;">Afro-food</div>
+              <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:#E9B26B;margin-top:6px;">Saveurs authentiques d'Afrique</div>
+            </td>
+          </tr>
+          <tr><td style="height:5px;background-color:#C2610F;font-size:0;line-height:0;">&nbsp;</td></tr>
+          <tr>
+            <td class="afro-pad afro-content" style="padding:36px 40px 28px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.65;color:#4A3426;">
+              ${content}
+            </td>
+          </tr>
+          <tr>
+            <td class="afro-pad" align="center" style="padding:22px 40px 30px;border-top:1px solid #EFE6D4;font-family:Arial,Helvetica,sans-serif;font-size:12.5px;line-height:1.6;color:#8A7664;">
+              <p style="margin:0 0 6px;">© ${new Date().getFullYear()} Afro-food · Cuisine camerounaise et béninoise</p>
+              <p style="margin:0;">Une question ? Écrivez-nous à <a href="mailto:support@afro-eats.com" style="color:#C2610F;text-decoration:none;">support@afro-eats.com</a></p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
-</html>
-`;
+</html>`;
 
 /**
  * E-mail Bienvenue — HTML inline (charte ivoire / bois / ocre).
@@ -262,8 +238,8 @@ export const welcomeEmail = (nom, prenom, codePromo) => {
 export const orderConfirmationEmail = (commande, client) => {
   const prenom = escapeHtml(client?.prenom || commande?.informationsClient?.prenom || '');
   const numero = escapeHtml(commande.numeroCommande || '');
-  const idCmd = String(commande._id || '');
-  const suiviUrl = `${FRONTEND}/commandes/${idCmd}`;
+  const idCmd = String(commande._id || commande.id || '');
+  const suiviUrl = `${FRONTEND}/commande/${encodeURIComponent(idCmd)}`;
   const logoUrl = `${FRONTEND}/logo-afro-eats.png`;
   const dateCmd = commande.createdAt
     ? new Date(commande.createdAt).toLocaleString('fr-FR', {
@@ -503,65 +479,64 @@ export const orderConfirmationEmail = (commande, client) => {
 // Email de changement de statut de commande
 export const orderStatusEmail = (commande, nouveauStatut, client) => {
   const statutsMessages = {
-    'confirmee': 'Votre commande a été confirmée et est en cours de préparation.',
-    'en_preparation': 'Nos chefs préparent votre commande avec amour !',
-    'prete': 'Votre commande est prête ! Notre livreur arrive bientôt.',
-    'en_livraison': 'Votre commande est en route ! Livraison dans quelques minutes.',
-    'livree': 'Votre commande a été livrée avec succès ! Bon appétit !',
-    'annulee': 'Votre commande a été annulée. Nous nous excusons pour ce désagrément.'
+    confirmee: 'Votre commande a été confirmée et va être préparée.',
+    en_preparation: 'Nos cuisiniers préparent votre commande avec soin !',
+    prete: 'Votre commande est prête ! Elle part bientôt vers vous.',
+    en_livraison: 'Votre commande est en route ! Livraison dans quelques instants.',
+    livree: 'Votre commande a été livrée. Bon appétit !',
+    annulee: 'Votre commande a été annulée. Nous nous excusons pour ce désagrément.',
+    remboursee: 'Votre commande a été remboursée.',
   };
-  
   const message = statutsMessages[nouveauStatut] || 'Le statut de votre commande a été mis à jour.';
-  
+  const libelle = escapeHtml(String(nouveauStatut).replace(/_/g, ' '));
+  const prenom = escapeHtml(client?.prenom || commande?.informationsClient?.prenom || '');
+  const numero = escapeHtml(commande.numeroCommande || '');
+  const id = String(commande._id || commande.id || '');
+  const suiviUrl = `${FRONTEND}/commande/${encodeURIComponent(id)}`;
+  const note = client?.commentaire
+    ? `<p style="font-style:italic;">« ${escapeHtml(client.commentaire)} »</p>`
+    : '';
+
   const content = `
     <h2>Mise à jour de votre commande</h2>
-    <p>Bonjour ${client.prenom},</p>
-    <p>Votre commande <strong>#${commande.numeroCommande}</strong> a été mise à jour.</p>
-    
-    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
-        <h3 style="color: #ff6b35; margin-top: 0;">Nouveau statut : ${nouveauStatut.replace('_', ' ').toUpperCase()}</h3>
-        <p style="margin-bottom: 0;">${message}</p>
-    </div>
-    
-    <p>
-        <a href="${process.env.FRONTEND_URL}/commandes/${commande._id}" class="button">Voir les détails</a>
-    </p>
-    
-    ${nouveauStatut === 'livree' ? `
-        <p style="background-color: #e8f5e8; padding: 15px; border-radius: 5px;">
-            <strong>💚 Votre avis nous intéresse !</strong><br>
-            Aidez-nous à améliorer nos services en laissant un avis sur votre commande.
-        </p>
-    ` : ''}
+    <p>Bonjour${prenom ? ` ${prenom}` : ''},</p>
+    <p>Votre commande <strong>${numero}</strong> a changé de statut.</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0;">
+      <tr>
+        <td style="background-color:#F4EBDD;border-left:5px solid #C2610F;border-radius:12px;padding:18px 22px;">
+          <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#8A7664;">Nouveau statut</div>
+          <div style="font-family:Georgia,'Times New Roman',serif;font-size:24px;font-weight:700;color:#C2610F;text-transform:capitalize;margin:4px 0 8px;">${libelle}</div>
+          <div style="color:#2C1A0E;">${message}</div>
+        </td>
+      </tr>
+    </table>
+    ${note}
+    <p style="text-align:center;margin:28px 0 8px;"><a href="${suiviUrl}" class="button" style="display:inline-block;background-color:#C2610F;color:#FFFFFF;padding:14px 32px;text-decoration:none;border-radius:999px;font-weight:700;">Suivre ma commande</a></p>
+    ${
+      nouveauStatut === 'livree'
+        ? `<p style="background-color:#E8F3E8;border-radius:12px;padding:16px 18px;margin-top:22px;"><strong>Votre avis compte !</strong><br />Dites-nous ce que vous avez pensé de vos plats depuis la page de votre commande.</p>`
+        : ''
+    }
   `;
-  
   return baseTemplate(content, 'Mise à jour de commande - Afro-food');
 };
 
 // Email de reset de mot de passe
 export const passwordResetEmail = (nom, prenom, resetToken) => {
-  const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
-  
+  const resetUrl = `${FRONTEND}/mot-de-passe-oublie?token=${encodeURIComponent(resetToken)}`;
+  const identite = escapeHtml([prenom, nom].filter(Boolean).join(' '));
+
   const content = `
-    <h2>Réinitialisation de mot de passe</h2>
-    <p>Bonjour ${prenom} ${nom},</p>
-    <p>Vous avez demandé à réinitialiser votre mot de passe Afro-food.</p>
-    <p>Cliquez sur le bouton ci-dessous pour créer un nouveau mot de passe :</p>
-    
-    <p>
-        <a href="${resetUrl}" class="button">Réinitialiser mon mot de passe</a>
-    </p>
-    
-    <p><strong>Ce lien est valide pendant 1 heure.</strong></p>
-    
-    <p>Si vous n'avez pas demandé cette réinitialisation, ignorez simplement cet email.</p>
-    
-    <p style="font-size: 14px; color: #666;">
-        Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br>
-        ${resetUrl}
-    </p>
+    <h2>Réinitialisation de votre mot de passe</h2>
+    <p>Bonjour${identite ? ` ${identite}` : ''},</p>
+    <p>Vous avez demandé à réinitialiser le mot de passe de votre compte Afro-food. Cliquez sur le bouton ci-dessous pour en choisir un nouveau.</p>
+    <p style="text-align:center;margin:30px 0;"><a href="${resetUrl}" class="button" style="display:inline-block;background-color:#C2610F;color:#FFFFFF;padding:14px 32px;text-decoration:none;border-radius:999px;font-weight:700;">Choisir un nouveau mot de passe</a></p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px;">
+      <tr><td style="background-color:#F4EBDD;border-radius:12px;padding:14px 18px;color:#2C1A0E;"><strong>Ce lien est valable 1 heure.</strong> Passé ce délai, refaites une demande depuis la page de connexion.</td></tr>
+    </table>
+    <p>Vous n'êtes pas à l'origine de cette demande ? Ignorez simplement cet e-mail : votre mot de passe reste inchangé.</p>
+    <p style="font-size:12.5px;color:#8A7664;word-break:break-all;">Le bouton ne fonctionne pas ? Copiez ce lien dans votre navigateur :<br />${resetUrl}</p>
   `;
-  
   return baseTemplate(content, 'Réinitialisation de mot de passe - Afro-food');
 };
 

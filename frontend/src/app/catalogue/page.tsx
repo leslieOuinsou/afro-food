@@ -1,7 +1,8 @@
 'use client';
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useCart } from '@/context/CartContext';
@@ -305,11 +306,13 @@ function SkeletonCard() {
 function ProductCard({
   item,
   onAdd,
+  disableAdd = false,
 }: {
   item: CatalogueItem;
   onAdd: () => void;
+  disableAdd?: boolean;
 }) {
-  const disabled = item.rupture;
+  const disabled = item.rupture || disableAdd;
   return (
     <article className="group overflow-hidden rounded-[28px] border border-[var(--wood)]/10 bg-white/55 shadow-sm backdrop-blur transition hover:bg-white/65">
       <div className="relative">
@@ -320,7 +323,7 @@ function ProductCard({
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--ochre)]" />
             {item.note.toFixed(1)}
           </span>
-          {disabled ? (
+          {item.rupture ? (
             <span className="rounded-full bg-[var(--brick)]/90 px-3 py-1 text-xs font-semibold text-white">
               Rupture
             </span>
@@ -349,7 +352,7 @@ function ProductCard({
             onClick={onAdd}
             className="rounded-full bg-[var(--ochre)] px-5 py-2 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(194,97,15,.20)] hover:bg-[#a6500c] disabled:cursor-not-allowed disabled:bg-[var(--wood)]/25 disabled:text-[var(--wood)]/60 disabled:shadow-none"
           >
-            {disabled ? 'Indisponible' : 'Panier'}
+            {item.rupture ? 'Indisponible' : disableAdd ? 'Hors ligne' : 'Panier'}
           </button>
         </div>
       </div>
@@ -360,6 +363,14 @@ function ProductCard({
 function CataloguePageInner() {
   const { addItem } = useCart();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+  const estAdmin = !authLoading && user?.role === 'admin';
+
+  // L'admin n'utilise pas le catalogue client : retour vers la gestion des plats
+  useEffect(() => {
+    if (estAdmin) router.replace('/admin-plats');
+  }, [estAdmin, router]);
 
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<CatalogueItem[]>(fallback);
@@ -554,6 +565,8 @@ function CataloguePageInner() {
     setPage(1);
   };
 
+  if (estAdmin) return null;
+
   return (
     <div className="min-h-screen flex flex-col bg-[var(--ivory)] text-[var(--wood)]">
       <Header />
@@ -746,10 +759,11 @@ function CataloguePageInner() {
                     <span className="h-1.5 w-1.5 rounded-full bg-[var(--brick)]" />
                     {loading ? 'Chargement…' : `${resultCountLabel} résultat(s)`}
                   </span>
-                  <span className="inline-flex items-center gap-2 rounded-full border border-[var(--wood)]/10 bg-white/35 px-3 py-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--ochre)]" />
-                    3 colonnes responsive
-                  </span>
+                  {dataSource === 'fallback' && (
+                    <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-amber-900">
+                      Mode hors-ligne — panier désactivé (API indisponible)
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -762,15 +776,19 @@ function CataloguePageInner() {
                     <ProductCard
                       key={it.id}
                       item={it}
-                      onAdd={() =>
+                      onAdd={() => {
+                        if (dataSource === 'fallback' || it.id.startsWith('fallback-')) {
+                          return;
+                        }
                         addItem({
                           id: it.id,
                           nom: it.nom,
                           prixUnitaire: it.prixUnitaire,
                           image: it.image,
                           quantiteMax: it.quantiteMax,
-                        })
-                      }
+                        });
+                      }}
+                      disableAdd={dataSource === 'fallback' || it.id.startsWith('fallback-')}
                     />
                   ))
                 ) : (

@@ -9,7 +9,9 @@ import { getCommandes } from '@/services/adminCommandes';
  * Bandeau réservé aux comptes vendeur : nombre de commandes en attente de traitement.
  */
 export function VendorStatusBar() {
-  const { isVendor } = useAuth();
+  const { user, isVendor: vendeur } = useAuth();
+  // Compte admin uniquement : un livreur n'a pas accès à la liste complète des commandes
+  const isVendor = vendeur && user?.role === 'admin';
   const [pending, setPending] = useState<number | null>(null);
 
   useEffect(() => {
@@ -19,7 +21,7 @@ export function VendorStatusBar() {
       try {
         const { commandes, pagination } = await getCommandes({
           statut: 'en_attente',
-          limite: 500,
+          limite: 1, // on lit seulement le total dans la pagination (le backend limite à 100)
         });
         if (cancelled) return;
         const n =

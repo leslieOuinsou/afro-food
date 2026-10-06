@@ -23,6 +23,7 @@ export interface AdminStatsData {
     /** Le backend expose actuellement noteMovenne (orthographe historique). */
     noteMovenne: number;
   };
+  topPlats?: Array<{ platId: string; nom: string; quantite: number; chiffreAffaires: number }>;
   statsParStatut?: Array<{ _id: string; nombre: number; montantTotal: number }>;
   evolutionQuotidienne?: Array<{
     _id: { annee: number; mois: number; jour: number };
@@ -59,4 +60,29 @@ export async function getAdminCommandesStats(
   }
   if (res.success && res.data) return res.data as AdminStatsData;
   return null;
+}
+
+/** Télécharge le CSV des commandes (période optionnelle) ; retourne un message d'erreur ou null */
+export async function telechargerExportCommandes(dateDebut?: string, dateFin?: string): Promise<string | null> {
+  const params = new URLSearchParams();
+  if (dateDebut) params.set('dateDebut', dateDebut);
+  if (dateFin) params.set('dateFin', dateFin);
+  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const token = localStorage.getItem('afro_eats_token') || sessionStorage.getItem('afro_eats_token');
+  try {
+    const res = await fetch(`${base}/api/commandes/export/csv?${params}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: 'include',
+    });
+    if (!res.ok) return `Export impossible (erreur ${res.status}).`;
+    const url = URL.createObjectURL(await res.blob());
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'commandes.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    return null;
+  } catch {
+    return "Export impossible : serveur injoignable.";
+  }
 }

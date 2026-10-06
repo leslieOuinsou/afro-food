@@ -113,16 +113,22 @@ export async function fetchPlatById(id: string): Promise<ApiResponse<Plat>> {
 
 /**
  * Récupère les plats populaires
+ * Le backend renvoie { data: { plats } }
  */
-export async function fetchPlatsPopulaires(limite = 6): Promise<ApiResponse<Plat[]>> {
-  return apiGet<Plat[]>(`/api/plats/populaires/${limite}`);
+export async function fetchPlatsPopulaires(
+  limite = 6
+): Promise<ApiResponse<{ plats?: Plat[] }>> {
+  return apiGet<{ plats?: Plat[] }>(`/api/plats/populaires/${limite}`);
 }
 
 /**
  * Récupère les nouveautés
+ * Le backend renvoie { data: { plats } }
  */
-export async function fetchNouveautes(limite = 6): Promise<ApiResponse<Plat[]>> {
-  return apiGet<Plat[]>(`/api/plats/nouveautes/${limite}`);
+export async function fetchNouveautes(
+  limite = 6
+): Promise<ApiResponse<{ plats?: Plat[] }>> {
+  return apiGet<{ plats?: Plat[] }>(`/api/plats/nouveautes/${limite}`);
 }
 
 /**

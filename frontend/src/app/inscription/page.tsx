@@ -1,6 +1,8 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import PasswordField from '@/components/PasswordField';
+import { trackSignUp } from '@/lib/analytics';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { register, logout } from '@/services/auth';
@@ -212,6 +214,7 @@ export default function InscriptionPage() {
         accepteCGU,
       });
       if (res.success) {
+        trackSignUp();
         try {
           localStorage.setItem(
             ONBOARDING_KEY,
@@ -409,9 +412,8 @@ export default function InscriptionPage() {
                   <label htmlFor="ins-mp" className="mb-1.5 block font-ui text-sm font-semibold text-[#2C1A0E]">
                     Mot de passe
                   </label>
-                  <input
+                  <PasswordField
                     id="ins-mp"
-                    type="password"
                     value={motDePasse}
                     onChange={(e) => {
                       const v = e.target.value;
@@ -443,9 +445,8 @@ export default function InscriptionPage() {
                   <label htmlFor="ins-mp2" className="mb-1.5 block font-ui text-sm font-semibold text-[#2C1A0E]">
                     Confirmer le mot de passe
                   </label>
-                  <input
+                  <PasswordField
                     id="ins-mp2"
-                    type="password"
                     value={confirmationMotDePasse}
                     onChange={(e) => {
                       const v = e.target.value;

@@ -2,6 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
+import { useToast } from '@/context/ToastContext';
+import {
+  fetchSettings,
+  updateSettings,
+  type AdminSettings,
+} from '@/services/settings';
 
 const STORAGE_KEY = 'afro_admin_parametres';
 
@@ -40,32 +46,176 @@ function loadSettings(): SettingsState {
   return defaultSettings;
 }
 
-function saveSettings(settings: SettingsState) {
+function saveSettingsLocal(settings: SettingsState) {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   } catch (_) {}
 }
 
+function mapBackendToUi(raw: AdminSettings | undefined | null): SettingsState {
+  const s = raw || {};
+  const restaurant = s.restaurant || {};
+  const livraison = s.livraison || {};
+  const zones = livraison.zones;
+  const zoneFromNested =
+    Array.isArray(zones) && zones.length > 0 ? zones.join(', ') : undefined;
+
+  return {
+    ...defaultSettings,
+    nomRestaurant: restaurant.nom || s.nomRestaurant || defaultSettings.nomRestaurant,
+    email: restaurant.email || s.email || defaultSettings.email,
+    telephone: restaurant.telephone || s.telephone || defaultSettings.telephone,
+    adresse: restaurant.adresse || s.adresse || defaultSettings.adresse,
+    description: s.description ?? defaultSettings.description,
+    fraisLivraison:
+      livraison.fraisStandard ?? s.fraisLivraison ?? defaultSettings.fraisLivraison,
+    delaiLivraison:
+      livraison.delaiEstimeMinutes ?? s.delaiLivraison ?? defaultSettings.delaiLivraison,
+    zoneLivraison: zoneFromNested || s.zoneLivraison || defaultSettings.zoneLivraison,
+    montantMinimum:
+      livraison.seuilGratuit ?? s.montantMinimum ?? defaultSettings.montantMinimum,
+    notificationsEmail: s.notificationsEmail ?? defaultSettings.notificationsEmail,
+    notificationsSMS: s.notificationsSMS ?? defaultSettings.notificationsSMS,
+    notificationsCommandes:
+      s.notificationsCommandes ?? defaultSettings.notificationsCommandes,
+    notificationsPromotions:
+      s.notificationsPromotions ?? defaultSettings.notificationsPromotions,
+    paiementCarte: s.paiementCarte ?? defaultSettings.paiementCarte,
+    paiementEspeces: s.paiementEspeces ?? defaultSettings.paiementEspeces,
+    paiementLivraison: s.paiementLivraison ?? defaultSettings.paiementLivraison,
+    theme: (s.theme as SettingsState['theme']) || defaultSettings.theme,
+    langue: (s.langue as SettingsState['langue']) || defaultSettings.langue,
+  };
+}
+
+function buildUpdatePayload(settings: SettingsState): AdminSettings {
+  return {
+    nomRestaurant: settings.nomRestaurant,
+    email: settings.email,
+    telephone: settings.telephone,
+    adresse: settings.adresse,
+    description: settings.description,
+    fraisLivraison: settings.fraisLivraison,
+    delaiLivraison: settings.delaiLivraison,
+    zoneLivraison: settings.zoneLivraison,
+    montantMinimum: settings.montantMinimum,
+    notificationsEmail: settings.notificationsEmail,
+    notificationsSMS: settings.notificationsSMS,
+    notificationsCommandes: settings.notificationsCommandes,
+    notificationsPromotions: settings.notificationsPromotions,
+    paiementCarte: settings.paiementCarte,
+    paiementEspeces: settings.paiementEspeces,
+    paiementLivraison: settings.paiementLivraison,
+    theme: settings.theme,
+    langue: settings.langue,
+    restaurant: {
+      nom: settings.nomRestaurant,
+      email: settings.email,
+      telephone: settings.telephone,
+      adresse: settings.adresse,
+    },
+    livraison: {
+      fraisStandard: settings.fraisLivraison,
+      delaiEstimeMinutes: settings.delaiLivraison,
+      seuilGratuit: settings.montantMinimum,
+      zones: settings.zoneLivraison
+        ? settings.zoneLivraison.split(',').map((z) => z.trim()).filter(Boolean)
+        : [],
+    },
+  };
+}
+
+function shouldFallbackLocal(status?: number, message?: string): boolean {
+  if (status === 401 || status === 403) return true;
+  if (status == null) return true; // erreur réseau / timeout
+  if (message && /réseau|hors ligne|délai|network|Failed to fetch/i.test(message)) {
+    return true;
+  }
+  return false;
+}
+
 export default function AdminParametresPage() {
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('general');
   const [settings, setSettings] = useState<SettingsState>(defaultSettings);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    setSettings(loadSettings());
-  }, []);
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setErrorMsg(null);
+      try {
+        const res = await fetchSettings();
+        if (cancelled) return;
+        if (res.success && res.data?.settings) {
+          setSettings(mapBackendToUi(res.data.settings));
+        } else if (shouldFallbackLocal(res.status, res.message)) {
+          setSettings(loadSettings());
+          setErrorMsg(res.message || 'API indisponible — paramètres locaux chargés.');
+        } else {
+          setSettings(loadSettings());
+          setErrorMsg(res.message || 'Impossible de charger les paramètres.');
+          toast.error(res.message || 'Impossible de charger les paramètres.', 'Paramètres');
+        }
+      } catch {
+        if (!cancelled) {
+          setSettings(loadSettings());
+          setErrorMsg('Erreur réseau — paramètres locaux chargés.');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [toast]);
 
   const handleInputChange = (field: keyof SettingsState, value: string | number | boolean) => {
     setSettings(prev => ({ ...prev, [field]: value }));
     setSaved(false);
+    setErrorMsg(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    saveSettings(settings);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setSaving(true);
+    setErrorMsg(null);
+    setSaved(false);
+    try {
+      const payload = buildUpdatePayload(settings);
+      const res = await updateSettings(payload);
+      if (res.success) {
+        if (res.data?.settings) {
+          setSettings(mapBackendToUi(res.data.settings));
+        }
+        setSaved(true);
+        toast.success(res.message || 'Paramètres enregistrés.', 'Paramètres');
+        setTimeout(() => setSaved(false), 3000);
+      } else if (shouldFallbackLocal(res.status, res.message)) {
+        saveSettingsLocal(settings);
+        setSaved(true);
+        setErrorMsg(res.message || 'API indisponible — sauvegarde locale.');
+        toast.info('Sauvegarde locale (API indisponible).', 'Paramètres');
+        setTimeout(() => setSaved(false), 3000);
+      } else {
+        setErrorMsg(res.message || 'Échec de l’enregistrement.');
+        toast.error(res.message || 'Échec de l’enregistrement.', 'Paramètres');
+      }
+    } catch {
+      saveSettingsLocal(settings);
+      setSaved(true);
+      setErrorMsg('Erreur réseau — sauvegarde locale.');
+      toast.info('Sauvegarde locale (erreur réseau).', 'Paramètres');
+      setTimeout(() => setSaved(false), 3000);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const tabs = [
@@ -82,6 +232,15 @@ export default function AdminParametresPage() {
             <h1 className="text-3xl font-bold text-gray-800 mb-2">Paramètres</h1>
             <p className="text-gray-600">Gérez les paramètres de votre restaurant</p>
           </div>
+
+          {loading && (
+            <p className="mb-4 text-sm text-gray-600">Chargement des paramètres…</p>
+          )}
+          {errorMsg && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              {errorMsg}
+            </div>
+          )}
 
           <div className="bg-white rounded-lg shadow-md">
             {/* Tabs */}
@@ -440,20 +599,26 @@ export default function AdminParametresPage() {
               {/* Submit Button */}
               <div className="mt-8 pt-6 border-t border-gray-200 flex justify-end items-center gap-4">
                 {saved && (
-                  <span className="text-sm text-green-600 font-medium">Paramètres enregistrés (stockage local)</span>
+                  <span className="text-sm text-green-600 font-medium">Paramètres enregistrés</span>
                 )}
                 <button
                   type="button"
                   className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-gray-900"
-                  onClick={() => setSettings(loadSettings())}
+                  onClick={() => {
+                    setSettings(loadSettings());
+                    setErrorMsg(null);
+                    setSaved(false);
+                  }}
+                  disabled={saving}
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-colors"
+                  disabled={saving || loading}
+                  className="px-6 py-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-colors disabled:opacity-60"
                 >
-                  Enregistrer les modifications
+                  {saving ? 'Enregistrement…' : 'Enregistrer les modifications'}
                 </button>
               </div>
             </form>

@@ -302,28 +302,29 @@ export const validerChangementMotDePasse = (req, res, next) => {
   next();
 };
 
-// Validation générique pour les paramètres d'ID MongoDB
-export const validerIdMongoDB = (nomParam = 'id') => {
+import { isValidId } from '../utils/serialize.js';
+
+// Validation générique pour les IDs (cuid / uuid / ObjectId legacy)
+export const validerId = (nomParam = 'id') => {
   return (req, res, next) => {
     const id = req.params[nomParam];
-    
+
     if (!id) {
       const error = new Error(`Paramètre ${nomParam} manquant`);
       error.statusCode = 400;
       return next(error);
     }
-    
-    // Validation basique de l'ObjectId MongoDB
-    const objectIdRegex = /^[0-9a-fA-F]{24}$/;
-    if (!objectIdRegex.test(id)) {
+
+    if (!isValidId(id)) {
       const error = new Error(`${nomParam} invalide`);
       error.statusCode = 400;
       return next(error);
     }
-    
+
     next();
   };
 };
+
 
 // Validation pour les paramètres de pagination
 export const validerPagination = (req, res, next) => {
@@ -429,7 +430,7 @@ export default {
   validerAdresse,
   validerProfilUpdate,
   validerChangementMotDePasse,
-  validerIdMongoDB,
+  validerId,
   validerPagination,
   validerFiltresPrix,
   validerUploadImage

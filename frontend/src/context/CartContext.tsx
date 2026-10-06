@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { useToast } from '@/context/ToastContext';
 
 export interface CartItem {
@@ -12,6 +12,8 @@ export interface CartItem {
   /** null = pas de limite connue (illimité côté panier) ; 0 = ne pas commander */
   quantiteMax?: number | null;
 }
+
+import { trackAddToCart, trackRemoveFromCart } from '@/lib/analytics';
 
 const CART_STORAGE_KEY = 'afro_eats_cart';
 
@@ -57,6 +59,8 @@ function capQuantite(q: number, max: number | null | undefined): number {
 export function CartProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const [items, setItems] = useState<CartItem[]>([]);
+  const itemsRef = useRef<CartItem[]>([]);
+  itemsRef.current = items;
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -81,63 +85,66 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      setItems((prev) => {
-        const existing = prev.find((i) => i.id === item.id);
-        const maxMerged = max ?? existing?.quantiteMax ?? null;
-        const prevQty = existing?.quantite ?? 0;
-        const mergedRaw = existing ? prevQty + quantiteDemandee : quantiteDemandee;
-        const merged = capQuantite(mergedRaw, maxMerged);
+      trackAddToCart({ item_id: item.id, item_name: item.nom, price: item.prixUnitaire, quantity: quantiteDemandee });
 
-        if (merged < 1) {
-          queueMicrotask(() =>
-            toast.info('Impossible d’ajouter cette quantité (stock insuffisant).', 'Panier')
-          );
-          return prev;
-        }
+      // Calcul hors de l'updater : un updater React peut être exécuté deux fois (StrictMode),
+      // ce qui affichait la notification en double.
+      const prev = itemsRef.current;
+      const existing = prev.find((i) => i.id === item.id);
+      const maxMerged = max ?? existing?.quantiteMax ?? null;
+      const prevQty = existing?.quantite ?? 0;
+      const mergedRaw = existing ? prevQty + quantiteDemandee : quantiteDemandee;
+      const merged = capQuantite(mergedRaw, maxMerged);
 
-        if (existing && merged === prevQty && quantiteDemandee > 0) {
-          queueMicrotask(() =>
-            toast.info('Quantité maximum déjà atteinte pour cet article.', 'Panier')
-          );
-          return prev;
-        }
-
-        if (merged < mergedRaw) {
-          queueMicrotask(() =>
-            toast.info(
-              maxMerged != null
-                ? `Quantité limitée au stock disponible (${maxMerged}).`
-                : 'Quantité ajustée.',
-              'Panier'
-            )
-          );
-        }
-
-        const nextItem: CartItem = {
-          id: item.id,
-          nom: item.nom,
-          prixUnitaire: item.prixUnitaire,
-          image: item.image,
-          quantiteMax: maxMerged,
-          quantite: merged,
-        };
-
-        queueMicrotask(() =>
-          toast.success(`${item.nom} a été ajouté au panier.`, 'Produit ajouté au panier')
+      if (merged < 1) {
+        toast.info('Impossible d’ajouter cette quantité (stock insuffisant).', 'Panier');
+        return;
+      }
+      if (existing && merged === prevQty && quantiteDemandee > 0) {
+        toast.info('Quantité maximum déjà atteinte pour cet article.', 'Panier');
+        return;
+      }
+      if (merged < mergedRaw) {
+        toast.info(
+          maxMerged != null ? `Quantité limitée au stock disponible (${maxMerged}).` : 'Quantité ajustée.',
+          'Panier'
         );
+      }
 
-        if (existing) {
-          return prev.map((i) => (i.id === item.id ? nextItem : i));
-        }
-        return [...prev, nextItem];
+      const nextItem: CartItem = {
+        id: item.id,
+        nom: item.nom,
+        prixUnitaire: item.prixUnitaire,
+        image: item.image,
+        quantiteMax: maxMerged,
+        quantite: merged,
+      };
+      const next = existing ? prev.map((i) => (i.id === item.id ? nextItem : i)) : [...prev, nextItem];
+      itemsRef.current = next;
+      setItems(next);
+
+      toast.show({
+        variant: 'success',
+        title: item.nom,
+        message: quantiteDemandee > 1 ? `${quantiteDemandee} ajoutés au panier` : 'Ajouté au panier',
+        image: item.image,
+        action: { label: 'Voir le panier', href: '/panier' },
+        duration: 2800,
       });
     },
     [toast]
   );
 
-  const removeItem = useCallback((id: string) => {
-    setItems((prev) => prev.filter((i) => i.id !== id));
-  }, []);
+  const removeItem = useCallback(
+    (id: string) => {
+      const row = items.find((i) => i.id === id);
+      if (row) {
+        trackRemoveFromCart({ item_id: row.id, item_name: row.nom, price: row.prixUnitaire, quantity: row.quantite });
+      }
+      setItems((prev) => prev.filter((i) => i.id !== id));
+    },
+    [items]
+  );
 
   const updateQuantity = useCallback(
     (id: string, quantite: number) => {

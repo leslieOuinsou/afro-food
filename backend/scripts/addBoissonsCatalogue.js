@@ -2,12 +2,10 @@
  * Ajoute les jus baobab / pastèque / ananas si absents (slug unique).
  * Usage : depuis backend → node scripts/addBoissonsCatalogue.js
  */
-
-import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import Plat from '../models/Plat.js';
+import prisma from '../lib/prisma.js';
 import { imagesCommons } from './data/platsBenin.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -51,26 +49,36 @@ const boissons = [
 ];
 
 async function run() {
-  const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/afro-food';
-  await mongoose.connect(mongoURI);
-  console.log('✅ Connecté à MongoDB\n');
+  console.log('✅ Connexion PostgreSQL (Prisma)\n');
 
   for (const doc of boissons) {
-    const exists = await Plat.findOne({ slug: doc.slug });
+    const exists = await prisma.plat.findUnique({ where: { slug: doc.slug } });
     if (exists) {
       console.log(`ℹ️ Déjà présent : ${doc.nom} (${doc.slug})`);
       continue;
     }
-    await Plat.create(doc);
+    await prisma.plat.create({
+      data: {
+        nom: doc.nom,
+        description: doc.description,
+        prix: doc.prix,
+        categorie: doc.categorie,
+        origineAfricaine: doc.origineAfricaine,
+        images: doc.images,
+        slug: doc.slug,
+        disponible: true,
+      },
+    });
     console.log(`✅ Ajouté : ${doc.nom}`);
   }
 
-  await mongoose.connection.close();
+  await prisma.$disconnect();
   console.log('\nTerminé.');
   process.exit(0);
 }
 
-run().catch((err) => {
+run().catch(async (err) => {
   console.error('❌', err.message);
+  await prisma.$disconnect();
   process.exit(1);
 });

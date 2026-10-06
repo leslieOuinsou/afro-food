@@ -20,7 +20,7 @@ import {
 } from '../middleware/auth.js';
 import {
   validerPlat,
-  validerIdMongoDB,
+  validerId,
   validerPagination,
   validerFiltresPrix
 } from '../middleware/validation.js';
@@ -49,7 +49,7 @@ router.get('/recherche/:terme',
 router.get('/slug/:slug', obtenirPlatParSlug);
 
 router.get('/:id', 
-  validerIdMongoDB(),
+  validerId(),
   authentificationOptionnelle,
   obtenirPlatParId
 );
@@ -74,7 +74,7 @@ router.post('/',
 );
 
 // Route dev : modifier un plat sans auth (désactivée en production)
-router.put('/dev/:id', validerIdMongoDB(), (req, res, next) => {
+router.put('/dev/:id', validerId(), (req, res, next) => {
   if (process.env.NODE_ENV === 'production') {
     const err = new Error('Route réservée au développement');
     err.statusCode = 404;
@@ -86,13 +86,13 @@ router.put('/dev/:id', validerIdMongoDB(), (req, res, next) => {
 router.put('/:id', 
   protegerRoute,
   restreindreAcces('admin'),
-  validerIdMongoDB(),
+  validerId(),
   validerPlat,
   mettreAJourPlat
 );
 
 // Route dev : supprimer un plat sans auth (désactivée en production)
-router.delete('/dev/:id', validerIdMongoDB(), (req, res, next) => {
+router.delete('/dev/:id', validerId(), (req, res, next) => {
   if (process.env.NODE_ENV === 'production') {
     const err = new Error('Route réservée au développement');
     err.statusCode = 404;
@@ -104,21 +104,21 @@ router.delete('/dev/:id', validerIdMongoDB(), (req, res, next) => {
 router.delete('/:id', 
   protegerRoute,
   restreindreAcces('admin'),
-  validerIdMongoDB(),
+  validerId(),
   supprimerPlat
 );
 
 router.patch('/:id/disponibilite', 
   protegerRoute,
   restreindreAcces('admin'),
-  validerIdMongoDB(),
+  validerId(),
   mettreAJourDisponibilite
 );
 
 router.patch('/:id/promotion', 
   protegerRoute,
   restreindreAcces('admin'),
-  validerIdMongoDB(),
+  validerId(),
   mettreAJourPromotion
 );
 

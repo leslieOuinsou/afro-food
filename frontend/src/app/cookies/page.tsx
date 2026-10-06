@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { openCookieSettings } from '@/lib/consent';
 
 export default function CookiesPage() {
   return (
@@ -105,7 +106,9 @@ export default function CookiesPage() {
                   <div>
                     <h4 className="font-semibold text-gray-800 mb-2">Google Analytics</h4>
                     <p>
-                      Service d'analyse de trafic web pour comprendre comment les visiteurs utilisent notre site.
+                      Si vous acceptez les cookies de mesure d'audience, nous pouvons utiliser un service d'analyse de
+                      trafic (par exemple Google Analytics) pour comprendre comment les visiteurs utilisent notre site.
+                      Aucun outil de ce type n'est chargé avant votre accord.
                     </p>
                   </div>
                   <div>
@@ -131,9 +134,16 @@ export default function CookiesPage() {
                   </p>
                   <p>
                     <strong className="text-gray-800">4.3 Modification de vos préférences :</strong> Vous 
-                    pouvez modifier vos préférences de cookies à tout moment en cliquant sur le lien en bas 
-                    de chaque page.
+                    pouvez modifier vos préférences de cookies à tout moment en cliquant sur « Gérer les cookies »
+                    en bas de chaque page, ou ici :
                   </p>
+                  <button
+                    type="button"
+                    onClick={openCookieSettings}
+                    className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700"
+                  >
+                    Gérer mes préférences
+                  </button>
                 </div>
               </section>
 

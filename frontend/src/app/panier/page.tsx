@@ -7,7 +7,8 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useCart } from '@/context/CartContext';
 import { isAuthenticated } from '@/services/auth';
-import { createCommande } from '@/services/commandes';
+import { trackBeginCheckout, trackPromo, trackPurchase } from '@/lib/analytics';
+import { createCommande, creerSessionPaiement, getConfigPaiement, validerCodePromo } from '@/services/commandes';
 
 const FRAIS_LIVRAISON_ESTIME = 3.9;
 type PaymentMode = 'carte' | 'virement' | 'mobile' | 'especes';
@@ -149,27 +150,63 @@ export default function PanierPage() {
     [items]
   );
 
-  const remise = useMemo(() => {
-    if (!promoApplied) return 0;
-    if (promoApplied === 'AFRO10') return Math.round(sousTotal * 0.1 * 100) / 100;
-    if (promoApplied === 'LIVRAISON5') return Math.min(5, sousTotal);
-    return 0;
-  }, [promoApplied, sousTotal]);
+  const [remise, setRemise] = useState(0);
+  const [promoError, setPromoError] = useState('');
+  const [promoConditions, setPromoConditions] = useState<string[]>([]);
 
   const sousTotalApresRemise = Math.max(0, sousTotal - remise);
   const total = sousTotalApresRemise + FRAIS_LIVRAISON_ESTIME;
 
-  const applyPromo = useCallback(() => {
-    const code = promoInput.trim().toUpperCase();
-    if (code === 'AFRO10' || code === 'LIVRAISON5') {
-      setPromoApplied(code);
-    } else if (code) {
+  const articlesPayload = useMemo(
+    () => items.map((item) => ({ platId: item.id, quantite: item.quantite })),
+    [items]
+  );
+
+  const applyPromo = useCallback(async () => {
+    const code = promoInput.trim();
+    if (!code) return;
+    setPromoError('');
+    const res = await validerCodePromo(code, articlesPayload, deliveryType);
+    if (res.success && res.data) {
+      trackPromo(res.data.code, true);
+      setPromoApplied(res.data.code);
+      setRemise(res.data.remise);
+      setPromoConditions(res.data.conditions ?? []);
+    } else {
+      trackPromo(code, false);
       setPromoApplied(null);
+      setRemise(0);
+      setPromoConditions([]);
+      setPromoError(res.message || 'Code promo invalide');
     }
-  }, [promoInput]);
+  }, [promoInput, articlesPayload, deliveryType]);
+
+  // Revalide le code quand le panier ou le mode de livraison change
+  useEffect(() => {
+    if (!promoApplied) return;
+    let annule = false;
+    validerCodePromo(promoApplied, articlesPayload, deliveryType).then((res) => {
+      if (annule) return;
+      if (res.success && res.data) {
+        setRemise(res.data.remise);
+      } else {
+        setPromoApplied(null);
+        setRemise(0);
+        setPromoConditions([]);
+        setPromoError(res.message || 'Code promo retiré');
+      }
+    });
+    return () => {
+      annule = true;
+    };
+  }, [promoApplied, articlesPayload, deliveryType]);
 
   const goLivraison = () => {
     if (items.length === 0) return;
+    trackBeginCheckout(
+      items.map((i) => ({ item_id: i.id, item_name: i.nom, price: i.prixUnitaire, quantity: i.quantite })),
+      sousTotal
+    );
     setStep('livraison');
   };
 
@@ -222,7 +259,7 @@ export default function PanierPage() {
       const res = await createCommande(payload);
       if (!res.success || !res.data?.commande) {
         const hint =
-          res.status === 400
+          res.status === 400 && !/code/i.test(res.message || '')
             ? ' Vérifiez les quantités (stock) ou retirez un article indisponible.'
             : '';
         setSubmitError((res.message || 'Impossible de finaliser la commande.') + hint);
@@ -240,6 +277,26 @@ export default function PanierPage() {
         remise,
       });
       clearCart();
+
+      // Paiement par carte : redirection vers Stripe Checkout si le paiement en ligne est actif
+      const paiementEnLigne = paymentMode === 'carte' && (await getConfigPaiement());
+      if (!paiementEnLigne) {
+        // « purchase » du paiement en ligne est envoyé au retour de Stripe (page /commande/[id])
+        trackPurchase({
+          transactionId: cmd.numeroCommande || cmd._id,
+          value: cmd.montants?.total ?? total,
+          shipping: cmd.montants?.fraisLivraison ?? FRAIS_LIVRAISON_ESTIME,
+          coupon: promoApplied || undefined,
+          items: items.map((i) => ({ item_id: i.id, item_name: i.nom, price: i.prixUnitaire, quantity: i.quantite })),
+        });
+      }
+      if (paiementEnLigne) {
+        const session = await creerSessionPaiement(cmd._id);
+        if (session.success && session.data?.url) {
+          window.location.href = session.data.url;
+          return;
+        }
+      }
       setStep('confirmation');
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Erreur réseau lors de la commande.');
@@ -258,7 +315,7 @@ export default function PanierPage() {
   useEffect(() => {
     if (step !== 'confirmation' || !orderSnapshot) return;
     const t = window.setTimeout(() => {
-      router.push('/dashboard?tab=commandes');
+      router.push(`/commande/${orderSnapshot.id}`);
     }, 4500);
     return () => window.clearTimeout(t);
   }, [step, orderSnapshot, router]);
@@ -295,7 +352,7 @@ export default function PanierPage() {
           <input
             value={promoInput}
             onChange={(e) => setPromoInput(e.target.value)}
-            placeholder="AFRO10 ou LIVRAISON5"
+            placeholder="BIENVENUE10"
             disabled={step === 'confirmation'}
             className="min-w-0 flex-1 rounded-2xl border border-[var(--wood)]/10 bg-white/50 px-4 py-2.5 text-sm text-[var(--wood)] outline-none focus:border-[var(--ochre)]/45"
           />
@@ -308,7 +365,13 @@ export default function PanierPage() {
             Appliquer
           </button>
         </div>
-        <p className="mt-2 text-[11px] text-[var(--wood)]/55">Démo : AFRO10 (−10 %), LIVRAISON5 (−5 € max)</p>
+        {promoError && <p className="mt-2 text-[11px] text-red-600">{promoError}</p>}
+        {promoApplied && !promoError && (
+          <div className="mt-2 text-[11px] text-[var(--wood)]/65">
+            <p className="font-semibold">Code {promoApplied} appliqué</p>
+            {promoConditions.length > 0 && <p>{promoConditions.join(' · ')}</p>}
+          </div>
+        )}
       </div>
 
       {showCta && (
@@ -706,9 +769,16 @@ export default function PanierPage() {
               <p className="mt-2 text-sm text-[var(--wood)]/75">
                 Votre commande a bien été enregistrée.
               </p>
-              <div className="mt-8 rounded-2xl border border-[var(--wood)]/10 bg-[var(--paper)] px-6 py-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--wood)]/60">N° de commande</p>
-                <p className="mt-2 font-mono text-lg font-semibold text-[var(--wood)]">{orderSnapshot.orderNumber}</p>
+              <div className="mt-8 rounded-2xl border-2 border-[var(--ochre)] bg-[var(--wood)] px-6 py-6 text-[var(--ivory)] shadow-md">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--ivory)]/75">
+                  Votre numéro de commande
+                </p>
+                <p className="mt-3 select-all break-all font-mono text-3xl font-bold tracking-wider sm:text-4xl">
+                  {orderSnapshot.orderNumber}
+                </p>
+                <p className="mt-3 text-xs text-[var(--ivory)]/70">
+                  Conservez-le pour suivre votre commande. Un e-mail de confirmation vous est envoyé.
+                </p>
               </div>
               <div className="mt-6 text-left text-sm text-[var(--wood)]/75">
                 <p>

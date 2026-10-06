@@ -2,101 +2,119 @@
 
 Application de commande de plats africains (Afro-food).
 
-## Structure du projet
+## Structure
 
 ```
 afro-food/
-├── frontend/     # Application Next.js (interface utilisateur)
-│   ├── src/
-│   ├── public/
-│   ├── package.json
-│   └── ...
-├── backend/      # API Express + MongoDB
-│   ├── controllers/
-│   ├── models/
-│   ├── routes/
-│   ├── server.js
-│   ├── package.json
-│   └── ...
+├── frontend/     # Next.js
+├── backend/      # Express + PostgreSQL + Prisma
 └── README.md
 ```
 
+## Prérequis
+
+- Node.js 18+
+- PostgreSQL 14+ (local, Docker ou cloud : Neon, Supabase, Railway…)
+
 ## Démarrage
 
-### Frontend (Next.js)
+### 1. Base de données PostgreSQL
+
+Exemple Docker :
 
 ```bash
-cd frontend
-npm install
-npm run dev
+docker run -d --name afro-food-pg \
+  -e POSTGRES_USER=afro \
+  -e POSTGRES_PASSWORD=afro \
+  -e POSTGRES_DB=afro_food \
+  -p 5432:5432 \
+  postgres:16-alpine
 ```
 
-Ouvre [http://localhost:3000](http://localhost:3000).
-
-### Backend (API Express)
+### 2. Backend
 
 ```bash
 cd backend
+cp .env.example .env
+# Éditer DATABASE_URL et JWT_SECRET
+npm install
+npx prisma generate
+npx prisma db push
+npm run seed
+npm run dev
+```
+
+API : [http://localhost:5000](http://localhost:5000)
+
+`DATABASE_URL` exemple :
+
+```env
+DATABASE_URL="postgresql://afro:afro@localhost:5432/afro_food?schema=public"
+JWT_SECRET="une-chaine-secrete-longue"
+FRONTEND_URL=http://localhost:3000
+```
+
+### 3. Frontend
+
+```bash
+cd frontend
+cp .env.example .env.local
 npm install
 npm run dev
 ```
 
-L’API tourne sur [http://localhost:5000](http://localhost:5000).
+App : [http://localhost:3000](http://localhost:3000)
 
-### Variables d’environnement
+Compte admin créé par le seed (par défaut) :
 
-- **frontend** : créer `frontend/.env.local` avec `NEXT_PUBLIC_API_URL=http://localhost:5000`
-- **backend** : créer `backend/.env` avec `MONGODB_URI`, `PORT`, etc.
+- email : `admin@afrofood.com`
+- mot de passe : `Admin123!` (ou `ADMIN_SEED_PASSWORD`)
 
-## Scripts utiles (depuis la racine)
+## Scripts backend utiles
 
-- `cd frontend && npm run dev` — lancer le frontend
-- `cd backend && npm run dev` — lancer le backend
+| Commande | Rôle |
+|----------|------|
+| `npm run dev` | Serveur Express (watch) |
+| `npm run db:generate` | Génère le client Prisma |
+| `npm run db:push` | Applique le schéma à PostgreSQL |
+| `npm run seed` | Admin + plats + promo + settings |
+| `npm run seed:admin` | Admin seul |
+| `npm run seed:plats` | Plats démo |
 
----
+## Variables d’environnement
 
-## Déploiement sur Vercel (frontend + backend)
+### Backend (`backend/.env`)
 
-Tu peux déployer **le frontend et le backend** sur Vercel en créant **deux projets** (même dépôt Git, racines différentes).
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | URL PostgreSQL (obligatoire) |
+| `JWT_SECRET` | Secret JWT |
+| `FRONTEND_URL` | Origine CORS (ex. Vercel frontend) |
+| `SMTP_*` / `EMAIL_FROM` | Envoi e-mails (optionnel) |
 
-### 1. Projet Vercel « Frontend »
+### Frontend (`frontend/.env.local`)
 
-1. Va sur [vercel.com](https://vercel.com) → **Add New** → **Project**.
-2. Importe le dépôt **afro-food** (ou ton fork).
-3. **Root Directory** : clique sur **Edit** et choisis **`frontend`**.
-4. **Variables d’environnement** : ajoute  
-   - **Nom** : `NEXT_PUBLIC_API_URL`  
-   - **Valeur** : l’URL de ton **backend** (voir étape 2). Ex. `https://afro-food-api-xxx.vercel.app`
-5. **Deploy**. Tu obtiendras une URL du type `https://afro-food-xxx.vercel.app`.
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_API_URL` | URL du backend (ex. `http://localhost:5000`) |
 
-### 2. Projet Vercel « Backend » (API)
+## Déploiement Vercel
 
-1. **Add New** → **Project** et importe **le même dépôt** afro-food.
-2. **Root Directory** : choisis **`backend`** (et non `frontend`).
-3. **Variables d’environnement** (obligatoires pour l’API) :
-   - **Nom** : `MONGODB_URI`  
-     **Valeur** : ton URI MongoDB Atlas (ex. `mongodb+srv://user:pass@cluster.mongodb.net/afro-food`)
-   - **Nom** : `JWT_SECRET`  
-     **Valeur** : une chaîne secrète longue et aléatoire
-   - **Nom** : `FRONTEND_URL` (optionnel)  
-     **Valeur** : l’URL de ton frontend Vercel (ex. `https://afro-food-xxx.vercel.app`) pour CORS
-4. **Deploy**. Tu obtiendras une URL du type `https://afro-food-api-xxx.vercel.app`.
-5. L’API est exposée sur **`/api`** :  
-   - Ex. `https://afro-food-api-xxx.vercel.app/api/plats`  
-   - Ex. `https://afro-food-api-xxx.vercel.app/api/contact`  
-   - Ex. `https://afro-food-api-xxx.vercel.app/health`
+Deux projets (même dépôt, racines différentes) :
 
-### 3. Relier frontend et backend
+1. **Frontend** — Root `frontend` — env `NEXT_PUBLIC_API_URL`
+2. **Backend** — Root `backend` — env `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_URL`
 
-1. Dans le **projet Vercel Frontend**, va dans **Settings** → **Environment Variables**.
-2. Mets à jour **`NEXT_PUBLIC_API_URL`** avec l’URL exacte du projet Backend (ex. `https://afro-food-api-xxx.vercel.app`).
-3. Redéploie le frontend (ou attends le prochain push) pour que le changement soit pris en compte.
+Sur Vercel, ajoute un **Build Command** backend du type :
 
-### Résumé
+```bash
+npx prisma generate && node server.js
+```
 
-| Projet   | Root Directory | Rôle                          |
-|----------|----------------|-------------------------------|
-| Frontend | `frontend`     | Site Next.js (pages, panier)  |
-| Backend  | `backend`      | API Express (plats, commandes, contact, etc.) |
+(ou configure `postinstall`: `prisma generate` dans `package.json` si besoin).
 
-Les deux projets se mettent à jour à chaque push sur la branche connectée (ex. `main` ou `backend`).
+## Stack
+
+- **Frontend** : Next.js, React
+- **Backend** : Express (ESM)
+- **BDD** : PostgreSQL via **Prisma**

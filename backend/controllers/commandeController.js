@@ -1,9 +1,325 @@
-import { Commande, Plat, User } from '../models/index.js';
-import mongoose from 'mongoose';
+import prisma from '../lib/prisma.js';
+import { evaluerPromo, decrirePromo } from '../utils/promo.js';
+import { genererNumeroCommande } from '../utils/helpers.js';
+import { isValidId, serializeCommande } from '../utils/serialize.js';
+import {
+  envoyerEmailConfirmationCommande,
+  envoyerEmailStatutCommande,
+  envoyerEmailCommandePrete,
+  envoyerEmailNouvelleCommandeAdmin,
+} from '../utils/email.js';
+import { pushVersRole, pushVersUtilisateur } from '../utils/push.js';
 
-// @desc    Créer une nouvelle commande
-// @route   POST /api/commandes
-// @access  Private
+const TRANSITIONS_VALIDES = {
+  en_attente: ['confirmee', 'annulee'],
+  confirmee: ['en_preparation', 'annulee'],
+  en_preparation: ['prete', 'annulee'],
+  prete: ['en_livraison', 'annulee'],
+  en_livraison: ['livree', 'annulee'],
+  livree: ['remboursee'],
+  annulee: [],
+  remboursee: [],
+};
+
+const commandeInclude = {
+  client: {
+    select: { id: true, nom: true, prenom: true, email: true, telephone: true, avatar: true },
+  },
+  articles: {
+    include: {
+      plat: {
+        select: {
+          id: true,
+          nom: true,
+          prix: true,
+          description: true,
+          images: true,
+        },
+      },
+    },
+  },
+  historiqueStatuts: { orderBy: { dateChangement: 'asc' } },
+  livreur: {
+    select: { id: true, nom: true, prenom: true, telephone: true },
+  },
+};
+
+function peutEtreAnnulee(commande) {
+  const statutsAnnulables = ['en_attente', 'confirmee'];
+  const dates = commande.dates || {};
+  const dateCmd = dates.commande ? new Date(dates.commande) : new Date(commande.createdAt);
+  return (
+    statutsAnnulables.includes(commande.statut) &&
+    Date.now() - dateCmd.getTime() < 30 * 60 * 1000
+  );
+}
+
+/**
+ * Évalue un code promo pour ce client et ce panier.
+ * Retourne { remise, codeApplique, promoId, promo } ou lève une erreur 400/404 avec la raison.
+ */
+async function appliquerPromo(codePromo, clientId, panier) {
+  if (!codePromo) return { remise: 0, codeApplique: null, promoId: null };
+
+  const code = String(codePromo).trim().toUpperCase();
+  const promo = await prisma.promoCode.findUnique({ where: { code } });
+
+  const [nbCommandesClient, nbUsagesClient] = promo
+    ? await Promise.all([
+        prisma.commande.count({ where: { clientId, statut: { notIn: ['annulee'] } } }),
+        prisma.commande.count({
+          where: { clientId, promoCodeId: promo.id, statut: { notIn: ['annulee', 'remboursee'] } },
+        }),
+      ])
+    : [0, 0];
+
+  const verdict = evaluerPromo(promo, {
+    sousTotal: panier.sousTotal,
+    fraisLivraison: panier.fraisLivraison,
+    lignes: panier.articlesData.map((a) => ({
+      categorie: a.informationsPlat.categorie,
+      sousTotal: a.sousTotal,
+    })),
+    nbCommandesClient,
+    nbUsagesClient,
+  });
+
+  if (!verdict.ok) {
+    throw Object.assign(new Error(verdict.message), {
+      statusCode: verdict.raison === 'introuvable' ? 404 : 400,
+      raison: verdict.raison,
+    });
+  }
+  return { remise: verdict.remise, codeApplique: code, promoId: promo.id, promo };
+}
+
+/**
+ * Prix côté serveur : lit les plats en base, contrôle disponibilité / stock,
+ * calcule sous-total et frais de livraison. Lève une erreur HTTP en cas de problème.
+ */
+async function calculerPanier(articles, typeLivraison) {
+  const httpError = (message, statusCode) => Object.assign(new Error(message), { statusCode });
+  const articlesData = [];
+  let sousTotal = 0;
+
+  for (const article of articles) {
+    if (!isValidId(article.platId)) throw httpError(`ID de plat invalide: ${article.platId}`, 400);
+    const quantite = Number(article.quantite);
+    if (!Number.isInteger(quantite) || quantite < 1) throw httpError('Quantité invalide', 400);
+
+    const plat = await prisma.plat.findUnique({ where: { id: article.platId } });
+    if (!plat) throw httpError(`Plat non trouvé: ${article.platId}`, 404);
+    if (!plat.disponible || plat.enRupture) {
+      throw httpError(`Le plat "${plat.nom}" n'est pas disponible`, 400);
+    }
+    if (plat.quantiteDisponible != null && quantite > plat.quantiteDisponible) {
+      throw httpError(
+        `Quantité insuffisante pour "${plat.nom}". Disponible: ${plat.quantiteDisponible}`,
+        400
+      );
+    }
+
+    const prixUnitaire = plat.prixPromo && plat.prixPromo > 0 ? plat.prixPromo : plat.prix;
+    let supplementsTotal = 0;
+    const variationsPlat = Array.isArray(plat.variations) ? plat.variations : [];
+    if (article.variations) {
+      for (const variation of article.variations) {
+        const variationPlat = variationsPlat.find((v) => v.nom === variation.nom);
+        const option = variationPlat?.options?.find((o) => o.nom === variation.optionChoisie);
+        if (option) supplementsTotal += option.supplementPrix || 0;
+      }
+    }
+
+    const sousArticle = (prixUnitaire + supplementsTotal) * quantite;
+    const images = plat.images || {};
+    articlesData.push({
+      platId: plat.id,
+      informationsPlat: {
+        nom: plat.nom,
+        description: plat.description,
+        prix: prixUnitaire,
+        image: images.principale || null,
+        categorie: plat.categorie,
+      },
+      quantite,
+      prixUnitaire,
+      variations: article.variations || [],
+      instructions: article.instructions || null,
+      sousTotal: sousArticle,
+    });
+    sousTotal += sousArticle;
+  }
+
+  // Paramètres livraison / taxes (admin) avec fallbacks
+  let fraisStandard = 3.9;
+  let seuilGratuit = 30;
+  let taxesPourcentage = 10;
+  try {
+    const setting = await prisma.setting.findUnique({ where: { cle: 'admin' } });
+    const v = setting?.valeur || {};
+    fraisStandard = Number(v.livraison?.fraisStandard ?? v.fraisLivraison ?? 3.9);
+    seuilGratuit = Number(v.livraison?.seuilGratuit ?? v.montantMinimum ?? 30);
+    taxesPourcentage = Number(v.commandes?.taxesPourcentage ?? 10);
+  } catch {
+    /* garder les défauts */
+  }
+
+  const fraisLivraison = typeLivraison === 'domicile' && sousTotal < seuilGratuit ? fraisStandard : 0;
+  return { articlesData, sousTotal, fraisLivraison, taxesPourcentage };
+}
+
+async function changerStatutInterne(commande, nouveauStatut, commentaire, modifieParId) {
+  const autorises = TRANSITIONS_VALIDES[commande.statut] || [];
+  if (!autorises.includes(nouveauStatut)) {
+    throw Object.assign(
+      new Error(`Transition de statut non valide: ${commande.statut} -> ${nouveauStatut}`),
+      { statusCode: 400 }
+    );
+  }
+
+  const dates = { ...(commande.dates || {}) };
+  const maintenant = new Date().toISOString();
+  switch (nouveauStatut) {
+    case 'confirmee':
+      dates.confirmation = maintenant;
+      break;
+    case 'en_preparation':
+      dates.preparation = maintenant;
+      break;
+    case 'prete':
+      dates.prete = maintenant;
+      break;
+    case 'en_livraison':
+      dates.expedition = maintenant;
+      break;
+    case 'livree':
+      dates.livraison = maintenant;
+      break;
+    case 'annulee':
+      dates.annulation = maintenant;
+      break;
+  }
+
+  const miseAJour = await prisma.$transaction(async (tx) => {
+    const updated = await tx.commande.update({
+      where: { id: commande.id },
+      data: {
+        statut: nouveauStatut,
+        dates,
+        historiqueStatuts: {
+          create: {
+            statut: nouveauStatut,
+            commentaire: commentaire || null,
+            modifieParId: modifieParId || null,
+          },
+        },
+      },
+      include: commandeInclude,
+    });
+
+    // Annulation : remet en stock les plats à quantité limitée
+    if (nouveauStatut === 'annulee') {
+      for (const article of updated.articles) {
+        const { count } = await tx.plat.updateMany({
+          where: { id: article.platId, quantiteDisponible: { not: null } },
+          data: { quantiteDisponible: { increment: article.quantite }, enRupture: false },
+        });
+        if (count > 0) {
+          await tx.plat.update({
+            where: { id: article.platId },
+            data: { nombreCommandes: { decrement: article.quantite } },
+          });
+        }
+      }
+
+      if (updated.promoCodeId) {
+        await tx.promoCode.updateMany({
+          where: { id: updated.promoCodeId, utilisations: { gt: 0 } },
+          data: { utilisations: { decrement: 1 } },
+        });
+      }
+    }
+
+    return updated;
+  });
+
+  const emailClient = miseAJour.informationsClient?.email;
+  if (emailClient) {
+    envoyerEmailStatutCommande(emailClient, miseAJour, commentaire).catch((err) =>
+      console.warn('Email statut commande non envoyé:', err.message)
+    );
+  }
+
+  // Notifications push (appareils où l'utilisateur les a activées)
+  const MESSAGES_PUSH = {
+    confirmee: 'Votre commande est confirmée.',
+    en_preparation: 'Nos cuisiniers préparent votre commande.',
+    prete: 'Votre commande est prête.',
+    en_livraison: 'Votre commande est en route !',
+    livree: 'Votre commande a été livrée. Bon appétit !',
+    annulee: 'Votre commande a été annulée.',
+    remboursee: 'Votre commande a été remboursée.',
+  };
+  if (MESSAGES_PUSH[nouveauStatut]) {
+    pushVersUtilisateur(miseAJour.clientId, {
+      titre: `Commande ${miseAJour.numeroCommande}`,
+      corps: MESSAGES_PUSH[nouveauStatut],
+      url: `/commande/${miseAJour.id}`,
+    }).catch((err) => console.warn('Push client non envoyé:', err.message));
+  }
+  if (nouveauStatut === 'prete' && !miseAJour.livreurId) {
+    pushVersRole('livreur', {
+      titre: 'Commande prête à livrer',
+      corps: `${miseAJour.numeroCommande} · ${miseAJour.adresseLivraison?.ville ?? ''}`.trim(),
+      url: '/livreur',
+    }).catch((err) => console.warn('Push livreurs non envoyé:', err.message));
+  }
+
+  // Commande prête sans livreur : prévient les livreurs actifs
+  if (nouveauStatut === 'prete' && !miseAJour.livreurId) {
+    prisma.user
+      .findMany({ where: { role: 'livreur', estActif: true }, select: { email: true } })
+      .then((livreurs) =>
+        Promise.all(livreurs.map((l) => envoyerEmailCommandePrete(l.email, miseAJour)))
+      )
+      .catch((err) => console.warn('Email commande prête non envoyé:', err.message));
+  }
+
+  return miseAJour;
+}
+
+function buildCommandeWhere({ clientId, statut, dateDebut, dateFin, numeroCommande }) {
+  const where = {};
+  if (clientId) where.clientId = clientId;
+  if (statut) where.statut = statut;
+  if (numeroCommande) {
+    where.numeroCommande = { contains: numeroCommande, mode: 'insensitive' };
+  }
+  if (dateDebut || dateFin) {
+    where.createdAt = {};
+    if (dateDebut) where.createdAt.gte = new Date(dateDebut);
+    if (dateFin) where.createdAt.lte = new Date(dateFin);
+  }
+  return where;
+}
+
+export const validerCodePromo = async (req, res, next) => {
+  try {
+    const { code, articles, typeLivraison = 'domicile' } = req.body;
+    if (!String(code || '').trim() || !Array.isArray(articles) || articles.length === 0) {
+      throw Object.assign(new Error('Code et articles requis'), { statusCode: 400 });
+    }
+    const panier = await calculerPanier(articles, typeLivraison);
+    const { remise, codeApplique, promo } = await appliquerPromo(code, req.utilisateur.id, panier);
+    res.json({
+      success: true,
+      data: { code: codeApplique, remise, conditions: decrirePromo(promo) },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const creerCommande = async (req, res, next) => {
   try {
     const {
@@ -13,406 +329,391 @@ export const creerCommande = async (req, res, next) => {
       methodePaiement,
       typeLivraison = 'domicile',
       codePromo,
-      instructions
+      instructions,
     } = req.body;
-    
-    // Validation des champs requis
+
     if (!articles || articles.length === 0) {
       const error = new Error('Au moins un article est requis');
       error.statusCode = 400;
       return next(error);
     }
-    
     if (!adresseLivraison) {
-      const error = new Error('L\'adresse de livraison est requise');
+      const error = new Error("L'adresse de livraison est requise");
       error.statusCode = 400;
       return next(error);
     }
-    
     if (!methodePaiement) {
       const error = new Error('La méthode de paiement est requise');
       error.statusCode = 400;
       return next(error);
     }
-    
-    // Récupérer les informations du client
-    const client = await User.findById(req.utilisateur.id);
+
+    const client = await prisma.user.findUnique({ where: { id: req.utilisateur.id } });
     if (!client) {
       const error = new Error('Client non trouvé');
       error.statusCode = 404;
       return next(error);
     }
-    
-    // Vérifier et calculer les articles
-    let articlesCommande = [];
-    let sousTotal = 0;
-    
-    for (const article of articles) {
-      const plat = await Plat.findById(article.platId);
-      
-      if (!plat) {
-        const error = new Error(`Plat non trouvé: ${article.platId}`);
-        error.statusCode = 404;
-        return next(error);
-      }
-      
-      if (!plat.disponible || plat.enRupture) {
-        const error = new Error(`Le plat "${plat.nom}" n'est pas disponible`);
-        error.statusCode = 400;
-        return next(error);
-      }
-      
-      // Vérifier la quantité disponible
-      if (plat.quantiteDisponible !== null && article.quantite > plat.quantiteDisponible) {
-        const error = new Error(`Quantité insuffisante pour "${plat.nom}". Disponible: ${plat.quantiteDisponible}`);
-        error.statusCode = 400;
-        return next(error);
-      }
-      
-      const prixUnitaire = plat.prixPromo && plat.prixPromo > 0 ? plat.prixPromo : plat.prix;
-      let supplementsTotal = 0;
-      
-      // Calculer les suppléments des variations
-      if (article.variations) {
-        for (const variation of article.variations) {
-          const variationPlat = plat.variations.find(v => v.nom === variation.nom);
-          if (variationPlat) {
-            const option = variationPlat.options.find(o => o.nom === variation.optionChoisie);
-            if (option) {
-              supplementsTotal += option.supplementPrix || 0;
-            }
+
+    const panier = await calculerPanier(articles, typeLivraison);
+    const { articlesData, sousTotal, fraisLivraison, taxesPourcentage } = panier;
+
+    // Un code promo fourni mais refusé bloque la commande (le client doit savoir qu'il ne l'a pas)
+    const { remise, codeApplique, promoId } = await appliquerPromo(codePromo, client.id, panier);
+    const taxes = (sousTotal + fraisLivraison - remise) * (taxesPourcentage / 100);
+    const total = sousTotal + fraisLivraison + taxes - remise;
+
+    const numeroCommande = await genererNumeroCommande(prisma);
+    const maintenant = new Date().toISOString();
+
+    const commande = await prisma.$transaction(async (tx) => {
+      const created = await tx.commande.create({
+        data: {
+          numeroCommande,
+          clientId: client.id,
+          informationsClient: {
+            nom: client.nom,
+            prenom: client.prenom,
+            email: client.email,
+            telephone: client.telephone,
+          },
+          adresseLivraison,
+          montants: {
+            sousTotal,
+            fraisLivraison,
+            taxes,
+            remise,
+            codePromo: codeApplique,
+            total,
+          },
+          statut: 'en_attente',
+          sousTotal,
+          fraisLivraison,
+          taxes,
+          remise,
+          total,
+          codePromo: codeApplique,
+          promoCodeId: promoId || null,
+          methodePaiement,
+          statutPaiement: 'en_attente',
+          paiement: {
+            methode: methodePaiement,
+            statut: 'en_attente',
+          },
+          livraison: {
+            type: typeLivraison,
+            instructions: instructions || null,
+          },
+          dates: { commande: maintenant },
+          preferences: preferences || null,
+          source: 'web',
+          articles: {
+            create: articlesData,
+          },
+          historiqueStatuts: {
+            create: {
+              statut: 'en_attente',
+              commentaire: 'Commande créée',
+              modifieParId: client.id,
+            },
+          },
+        },
+        include: commandeInclude,
+      });
+
+      for (const article of articlesData) {
+        const plat = await tx.plat.findUnique({
+          where: { id: article.platId },
+          select: { nom: true, quantiteDisponible: true },
+        });
+        if (plat?.quantiteDisponible != null) {
+          // décrément conditionnel : évite un stock négatif en cas de commandes concurrentes
+          const { count } = await tx.plat.updateMany({
+            where: { id: article.platId, quantiteDisponible: { gte: article.quantite } },
+            data: { quantiteDisponible: { decrement: article.quantite } },
+          });
+          if (count === 0) {
+            const err = new Error(`Stock insuffisant pour « ${plat.nom} »`);
+            err.statusCode = 409;
+            throw err;
           }
+          await tx.plat.updateMany({
+            where: { id: article.platId, quantiteDisponible: 0 },
+            data: { enRupture: true },
+          });
+        }
+        await tx.plat.update({
+          where: { id: article.platId },
+          data: { nombreCommandes: { increment: article.quantite } },
+        });
+      }
+
+      await tx.user.update({
+        where: { id: client.id },
+        data: {
+          nombreCommandes: { increment: 1 },
+          montantTotalCommandes: { increment: total },
+        },
+      });
+
+      if (promoId) {
+        const { count } = await tx.promoCode.updateMany({
+          where: {
+            id: promoId,
+            OR: [{ utilisationsMax: null }, { utilisations: { lt: tx.promoCode.fields.utilisationsMax } }],
+          },
+          data: { utilisations: { increment: 1 } },
+        });
+        if (count === 0) {
+          const err = new Error('Code promo épuisé');
+          err.statusCode = 409;
+          throw err;
         }
       }
-      
-      const sousArticle = (prixUnitaire + supplementsTotal) * article.quantite;
-      
-      articlesCommande.push({
-        plat: plat._id,
-        informationsPlat: {
-          nom: plat.nom,
-          description: plat.description,
-          prix: prixUnitaire,
-          image: plat.images.principale,
-          categorie: plat.categorie
-        },
-        quantite: article.quantite,
-        prixUnitaire,
-        variations: article.variations || [],
-        instructions: article.instructions || '',
-        sousTotal: sousArticle
-      });
-      
-      sousTotal += sousArticle;
-    }
-    
-    // Calculer les frais de livraison (à adapter selon votre logique)
-    let fraisLivraison = 0;
-    if (typeLivraison === 'domicile') {
-      fraisLivraison = sousTotal < 30 ? 3.90 : 0; // Gratuit à partir de 30€
-    }
-    
-    // Appliquer le code promo (à adapter selon votre logique)
-    let remise = 0;
-    if (codePromo) {
-      // Logique de validation du code promo
-      // Pour l'exemple, on applique une remise fixe
-      if (codePromo === 'BIENVENUE10') {
-        remise = Math.min(sousTotal * 0.1, 10); // 10% max 10€
-      }
-    }
-    
-    // Calculer les taxes (exemple: 10%)
-    const taxes = (sousTotal + fraisLivraison - remise) * 0.10;
-    
-    // Total final
-    const total = sousTotal + fraisLivraison + taxes - remise;
-    
-    // Créer la commande
-    const nouvelleCommande = await Commande.create({
-      client: client._id,
-      informationsClient: {
-        nom: client.nom,
-        prenom: client.prenom,
-        email: client.email,
-        telephone: client.telephone
-      },
-      adresseLivraison,
-      articles: articlesCommande,
-      montants: {
-        sousTotal,
-        fraisLivraison,
-        taxes,
-        remise,
-        codePromo,
-        total
-      },
-      paiement: {
-        methode: methodePaiement,
-        statut: 'en_attente'
-      },
-      livraison: {
-        type: typeLivraison,
-        instructions: instructions
-      },
-      preferences,
-      source: 'web'
+
+      return created;
     });
-    
-    // Mettre à jour les compteurs des plats et les quantités
-    for (const article of articlesCommande) {
-      const platCommande = await Plat.findById(article.plat).select('quantiteDisponible');
-      if (!platCommande) continue;
 
-      const incPayload = { nombreCommandes: article.quantite };
-      if (platCommande.quantiteDisponible !== null) {
-        incPayload.quantiteDisponible = -article.quantite;
-      }
-
-      await Plat.findByIdAndUpdate(article.plat, {
-        $inc: incPayload
-      });
+    try {
+      await envoyerEmailConfirmationCommande(client.email, commande);
+    } catch (emailErr) {
+      console.warn('Email confirmation commande non envoyé:', emailErr.message);
     }
-    
-    // Mettre à jour les statistiques du client
-    await client.mettreAJourStatistiques(total);
-    
-    // Populer la commande pour la réponse
-    const commandePopulee = await Commande.findById(nouvelleCommande._id)
-      .populate('client', 'nom prenom email telephone')
-      .populate('articles.plat', 'nom prix images.principale');
-    
+
+    pushVersRole('admin', {
+      titre: 'Nouvelle commande',
+      corps: `${commande.numeroCommande} · ${commande.montants?.total ?? commande.total ?? ''} €`,
+      url: '/commande-admin',
+    }).catch((err) => console.warn('Push admin non envoyé:', err.message));
+
+    // Prévient les admins par e-mail (sans bloquer la réponse au client)
+    // Adresse de réception dédiée (ADMIN_NOTIFICATION_EMAIL), sinon l'e-mail des comptes admin
+    const adresseAdmin = process.env.ADMIN_NOTIFICATION_EMAIL?.trim();
+    (adresseAdmin
+      ? Promise.resolve([{ email: adresseAdmin }])
+      : prisma.user.findMany({ where: { role: 'admin', estActif: true }, select: { email: true } })
+    )
+      .then((admins) => Promise.all(admins.map((a) => envoyerEmailNouvelleCommandeAdmin(a.email, commande))))
+      .catch((err) => console.warn('Email nouvelle commande (admin) non envoyé:', err.message));
+
     res.status(201).json({
       success: true,
       message: 'Commande créée avec succès',
-      data: { commande: commandePopulee }
+      data: { commande: serializeCommande(commande) },
     });
-    
   } catch (error) {
-    if (error.name === 'ValidationError') {
-      const messages = Object.values(error.errors).map(err => err.message);
-      const customError = new Error(messages.join(', '));
-      customError.statusCode = 400;
-      return next(customError);
-    }
     next(error);
   }
 };
 
-// @desc    Obtenir les commandes de l'utilisateur
-// @route   GET /api/commandes/mes-commandes
-// @access  Private
 export const obtenirMesCommandes = async (req, res, next) => {
   try {
-    const {
-      page = 1,
-      limite = 10,
-      statut,
-      dateDebut,
-      dateFin
-    } = req.query;
-    
-    const criteres = {
-      client: req.utilisateur.id,
+    const { page = 1, limite = 10, statut, dateDebut, dateFin } = req.query;
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limiteNum = Math.max(1, Math.min(100, parseInt(limite, 10) || 10));
+
+    const where = buildCommandeWhere({
+      clientId: req.utilisateur.id,
       statut,
       dateDebut,
       dateFin,
-      limite: parseInt(limite),
-      page: parseInt(page)
-    };
-    
-    const commandes = await Commande.rechercher(criteres);
-    
-    // Compter le total
-    let queryTotal = { client: req.utilisateur.id };
-    if (statut) queryTotal.statut = statut;
-    if (dateDebut || dateFin) {
-      queryTotal.createdAt = {};
-      if (dateDebut) queryTotal.createdAt.$gte = new Date(dateDebut);
-      if (dateFin) queryTotal.createdAt.$lte = new Date(dateFin);
-    }
-    
-    const total = await Commande.countDocuments(queryTotal);
-    
-    const pagination = {
-      pageActuelle: parseInt(page),
-      totalPages: Math.ceil(total / parseInt(limite)),
-      totalCommandes: total,
-      commandesPourPage: parseInt(limite)
-    };
-    
+    });
+
+    const [commandes, total] = await Promise.all([
+      prisma.commande.findMany({
+        where,
+        include: commandeInclude,
+        orderBy: { createdAt: 'desc' },
+        skip: (pageNum - 1) * limiteNum,
+        take: limiteNum,
+      }),
+      prisma.commande.count({ where }),
+    ]);
+
     res.status(200).json({
       success: true,
       message: 'Commandes récupérées avec succès',
-      data: { commandes },
-      pagination
+      data: { commandes: commandes.map(serializeCommande) },
+      pagination: {
+        pageActuelle: pageNum,
+        totalPages: Math.ceil(total / limiteNum),
+        totalCommandes: total,
+        commandesPourPage: limiteNum,
+      },
     });
-    
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Obtenir une commande par ID
-// @route   GET /api/commandes/:id
-// @access  Private
 export const obtenirCommandeParId = async (req, res, next) => {
   try {
     const { id } = req.params;
-    
-    if (!mongoose.Types.ObjectId.isValid(id)) {
+
+    if (!isValidId(id)) {
       const error = new Error('ID de commande invalide');
       error.statusCode = 400;
       return next(error);
     }
-    
-    const commande = await Commande.findById(id)
-      .populate('client', 'nom prenom email telephone avatar')
-      .populate('articles.plat', 'nom prix images.principale description')
-      .populate('livraison.livreur', 'nom prenom telephone');
-    
+
+    const commande = await prisma.commande.findUnique({
+      where: { id },
+      include: commandeInclude,
+    });
+
     if (!commande) {
       const error = new Error('Commande non trouvée');
       error.statusCode = 404;
       return next(error);
     }
-    
-    // Vérifier que l'utilisateur est le propriétaire de la commande ou un admin
-    if (commande.client._id.toString() !== req.utilisateur.id.toString() && 
-        req.utilisateur.role !== 'admin') {
+
+    const estLivreurAutorise =
+      req.utilisateur.role === 'livreur' &&
+      (commande.livreurId === req.utilisateur.id ||
+        (!commande.livreurId && ['prete', 'en_livraison'].includes(commande.statut)));
+    if (
+      commande.clientId !== req.utilisateur.id &&
+      req.utilisateur.role !== 'admin' &&
+      !estLivreurAutorise
+    ) {
       const error = new Error('Non autorisé à voir cette commande');
       error.statusCode = 403;
       return next(error);
     }
-    
+
+    const resultat = serializeCommande(commande);
+    // La position du livreur n'est visible que pendant la livraison
+    if (resultat.livraison?.positionLivreur && commande.statut !== 'en_livraison') {
+      resultat.livraison = { ...resultat.livraison };
+      delete resultat.livraison.positionLivreur;
+    }
+
     res.status(200).json({
       success: true,
       message: 'Commande récupérée avec succès',
-      data: { commande }
+      data: { commande: resultat },
     });
-    
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Annuler une commande
-// @route   PATCH /api/commandes/:id/annuler
-// @access  Private
 export const annulerCommande = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { raison } = req.body;
-    
-    if (!mongoose.Types.ObjectId.isValid(id)) {
+
+    if (!isValidId(id)) {
       const error = new Error('ID de commande invalide');
       error.statusCode = 400;
       return next(error);
     }
-    
-    const commande = await Commande.findById(id);
-    
+
+    const commande = await prisma.commande.findUnique({
+      where: { id },
+      include: { articles: true },
+    });
+
     if (!commande) {
       const error = new Error('Commande non trouvée');
       error.statusCode = 404;
       return next(error);
     }
-    
-    // Vérifier que l'utilisateur est le propriétaire
-    if (commande.client.toString() !== req.utilisateur.id.toString()) {
+
+    if (commande.clientId !== req.utilisateur.id) {
       const error = new Error('Non autorisé à annuler cette commande');
       error.statusCode = 403;
       return next(error);
     }
-    
-    // Vérifier si la commande peut être annulée
-    if (!commande.peutEtreAnnulee) {
+
+    if (!peutEtreAnnulee(commande)) {
       const error = new Error('Cette commande ne peut plus être annulée');
       error.statusCode = 400;
       return next(error);
     }
-    
-    // Changer le statut
-    await commande.changerStatut('annulee', raison || 'Annulée par le client', req.utilisateur.id);
-    
-    // Remettre les quantités en stock si nécessaire
-    for (const article of commande.articles) {
-      const plat = await Plat.findById(article.plat);
-      if (plat && plat.quantiteDisponible !== null) {
-        plat.quantiteDisponible += article.quantite;
-        plat.nombreCommandes = Math.max(0, plat.nombreCommandes - article.quantite);
-        await plat.save();
-      }
-    }
-    
+
+    const miseAJour = await changerStatutInterne(
+      commande,
+      'annulee',
+      raison || 'Annulée par le client',
+      req.utilisateur.id
+    );
+
     res.status(200).json({
       success: true,
       message: 'Commande annulée avec succès',
-      data: { commande }
+      data: { commande: serializeCommande(miseAJour) },
     });
-    
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Évaluer une commande
-// @route   POST /api/commandes/:id/evaluer
-// @access  Private
 export const evaluerCommande = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { note, commentaire, recommande } = req.body;
-    
-    if (!mongoose.Types.ObjectId.isValid(id)) {
+
+    if (!isValidId(id)) {
       const error = new Error('ID de commande invalide');
       error.statusCode = 400;
       return next(error);
     }
-    
+
     if (!note || note < 1 || note > 5) {
       const error = new Error('La note doit être entre 1 et 5');
       error.statusCode = 400;
       return next(error);
     }
-    
-    const commande = await Commande.findById(id);
-    
+
+    const commande = await prisma.commande.findUnique({ where: { id } });
     if (!commande) {
       const error = new Error('Commande non trouvée');
       error.statusCode = 404;
       return next(error);
     }
-    
-    // Vérifier que l'utilisateur est le propriétaire
-    if (commande.client.toString() !== req.utilisateur.id.toString()) {
+
+    if (commande.clientId !== req.utilisateur.id) {
       const error = new Error('Non autorisé à évaluer cette commande');
       error.statusCode = 403;
       return next(error);
     }
-    
+
+    if (commande.statut !== 'livree') {
+      const error = new Error('Seules les commandes livrées peuvent être évaluées');
+      error.statusCode = 400;
+      return next(error);
+    }
+
     if (commande.evaluation) {
       const error = new Error('Cette commande a déjà été évaluée');
       error.statusCode = 400;
       return next(error);
     }
-    
-    await commande.ajouterEvaluation(note, commentaire, recommande);
-    
+
+    const miseAJour = await prisma.commande.update({
+      where: { id },
+      data: {
+        evaluation: {
+          note,
+          commentaire: commentaire || null,
+          recommande: recommande ?? null,
+          dateEvaluation: new Date().toISOString(),
+        },
+      },
+      include: commandeInclude,
+    });
+
     res.status(200).json({
       success: true,
       message: 'Évaluation ajoutée avec succès',
-      data: { commande }
+      data: { commande: serializeCommande(miseAJour) },
     });
-    
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Obtenir toutes les commandes (Admin)
-// @route   GET /api/commandes
-// @access  Private/Admin
 export const obtenirToutesCommandes = async (req, res, next) => {
   try {
     const {
@@ -422,172 +723,346 @@ export const obtenirToutesCommandes = async (req, res, next) => {
       dateDebut,
       dateFin,
       numeroCommande,
-      clientId
+      clientId,
     } = req.query;
-    
-    const criteres = {
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limiteNum = Math.max(1, Math.min(100, parseInt(limite, 10) || 20));
+
+    const where = buildCommandeWhere({
+      clientId,
       statut,
       dateDebut,
       dateFin,
       numeroCommande,
-      client: clientId,
-      limite: parseInt(limite),
-      page: parseInt(page)
-    };
-    
-    const commandes = await Commande.rechercher(criteres);
-    
-    // Compter le total
-    let queryTotal = {};
-    if (statut) queryTotal.statut = statut;
-    if (clientId) queryTotal.client = clientId;
-    if (numeroCommande) queryTotal.numeroCommande = new RegExp(numeroCommande, 'i');
-    if (dateDebut || dateFin) {
-      queryTotal.createdAt = {};
-      if (dateDebut) queryTotal.createdAt.$gte = new Date(dateDebut);
-      if (dateFin) queryTotal.createdAt.$lte = new Date(dateFin);
+    });
+
+    // Livreur : ses commandes + celles sans livreur (prêtes à prendre, ou déjà passées
+    // « en livraison » par l'admin sans livreur assigné)
+    if (req.utilisateur.role === 'livreur') {
+      where.OR = [
+        { livreurId: req.utilisateur.id },
+        { livreurId: null, statut: { in: ['prete', 'en_livraison'] } },
+      ];
     }
-    
-    const total = await Commande.countDocuments(queryTotal);
-    
-    const pagination = {
-      pageActuelle: parseInt(page),
-      totalPages: Math.ceil(total / parseInt(limite)),
-      totalCommandes: total,
-      commandesPourPage: parseInt(limite)
-    };
-    
+
+    const [commandes, total] = await Promise.all([
+      prisma.commande.findMany({
+        where,
+        include: commandeInclude,
+        orderBy: { createdAt: 'desc' },
+        skip: (pageNum - 1) * limiteNum,
+        take: limiteNum,
+      }),
+      prisma.commande.count({ where }),
+    ]);
+
     res.status(200).json({
       success: true,
       message: 'Commandes récupérées avec succès',
-      data: { commandes },
-      pagination
+      data: { commandes: commandes.map(serializeCommande) },
+      pagination: {
+        pageActuelle: pageNum,
+        totalPages: Math.ceil(total / limiteNum),
+        totalCommandes: total,
+        commandesPourPage: limiteNum,
+      },
     });
-    
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Changer le statut d'une commande (Admin)
-// @route   PATCH /api/commandes/:id/statut
-// @access  Private/Admin
 export const changerStatutCommande = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { statut, commentaire, livreurId } = req.body;
-    
-    if (!mongoose.Types.ObjectId.isValid(id)) {
+
+    if (!isValidId(id)) {
       const error = new Error('ID de commande invalide');
       error.statusCode = 400;
       return next(error);
     }
-    
-    const commande = await Commande.findById(id);
-    
+
+    const commande = await prisma.commande.findUnique({ where: { id } });
     if (!commande) {
       const error = new Error('Commande non trouvée');
       error.statusCode = 404;
       return next(error);
     }
-    
-    // Assigner un livreur si nécessaire
-    if (statut === 'en_livraison' && livreurId) {
-      if (!mongoose.Types.ObjectId.isValid(livreurId)) {
+
+    const estLivreur = req.utilisateur.role === 'livreur';
+    if (estLivreur) {
+      if (!['en_livraison', 'livree'].includes(statut)) {
+        const error = new Error('Un livreur ne peut que prendre en charge ou livrer une commande');
+        error.statusCode = 403;
+        return next(error);
+      }
+      if (commande.livreurId && commande.livreurId !== req.utilisateur.id) {
+        const error = new Error('Commande assignée à un autre livreur');
+        error.statusCode = 403;
+        return next(error);
+      }
+    }
+
+    let livreurUpdate = {};
+    if (estLivreur && ['en_livraison', 'livree'].includes(statut) && !commande.livreurId) {
+      // un livreur ne peut s'assigner que lui-même
+      livreurUpdate = {
+        livreurId: req.utilisateur.id,
+        livraison: { ...(commande.livraison || {}), livreur: req.utilisateur.id },
+      };
+    } else if (statut === 'en_livraison' && livreurId) {
+      if (!isValidId(livreurId)) {
         const error = new Error('ID de livreur invalide');
         error.statusCode = 400;
         return next(error);
       }
-      
-      const livreur = await User.findOne({ _id: livreurId, role: 'livreur' });
+      const livreur = await prisma.user.findFirst({
+        where: { id: livreurId, role: 'livreur' },
+      });
       if (!livreur) {
         const error = new Error('Livreur non trouvé');
         error.statusCode = 404;
         return next(error);
       }
-      
-      commande.livraison.livreur = livreurId;
+      const livraison = { ...(commande.livraison || {}), livreur: livreurId };
+      livreurUpdate = { livreurId, livraison };
     }
-    
-    await commande.changerStatut(statut, commentaire, req.utilisateur.id);
-    
-    const commandePopulee = await Commande.findById(id)
-      .populate('client', 'nom prenom email telephone')
-      .populate('livraison.livreur', 'nom prenom telephone');
-    
+
+    if (Object.keys(livreurUpdate).length) {
+      await prisma.commande.update({
+        where: { id },
+        data: livreurUpdate,
+      });
+      Object.assign(commande, livreurUpdate);
+    }
+
+    const miseAJour = await changerStatutInterne(
+      commande,
+      statut,
+      commentaire,
+      req.utilisateur.id
+    );
+
     res.status(200).json({
       success: true,
       message: 'Statut de la commande mis à jour avec succès',
-      data: { commande: commandePopulee }
+      data: { commande: serializeCommande(miseAJour) },
     });
-    
   } catch (error) {
-    if (error.message.includes('Transition de statut non valide')) {
+    if (error.message?.includes('Transition de statut non valide')) {
       error.statusCode = 400;
     }
     next(error);
   }
 };
 
-// @desc    Obtenir les statistiques des commandes (Admin)
-// @route   GET /api/commandes/statistiques
-// @access  Private/Admin
+const STATUTS_NON_REVENU = ['annulee', 'remboursee'];
+
+function lirePeriode(query) {
+  const maintenant = new Date();
+  const dateDebut = query.dateDebut
+    ? new Date(query.dateDebut)
+    : new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
+  const dateFin = query.dateFin ? new Date(query.dateFin) : maintenant;
+  if (Number.isNaN(dateDebut.getTime()) || Number.isNaN(dateFin.getTime())) {
+    throw Object.assign(new Error('Période invalide'), { statusCode: 400 });
+  }
+  return { dateDebut, dateFin };
+}
+
 export const obtenirStatistiques = async (req, res, next) => {
   try {
-    const { 
-      dateDebut = new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-      dateFin = new Date()
-    } = req.query;
-    
-    const statistiques = await Commande.obtenirStatistiques(dateDebut, dateFin);
-    
-    // Statistiques par statut
-    const statsParStatut = await Commande.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: new Date(dateDebut), $lte: new Date(dateFin) }
-        }
-      },
-      {
-        $group: {
-          _id: '$statut',
-          nombre: { $sum: 1 },
-          montantTotal: { $sum: '$montants.total' }
-        }
-      }
+    const { dateDebut, dateFin } = lirePeriode(req.query);
+    const where = { createdAt: { gte: dateDebut, lte: dateFin } };
+
+    const [parStatut, evaluations, evolution, topArticles] = await Promise.all([
+      prisma.commande.groupBy({
+        by: ['statut'],
+        where,
+        _count: { _all: true },
+        _sum: { total: true },
+      }),
+      prisma.commande.findMany({
+        where: { ...where, evaluation: { not: null } },
+        select: { evaluation: true },
+      }),
+      prisma.$queryRaw`
+        SELECT date_trunc('day', "createdAt") AS jour,
+               COUNT(*)::int AS "nombreCommandes",
+               COALESCE(SUM("total"), 0)::float AS revenus
+        FROM "commandes"
+        WHERE "createdAt" >= ${dateDebut} AND "createdAt" <= ${dateFin}
+          AND "statut" NOT IN ('annulee', 'remboursee')
+        GROUP BY 1 ORDER BY 1`,
+      prisma.articleCommande.groupBy({
+        by: ['platId'],
+        where: { commande: { ...where, statut: { notIn: STATUTS_NON_REVENU } } },
+        _sum: { quantite: true, sousTotal: true },
+        orderBy: { _sum: { quantite: 'desc' } },
+        take: 5,
+      }),
     ]);
-    
-    // Évolution des commandes par jour
-    const evolutionQuotidienne = await Commande.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: new Date(dateDebut), $lte: new Date(dateFin) }
-        }
-      },
-      {
-        $group: {
-          _id: {
-            annee: { $year: '$createdAt' },
-            mois: { $month: '$createdAt' },
-            jour: { $dayOfMonth: '$createdAt' }
-          },
-          nombreCommandes: { $sum: 1 },
-          revenus: { $sum: '$montants.total' }
-        }
-      },
-      { $sort: { '_id.annee': 1, '_id.mois': 1, '_id.jour': 1 } }
-    ]);
-    
+
+    const totalCommandes = parStatut.reduce((n, g) => n + g._count._all, 0);
+    const revenuGroupes = parStatut.filter((g) => !STATUTS_NON_REVENU.includes(g.statut));
+    const totalRevenu = revenuGroupes.reduce((n, g) => n + (g._sum.total || 0), 0);
+    const commandesRevenu = revenuGroupes.reduce((n, g) => n + g._count._all, 0);
+    const compte = (statut) => parStatut.find((g) => g.statut === statut)?._count._all || 0;
+
+    const notes = evaluations.map((e) => e.evaluation?.note).filter((n) => typeof n === 'number');
+
+    const plats = await prisma.plat.findMany({
+      where: { id: { in: topArticles.map((t) => t.platId) } },
+      select: { id: true, nom: true },
+    });
+    const nomsPlats = new Map(plats.map((p) => [p.id, p.nom]));
+
     res.status(200).json({
       success: true,
       message: 'Statistiques récupérées avec succès',
       data: {
-        statistiques,
-        statsParStatut,
-        evolutionQuotidienne
-      }
+        statistiques: {
+          totalCommandes,
+          totalRevenu,
+          commandesLivrees: compte('livree'),
+          commandesAnnulees: compte('annulee'),
+          panierMoyen: commandesRevenu ? totalRevenu / commandesRevenu : 0,
+          noteMovenne: notes.length ? notes.reduce((a, b) => a + b, 0) / notes.length : 0,
+        },
+        statsParStatut: parStatut.map((g) => ({
+          _id: g.statut,
+          statut: g.statut,
+          nombre: g._count._all,
+          montantTotal: g._sum.total || 0,
+        })),
+        evolutionQuotidienne: evolution.map((r) => {
+          const d = new Date(r.jour);
+          return {
+            _id: { annee: d.getFullYear(), mois: d.getMonth() + 1, jour: d.getDate() },
+            nombreCommandes: r.nombreCommandes,
+            revenus: r.revenus,
+          };
+        }),
+        topPlats: topArticles.map((t) => ({
+          platId: t.platId,
+          nom: nomsPlats.get(t.platId) || 'Plat supprimé',
+          quantite: t._sum.quantite || 0,
+          chiffreAffaires: t._sum.sousTotal || 0,
+        })),
+      },
     });
-    
+  } catch (error) {
+    next(error);
+  }
+};
+
+const echapperCsv = (v) => {
+  const t = v == null ? '' : String(v);
+  // neutralise l'injection de formules Excel
+  const sur = /^[=+\-@]/.test(t) ? `'${t}` : t;
+  return /[";\n\r]/.test(sur) ? `"${sur.replace(/"/g, '""')}"` : sur;
+};
+
+/** GET /api/commandes/export/csv?dateDebut&dateFin&statut */
+export const exporterCommandesCsv = async (req, res, next) => {
+  try {
+    const { dateDebut, dateFin } = lirePeriode(req.query);
+    const where = { createdAt: { gte: dateDebut, lte: dateFin } };
+    if (req.query.statut) where.statut = req.query.statut;
+
+    const commandes = await prisma.commande.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        numeroCommande: true,
+        createdAt: true,
+        statut: true,
+        informationsClient: true,
+        sousTotal: true,
+        fraisLivraison: true,
+        taxes: true,
+        remise: true,
+        total: true,
+        codePromo: true,
+        methodePaiement: true,
+        statutPaiement: true,
+      },
+    });
+
+    const entetes = ['Numéro', 'Date', 'Statut', 'Client', 'E-mail', 'Sous-total', 'Livraison', 'Taxes', 'Remise', 'Total', 'Code promo', 'Paiement', 'Statut paiement'];
+    const lignes = commandes.map((c) =>
+      [
+        c.numeroCommande,
+        c.createdAt.toISOString(),
+        c.statut,
+        `${c.informationsClient?.prenom || ''} ${c.informationsClient?.nom || ''}`.trim(),
+        c.informationsClient?.email,
+        c.sousTotal,
+        c.fraisLivraison,
+        c.taxes,
+        c.remise,
+        c.total,
+        c.codePromo,
+        c.methodePaiement,
+        c.statutPaiement,
+      ].map(echapperCsv).join(';')
+    );
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="commandes.csv"');
+    res.send('\uFEFF' + [entetes.join(';'), ...lignes].join('\r\n'));
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * PATCH /api/commandes/:id/position — le livreur assigné partage sa position GPS.
+ * Stockée dans livraison.positionLivreur (JSON), sans migration de schéma.
+ */
+export const mettreAJourPositionLivreur = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const lat = Number(req.body?.lat);
+    const lng = Number(req.body?.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+      const error = new Error('Coordonnées GPS invalides');
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    const commande = await prisma.commande.findUnique({ where: { id } });
+    if (!commande) {
+      const error = new Error('Commande non trouvée');
+      error.statusCode = 404;
+      return next(error);
+    }
+    if (commande.statut !== 'en_livraison') {
+      const error = new Error("La position n'est partagée que pendant la livraison");
+      error.statusCode = 409;
+      return next(error);
+    }
+    if (req.utilisateur.role === 'livreur' && commande.livreurId && commande.livreurId !== req.utilisateur.id) {
+      const error = new Error('Commande assignée à un autre livreur');
+      error.statusCode = 403;
+      return next(error);
+    }
+
+    const prendEnCharge = req.utilisateur.role === 'livreur' && !commande.livreurId;
+    await prisma.commande.update({
+      where: { id },
+      data: {
+        ...(prendEnCharge ? { livreurId: req.utilisateur.id } : {}),
+        livraison: {
+          ...(commande.livraison || {}),
+          positionLivreur: { lat, lng, date: new Date().toISOString() },
+        },
+      },
+    });
+
+    res.status(200).json({ success: true, message: 'Position enregistrée', data: null });
   } catch (error) {
     next(error);
   }

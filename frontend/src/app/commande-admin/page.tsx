@@ -15,6 +15,18 @@ const statutsCommande = [
   { value: 'remboursee', label: 'Remboursée', color: 'bg-gray-100 text-gray-800' }
 ];
 
+// Mêmes transitions que le backend : on ne propose que les étapes autorisées
+const TRANSITIONS: Record<string, string[]> = {
+  en_attente: ['confirmee', 'annulee'],
+  confirmee: ['en_preparation', 'annulee'],
+  en_preparation: ['prete', 'annulee'],
+  prete: ['en_livraison', 'annulee'],
+  en_livraison: ['livree', 'annulee'],
+  livree: ['remboursee'],
+  annulee: [],
+  remboursee: [],
+};
+
 export default function CommandeAdminPage() {
   const [commandes, setCommandes] = useState<CommandeAdmin[]>([]);
   const [filtreStatut, setFiltreStatut] = useState<string>('tous');
@@ -22,6 +34,28 @@ export default function CommandeAdminPage() {
   const [commandeSelectionnee, setCommandeSelectionnee] = useState<CommandeAdmin | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Actualisation silencieuse toutes les 8 s (les alertes « nouvelle commande » sont gérées par AdminNotifier)
+  useEffect(() => {
+    const tick = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const { commandes: list } = await getCommandes({ limite: 100 });
+        if (list) setCommandes(list);
+      } catch {
+        /* on réessaie au prochain passage */
+      }
+    };
+    const t = window.setInterval(() => void tick(), 8000);
+    const auRetour = () => void tick();
+    document.addEventListener('visibilitychange', auRetour);
+    window.addEventListener('afro:nouvelle-commande', auRetour);
+    return () => {
+      window.clearInterval(t);
+      document.removeEventListener('visibilitychange', auRetour);
+      window.removeEventListener('afro:nouvelle-commande', auRetour);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -109,6 +143,7 @@ const changerStatut = async (commandeId: string, nouveauStatut: string) => {
       <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestion des Commandes</h1>
             <p className="text-gray-600">Gérez et suivez toutes les commandes de votre restaurant</p>
+            <p className="mt-2 text-sm text-gray-500">Actualisation automatique toutes les 8 secondes.</p>
           </div>
 
           {error && (
@@ -262,11 +297,13 @@ const changerStatut = async (commandeId: string, nouveauStatut: string) => {
                               onChange={(e) => changerStatut(commande.id, e.target.value)}
                               className="text-xs px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
                             >
-                              {statutsCommande.map(statut => (
-                                <option key={statut.value} value={statut.value}>
-                                  {statut.label}
-                                </option>
-                              ))}
+                              {statutsCommande
+                                .filter(statut => statut.value === commande.statut || (TRANSITIONS[commande.statut] ?? []).includes(statut.value))
+                                .map(statut => (
+                                  <option key={statut.value} value={statut.value}>
+                                    {statut.label}
+                                  </option>
+                                ))}
                             </select>
                             <button
                               onClick={() => setCommandeSelectionnee(commande)}

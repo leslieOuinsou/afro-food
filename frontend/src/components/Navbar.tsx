@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
+import NotificationBell from '@/components/NotificationBell';
 import { VendorStatusBar } from '@/components/VendorStatusBar';
 import { FAVORITES_STORAGE_KEY, FAVORITES_UPDATED_EVENT } from '@/lib/favoritesStorage';
 import type { User } from '@/services/auth';
@@ -70,10 +71,15 @@ const centerLinks: { href: string; label: string }[] = [
   { href: '/contact', label: 'Contact' },
 ];
 
+const livreurMenuItems: { href: string; label: string }[] = [
+  { href: '/livreur', label: 'Mes livraisons' },
+];
+
 const vendorMenuItems: { href: string; label: string }[] = [
   { href: '/admin-dashboard', label: 'Tableau de bord' },
   { href: '/commande-admin', label: 'Commandes clients' },
   { href: '/admin-plats', label: 'Gestion des plats' },
+  { href: '/admin-promos', label: 'Codes promo' },
   { href: '/admin-messagerie', label: 'Messagerie' },
   { href: '/admin-parametres', label: 'Paramètres' },
 ];
@@ -81,7 +87,15 @@ const vendorMenuItems: { href: string; label: string }[] = [
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, loading, isVendor, logout } = useAuth();
+  const { user, loading, isVendor: estGestionnaire, logout } = useAuth();
+  const isLivreur = user?.role === 'livreur';
+  // Admin et livreur ont un espace dédié (menu et bouton à la place de l'espace client)
+  const isVendor = estGestionnaire || isLivreur;
+  const menuItems = isLivreur ? livreurMenuItems : vendorMenuItems;
+  const lienEspace = isLivreur ? { href: '/livreur', label: 'Mes livraisons' } : { href: '/admin-dashboard', label: 'Dashboard' };
+  // L'admin gère les plats depuis son espace : pas de lien vers le catalogue client
+  // Admin et livreur : pas de navigation client (menu, recherche, favoris, panier)
+  const liensCentre = isVendor ? [] : centerLinks;
   const { items } = useCart();
   const cartCount = items.reduce((sum, item) => sum + item.quantite, 0);
 
@@ -136,7 +150,7 @@ export default function Navbar() {
     await logout();
     setUserMenuOpen(false);
     closeDrawer();
-    router.push('/');
+    router.push(isVendor ? '/login' : '/');
     router.refresh();
   };
 
@@ -164,7 +178,7 @@ export default function Navbar() {
         >
           <div className="relative mx-auto flex max-w-[1400px] items-center justify-between gap-4 px-4 py-3 lg:px-8">
             <Link
-              href="/"
+              href={isVendor ? lienEspace.href : '/'}
               className="flex shrink-0 items-center gap-2.5"
               onClick={closeDrawer}
             >
@@ -181,7 +195,7 @@ export default function Navbar() {
             </Link>
 
             <nav className="hidden items-center gap-10 md:flex" aria-label="Navigation principale">
-              {centerLinks.map((l) => (
+              {liensCentre.map((l) => (
                 <Link key={l.href} href={l.href} className={linkClass(l.href)}>
                   {l.label}
                 </Link>
@@ -189,6 +203,8 @@ export default function Navbar() {
             </nav>
 
             <div className="hidden items-center gap-1 md:flex">
+              {!isVendor && (
+              <>
               <Link href="/recherche" className={iconBtnClass} aria-label="Rechercher" title="Recherche">
                 <SearchIcon />
               </Link>
@@ -204,6 +220,7 @@ export default function Navbar() {
                   </span>
                 )}
               </Link>
+              {user?.role === 'client' && <NotificationBell role="client" />}
               <Link
                 href="/panier"
                 className={`relative ${iconBtnClass}`}
@@ -216,6 +233,8 @@ export default function Navbar() {
                   </span>
                 )}
               </Link>
+              </>
+              )}
 
               {loading && (
                 <div className="ml-1 flex items-center gap-2">
@@ -245,10 +264,10 @@ export default function Navbar() {
                 <>
                   {isVendor && (
                     <Link
-                      href="/admin-dashboard"
+                      href={lienEspace.href}
                       className="font-ui ml-2 rounded-full border border-af-ocre/35 bg-af-ocre/10 px-4 py-2 text-sm font-bold text-af-ocre transition hover:bg-af-ocre/15"
                     >
-                      Dashboard
+                      {lienEspace.label}
                     </Link>
                   )}
                   <div className="relative ml-1" ref={userMenuRef}>
@@ -273,7 +292,17 @@ export default function Navbar() {
                       >
                         {isVendor ? (
                           <>
-                            {vendorMenuItems.map((item) => (
+                            {!isLivreur && (
+                              <Link
+                                role="menuitem"
+                                href="/livreur"
+                                className="block px-4 py-2.5 text-sm font-medium text-af-wood hover:bg-earth-100"
+                                onClick={() => setUserMenuOpen(false)}
+                              >
+                                Espace livreur
+                              </Link>
+                            )}
+                            {menuItems.map((item) => (
                               <Link
                                 key={item.href}
                                 role="menuitem"
@@ -312,6 +341,16 @@ export default function Navbar() {
                             >
                               Commandes
                             </Link>
+                            {user?.role === 'livreur' && (
+                              <Link
+                                role="menuitem"
+                                href="/livreur"
+                                className="block px-4 py-2.5 text-sm font-medium text-af-wood hover:bg-earth-100"
+                                onClick={() => setUserMenuOpen(false)}
+                              >
+                                Espace livreur
+                              </Link>
+                            )}
                             <Link
                               role="menuitem"
                               href="/dashboard?tab=favoris"
@@ -346,6 +385,8 @@ export default function Navbar() {
             </div>
 
             <div className="flex items-center gap-2 md:hidden">
+              {user?.role === 'client' && <NotificationBell role="client" />}
+              {!isVendor && (
               <Link href="/panier" className={`relative ${iconBtnClass}`} aria-label="Panier">
                 <CartIcon />
                 {cartCount > 0 && (
@@ -354,6 +395,7 @@ export default function Navbar() {
                   </span>
                 )}
               </Link>
+              )}
               <button
                 type="button"
                 className="flex h-10 w-10 items-center justify-center rounded-xl border border-earth-200 text-af-wood hover:bg-earth-100"
@@ -408,7 +450,7 @@ export default function Navbar() {
             </button>
           </div>
           <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4" aria-label="Menu mobile">
-            {centerLinks.map((l) => (
+            {liensCentre.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
@@ -463,15 +505,15 @@ export default function Navbar() {
               <div className="mt-4 flex flex-col gap-1 border-t border-earth-200 pt-4">
                 {isVendor && (
                   <Link
-                    href="/admin-dashboard"
+                    href={lienEspace.href}
                     className="rounded-xl px-4 py-3 text-sm font-bold text-af-ocre hover:bg-earth-100"
                     onClick={closeDrawer}
                   >
-                    Dashboard
+                    {lienEspace.label}
                   </Link>
                 )}
                 {isVendor
-                  ? vendorMenuItems.map((item) => (
+                  ? menuItems.map((item) => (
                       <Link
                         key={item.href}
                         href={item.href}

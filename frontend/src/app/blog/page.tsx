@@ -1,9 +1,12 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { trackNewsletter } from '@/lib/analytics';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { useToast } from '@/context/ToastContext';
+import { subscribeNewsletter } from '@/services/newsletter';
 import {
   BLOG_ARTICLES,
   FACET_LABELS,
@@ -13,7 +16,10 @@ import {
 const ALL_TAGS = Array.from(new Set(BLOG_ARTICLES.flatMap((a) => a.tags))).slice(0, 8);
 
 export default function BlogPage() {
+  const { toast } = useToast();
   const [facet, setFacet] = useState<BlogFacet | null>(null);
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterBusy, setNewsletterBusy] = useState(false);
 
   const filtered = useMemo(() => {
     if (!facet) return BLOG_ARTICLES;
@@ -181,8 +187,31 @@ export default function BlogPage() {
               </p>
               <form
                 className="mt-4 space-y-3"
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                   e.preventDefault();
+                  const trimmed = newsletterEmail.trim();
+                  if (!trimmed) {
+                    toast.info('Indiquez une adresse e-mail pour vous inscrire.', 'Newsletter');
+                    return;
+                  }
+                  setNewsletterBusy(true);
+                  try {
+                    const res = await subscribeNewsletter(trimmed);
+                    if (res.success) {
+                      trackNewsletter('blog');
+                      setNewsletterEmail('');
+                      toast.success(
+                        res.message || 'Vous êtes inscrit·e à notre lettre d’information.',
+                        'Merci !'
+                      );
+                    } else {
+                      toast.info(res.message || 'Inscription impossible pour le moment.', 'Newsletter');
+                    }
+                  } catch {
+                    toast.info('Inscription impossible pour le moment.', 'Newsletter');
+                  } finally {
+                    setNewsletterBusy(false);
+                  }
                 }}
               >
                 <label className="sr-only" htmlFor="blog-newsletter-email">
@@ -191,14 +220,18 @@ export default function BlogPage() {
                 <input
                   id="blog-newsletter-email"
                   type="email"
+                  value={newsletterEmail}
+                  onChange={(e) => setNewsletterEmail(e.target.value)}
                   placeholder="votre@email.com"
-                  className="w-full rounded-2xl border border-[var(--wood)]/15 bg-white/80 px-4 py-3 text-sm text-[var(--wood)] outline-none focus:border-[var(--ochre)]/45"
+                  disabled={newsletterBusy}
+                  className="w-full rounded-2xl border border-[var(--wood)]/15 bg-white/80 px-4 py-3 text-sm text-[var(--wood)] outline-none focus:border-[var(--ochre)]/45 disabled:opacity-60"
                 />
                 <button
                   type="submit"
-                  className="w-full rounded-full bg-[var(--wood)] py-3 text-sm font-semibold text-[var(--ivory)] hover:bg-[var(--wood)]/95"
+                  disabled={newsletterBusy}
+                  className="w-full rounded-full bg-[var(--wood)] py-3 text-sm font-semibold text-[var(--ivory)] hover:bg-[var(--wood)]/95 disabled:opacity-60"
                 >
-                  S’inscrire
+                  {newsletterBusy ? 'Inscription…' : 'S’inscrire'}
                 </button>
               </form>
             </div>

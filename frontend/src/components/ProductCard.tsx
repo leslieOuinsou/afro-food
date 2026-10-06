@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { trackAddToWishlist } from '@/lib/analytics';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import { FAVORITES_STORAGE_KEY, dispatchFavoritesUpdated } from '@/lib/favoritesStorage';
@@ -109,6 +110,7 @@ export default function ProductCard({
       } else {
         next = [...list, { id, nom: name, image }];
         setFavorite(true);
+        trackAddToWishlist({ item_id: id, item_name: name, price: 0, quantity: 1 });
       }
       try {
         localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(next));

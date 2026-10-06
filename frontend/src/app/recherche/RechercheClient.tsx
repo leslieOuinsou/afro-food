@@ -8,6 +8,8 @@ import Footer from '@/components/Footer';
 import { BLOG_ARTICLES } from '@/data/blogArticles';
 import { SEARCH_PRODUCTS, type SearchProduct } from '@/data/searchCatalog';
 import type { BlogArticle } from '@/data/blogArticles';
+import { trackSearch } from '@/lib/analytics';
+import { fetchPlats, type Plat } from '@/services/plats';
 
 type FilterPill = 'tout' | 'produits' | 'blog';
 type SortTab = 'pertinence' | 'prix' | 'recent';
@@ -68,6 +70,27 @@ function parseArticleDateId(id: string) {
   return Number.isNaN(n) ? 0 : n;
 }
 
+function platToSearchProduct(p: Plat): SearchProduct {
+  return {
+    id: p._id,
+    name: p.nom,
+    price: p.prixPromo && p.prixPromo < p.prix ? p.prixPromo : p.prix,
+    image: p.images?.principale || '',
+    category: p.categorie,
+    origin: p.origineAfricaine?.pays || '',
+  };
+}
+
+function filterStaticProducts(q: string): SearchProduct[] {
+  if (!q) return [];
+  return SEARCH_PRODUCTS.filter(
+    (p) =>
+      matchesQuery(p.name, q) ||
+      matchesQuery(p.category, q) ||
+      matchesQuery(p.origin, q)
+  );
+}
+
 export default function RechercheSearch() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -76,6 +99,8 @@ export default function RechercheSearch() {
   const [input, setInput] = useState(qParam);
   const [filter, setFilter] = useState<FilterPill>('tout');
   const [sort, setSort] = useState<SortTab>('pertinence');
+  const [apiProducts, setApiProducts] = useState<SearchProduct[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
 
   useEffect(() => {
     setInput(qParam);
@@ -83,15 +108,39 @@ export default function RechercheSearch() {
 
   const q = qParam.trim();
 
-  const filteredProducts = useMemo(() => {
-    if (!q) return [];
-    return SEARCH_PRODUCTS.filter(
-      (p) =>
-        matchesQuery(p.name, q) ||
-        matchesQuery(p.category, q) ||
-        matchesQuery(p.origin, q)
-    );
+  useEffect(() => {
+    if (!q) {
+      setApiProducts([]);
+      setLoadingProducts(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingProducts(true);
+    trackSearch(q);
+
+    (async () => {
+      try {
+        const res = await fetchPlats({ recherche: q, limite: 50 });
+        if (cancelled) return;
+        if (res.success && res.data?.plats) {
+          setApiProducts(res.data.plats.map(platToSearchProduct));
+        } else {
+          setApiProducts(filterStaticProducts(q));
+        }
+      } catch {
+        if (!cancelled) setApiProducts(filterStaticProducts(q));
+      } finally {
+        if (!cancelled) setLoadingProducts(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [q]);
+
+  const filteredProducts = apiProducts;
 
   const filteredArticles = useMemo(() => {
     if (!q) return [];
@@ -137,7 +186,7 @@ export default function RechercheSearch() {
   );
 
   const hasQuery = q.length > 0;
-  const isEmpty = hasQuery && totalCount === 0;
+  const isEmpty = hasQuery && !loadingProducts && totalCount === 0;
 
   const SUGGESTIONS = ['jollof', 'bissap', 'Sénégal', 'épices', 'thieboudienne'];
 
@@ -185,7 +234,9 @@ export default function RechercheSearch() {
             {hasQuery && (
               <>
                 <p className="mt-8 font-ui text-sm text-[var(--wood)]/70">
-                  {isEmpty ? (
+                  {loadingProducts ? (
+                    <>Recherche en cours…</>
+                  ) : isEmpty ? (
                     <>Aucun résultat pour « {q} »</>
                   ) : (
                     <>
@@ -272,6 +323,16 @@ export default function RechercheSearch() {
             </div>
           )}
 
+          {hasQuery && loadingProducts && (
+            <div className="rounded-[28px] border border-[var(--wood)]/10 bg-white/50 px-8 py-16 text-center">
+              <div
+                className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[var(--wood)]/20 border-t-[var(--ochre)]"
+                aria-hidden
+              />
+              <p className="mt-4 text-sm text-[var(--wood)]/70">Chargement des résultats…</p>
+            </div>
+          )}
+
           {isEmpty && (
             <div className="rounded-[28px] border border-[var(--brick)]/20 bg-[color:rgba(139,58,42,.07)] px-8 py-14 text-center">
               <div className="mx-auto flex max-w-sm justify-center text-[var(--ochre)]/40" aria-hidden>
@@ -310,7 +371,7 @@ export default function RechercheSearch() {
             </div>
           )}
 
-          {hasQuery && !isEmpty && (
+          {hasQuery && !loadingProducts && !isEmpty && (
             <div className="space-y-14">
               {visibleProducts.length > 0 && (
                 <section>
