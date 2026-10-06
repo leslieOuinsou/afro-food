@@ -28,9 +28,9 @@ type BackendEnvelope<T = unknown> = {
  */
 function getToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return (
-    localStorage.getItem('afro_eats_token') || sessionStorage.getItem('afro_eats_token')
-  );
+  // La session de l'onglet (sessionStorage) passe avant celle partagée entre onglets (localStorage) :
+  // se connecter avec un autre compte dans un autre onglet ne change plus le compte de celui-ci.
+  return sessionStorage.getItem('afro_eats_token') || localStorage.getItem('afro_eats_token');
 }
 
 /**

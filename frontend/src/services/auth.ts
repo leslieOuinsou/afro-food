@@ -100,6 +100,7 @@ export async function register(data: {
   if (res.success && res.data?.token) {
     if (typeof window !== 'undefined') {
       localStorage.setItem(TOKEN_KEY, res.data.token);
+      sessionStorage.setItem(TOKEN_KEY, res.data.token);
     }
   }
   return res;
@@ -113,6 +114,7 @@ export async function login(email: string, motDePasse: string): Promise<ApiRespo
   if (res.success && res.data?.token) {
     if (typeof window !== 'undefined') {
       localStorage.setItem(TOKEN_KEY, res.data.token);
+      sessionStorage.setItem(TOKEN_KEY, res.data.token);
     }
   }
   return res;
