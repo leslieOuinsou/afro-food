@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
+import { trackAdminOrderStatus } from '@/lib/analytics';
 import { getCommandes, updateStatut, type CommandeAdmin } from '@/services/adminCommandes';
 
 const statutsCommande = [
@@ -93,6 +94,7 @@ export default function CommandeAdminPage() {
 const changerStatut = async (commandeId: string, nouveauStatut: string) => {
     const res = await updateStatut(commandeId, nouveauStatut);
     if (res.success) {
+      trackAdminOrderStatus(nouveauStatut);
       setCommandes(prev => prev.map(commande =>
         commande.id === commandeId ? { ...commande, statut: nouveauStatut } : commande
       ));

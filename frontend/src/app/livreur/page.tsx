@@ -7,6 +7,7 @@ import Footer from '@/components/Footer';
 import { useAuth } from '@/context/AuthContext';
 import { apiGet, apiPatch } from '@/lib/api';
 import NotificationBell from '@/components/NotificationBell';
+import { trackDeliveryAction, trackDeliveryHistoryMore, trackPositionSharing } from '@/lib/analytics';
 import { NOTIFS_UPDATED_EVENT, ajouterNotif, jouerBip, lireNotifs, sonActif } from '@/lib/notifications';
 
 type CommandeLivreur = {
@@ -130,6 +131,7 @@ export default function LivreurPage() {
     setOccupe(null);
     if (!res.success) setErreur(res.message || 'Mise à jour impossible.');
     else {
+      trackDeliveryAction(statut === 'livree' ? 'livree' : 'prise_en_charge');
       await charger();
       if (statut === 'livree') await chargerHistorique();
     }
@@ -261,6 +263,7 @@ export default function LivreurPage() {
                     dernierEnvoi.current = 0;
                     if (partage) {
                       setPartage(false);
+                      trackPositionSharing(false);
                       return;
                     }
                     if (!('geolocation' in navigator)) {
@@ -270,7 +273,10 @@ export default function LivreurPage() {
                     // La demande d'autorisation doit partir directement du clic (obligatoire sur iPhone/Safari)
                     setInfoGps('Autorise la localisation quand le téléphone te le demande…');
                     navigator.geolocation.getCurrentPosition(
-                      () => setPartage(true),
+                      () => {
+                        setPartage(true);
+                        trackPositionSharing(true);
+                      },
                       (err) => setInfoGps(messageGps(err)),
                       { enableHighAccuracy: false, maximumAge: 60000, timeout: 20000 }
                     );
@@ -343,7 +349,10 @@ export default function LivreurPage() {
                 {historique.length > nbVisibles && (
                   <button
                     type="button"
-                    onClick={() => setNbVisibles((n) => n + 10)}
+                    onClick={() => {
+                      trackDeliveryHistoryMore();
+                      setNbVisibles((n) => n + 10);
+                    }}
                     className="mt-4 rounded-full border border-[var(--wood)]/20 px-5 py-2 text-sm font-semibold hover:bg-white"
                   >
                     Voir plus

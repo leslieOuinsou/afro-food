@@ -112,3 +112,56 @@ export function trackReviewSubmitted(note: number, avecCommentaire: boolean): vo
 export function trackPasswordReset(etape: 'demande' | 'renvoi' | 'reussie'): void {
   trackEvent('password_reset', { etape });
 }
+
+// ── Notifications, suivi en direct, livreur, admin ─────────────────────────────────────
+
+/** Rôle de l'utilisateur (client / admin / livreur) : permet d'exclure le personnel dans les rapports GA. */
+export function setUserRole(role: string | null): void {
+  if (!gaActif()) return;
+  window.gtag!('set', 'user_properties', { user_role: role ?? 'visiteur' });
+}
+
+export function trackNotifBellOpen(role: string, nonLues: number): void {
+  trackEvent('notification_bell_open', { role, non_lues: nonLues });
+}
+
+/** type : nouvelle_commande | avis | commande_prete | statut_commande | autre */
+export function trackNotifClick(role: string, type: string): void {
+  trackEvent('notification_click', { role, type });
+}
+
+export function trackPushToggle(role: string, etat: 'actif' | 'inactif' | 'refuse'): void {
+  trackEvent('push_notifications', { role, etat });
+}
+
+export function trackPublicReviewsView(moyenne: number, total: number): void {
+  trackEvent('public_reviews_view', { note_moyenne: moyenne, nombre_avis: total });
+}
+
+export function trackLiveTrackingView(): void {
+  trackEvent('live_tracking_view');
+}
+
+export function trackLiveTrackingRecenter(): void {
+  trackEvent('live_tracking_recenter');
+}
+
+export function trackDeliveryAction(action: 'prise_en_charge' | 'livree'): void {
+  trackEvent('delivery_action', { action });
+}
+
+export function trackPositionSharing(actif: boolean): void {
+  trackEvent('position_sharing', { etat: actif ? 'demarre' : 'arrete' });
+}
+
+export function trackDeliveryHistoryMore(): void {
+  trackEvent('delivery_history_more');
+}
+
+export function trackAdminOrderStatus(statut: string): void {
+  trackEvent('admin_order_status', { statut });
+}
+
+export function trackAdminReviewsView(filtreNote: number): void {
+  trackEvent('admin_reviews_view', { filtre_note: filtreNote || 'tous' });
+}

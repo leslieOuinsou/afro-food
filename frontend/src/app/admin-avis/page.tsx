@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { getAvis, type AvisPayload } from '@/services/adminAvis';
+import { trackAdminReviewsView } from '@/lib/analytics';
 
 const money = (n: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n);
 const dateHeure = (iso: string) =>
@@ -45,6 +46,10 @@ export default function AdminAvisPage() {
     }, 30000);
     return () => window.clearInterval(t);
   }, [charger]);
+
+  useEffect(() => {
+    trackAdminReviewsView(filtre);
+  }, [filtre]);
 
   const total = data?.total ?? 0;
 

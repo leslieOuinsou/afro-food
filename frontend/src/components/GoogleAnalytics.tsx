@@ -3,7 +3,8 @@
 import { useEffect, useRef } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { CONSENT_UPDATED_EVENT, readConsent } from '@/lib/consent';
-import { GA_ID, trackPageView } from '@/lib/analytics';
+import { useAuth } from '@/context/AuthContext';
+import { GA_ID, setUserRole, trackPageView } from '@/lib/analytics';
 
 function chargerGa() {
   if (!GA_ID || typeof window === 'undefined' || window.gtag) return;
@@ -36,6 +37,7 @@ function supprimerCookiesGa() {
 
 export default function GoogleAnalytics() {
   const pathname = usePathname();
+  const { user, loading } = useAuth();
   const searchParams = useSearchParams();
   const url = pathname + (searchParams?.toString() ? `?${searchParams}` : '');
   const urlRef = useRef(url);
@@ -57,6 +59,12 @@ export default function GoogleAnalytics() {
     window.addEventListener(CONSENT_UPDATED_EVENT, synchroniser);
     return () => window.removeEventListener(CONSENT_UPDATED_EVENT, synchroniser);
   }, []);
+
+  // Propriété utilisateur « user_role » : filtre le personnel (admin, livreur) dans les rapports
+  useEffect(() => {
+    if (loading) return;
+    if (readConsent()?.statistiques) setUserRole(user?.role ?? null);
+  }, [user?.role, loading]);
 
   useEffect(() => {
     if (readConsent()?.statistiques && window.gtag) {

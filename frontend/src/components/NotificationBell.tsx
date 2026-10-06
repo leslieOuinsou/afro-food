@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { trackNotifBellOpen, trackNotifClick, trackPushToggle } from '@/lib/analytics';
 import { activerPush, desactiverPush, etatPush, type PushEtat } from '@/lib/push';
 import {
   NOTIFS_UPDATED_EVENT,
@@ -14,6 +15,13 @@ import {
   type Notif,
   type NotifRole,
 } from '@/lib/notifications';
+
+function typeNotif(id: string): string {
+  if (id.startsWith('cmd-')) return 'nouvelle_commande';
+  if (id.startsWith('avis-')) return 'avis';
+  if (id.startsWith('prete-')) return 'commande_prete';
+  return 'statut_commande';
+}
 
 function depuis(iso: string): string {
   const s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
@@ -73,7 +81,9 @@ export default function NotificationBell({ role }: { role: NotifRole }) {
   const basculerPush = async () => {
     setPushOccupe(true);
     try {
-      setPush(push === 'actif' ? await desactiverPush() : await activerPush());
+      const etat = push === 'actif' ? await desactiverPush() : await activerPush();
+      setPush(etat);
+      if (etat === 'actif' || etat === 'inactif' || etat === 'refuse') trackPushToggle(role, etat);
     } catch {
       setPush(await etatPush());
     } finally {
@@ -87,7 +97,10 @@ export default function NotificationBell({ role }: { role: NotifRole }) {
     <div ref={racine} className="relative">
       <button
         type="button"
-        onClick={() => setOuvert((o) => !o)}
+        onClick={() => {
+          if (!ouvert) trackNotifBellOpen(role, nonLues);
+          setOuvert((o) => !o);
+        }}
         aria-label={nonLues ? `Notifications, ${nonLues} non lue${nonLues > 1 ? 's' : ''}` : 'Notifications'}
         aria-expanded={ouvert}
         className="relative rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-800"
@@ -135,6 +148,7 @@ export default function NotificationBell({ role }: { role: NotifRole }) {
                   <Link
                     href={n.href}
                     onClick={() => {
+                      trackNotifClick(role, typeNotif(n.id));
                       marquerLue(role, n.id);
                       setOuvert(false);
                     }}

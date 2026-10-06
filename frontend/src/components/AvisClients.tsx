@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { trackPublicReviewsView } from '@/lib/analytics';
 import { apiGet } from '@/lib/api';
 
 type AvisPublic = { note: number; commentaire: string; date: string; auteur: string };
@@ -24,6 +25,8 @@ function Etoiles({ note, taille = 'text-lg' }: { note: number; taille?: string }
 /** Note moyenne et derniers commentaires clients (section publique du catalogue). */
 export default function AvisClients() {
   const [data, setData] = useState<Payload | null>(null);
+  const section = useRef<HTMLElement>(null);
+  const vue = useRef(false);
 
   useEffect(() => {
     let annule = false;
@@ -35,11 +38,29 @@ export default function AvisClients() {
     };
   }, []);
 
+  // GA : la section est réellement affichée à l'écran (une seule fois)
+  useEffect(() => {
+    const el = section.current;
+    if (!el || !data || data.moyenne == null || vue.current) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting) && !vue.current) {
+          vue.current = true;
+          trackPublicReviewsView(data.moyenne as number, data.total);
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.4 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [data]);
+
   // Rien à montrer tant qu'aucun client n'a noté
   if (!data || data.total === 0 || data.moyenne == null) return null;
 
   return (
-    <section aria-labelledby="avis-titre" className="mx-auto w-full max-w-6xl px-4 py-14">
+    <section ref={section} aria-labelledby="avis-titre" className="mx-auto w-full max-w-6xl px-4 py-14">
       <div className="text-center">
         <p className="font-ui text-xs font-semibold uppercase tracking-[0.2em] text-[var(--ochre)]">Ils nous font confiance</p>
         <h2 id="avis-titre" className="font-title mt-2 text-3xl text-[var(--wood)] sm:text-4xl">

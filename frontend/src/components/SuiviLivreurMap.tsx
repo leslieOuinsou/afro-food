@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import type { Map as LeafletMap, Marker, Polyline, LatLngExpression } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { trackLiveTrackingRecenter, trackLiveTrackingView } from '@/lib/analytics';
 
 type Position = { lat: number; lng: number; date: string };
 
@@ -112,6 +113,7 @@ export default function SuiviLivreurMap({ position, adresse }: Props) {
   // Nouvelle position
   useEffect(() => {
     if (!position || position.date === derniere.current) return;
+    if (derniere.current === null) trackLiveTrackingView(); // 1re position affichée au client
     derniere.current = position.date;
     majPosition();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -157,6 +159,7 @@ export default function SuiviLivreurMap({ position, adresse }: Props) {
         type="button"
         onClick={() => {
           suivi.current = true;
+          trackLiveTrackingRecenter();
           majPosition();
         }}
         className="absolute bottom-3 left-3 z-[500] rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[var(--wood)] shadow ring-1 ring-black/10 hover:bg-[var(--ivory)]"
