@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { accueilPourRole } from '@/components/RoleGuard';
 import { useAuth } from '@/context/AuthContext';
 import {
   CONSENT_ACCEPTE,
@@ -53,7 +55,6 @@ export default function CookieConsent() {
   useEffect(() => {
     const existant = readConsent();
     if (existant) setChoix({ statistiques: existant.statistiques, marketing: existant.marketing });
-    else setVue('bandeau');
 
     const ouvrir = () => {
       const actuel = readConsent();
@@ -70,15 +71,17 @@ export default function CookieConsent() {
     setVue('ferme');
   }, []);
 
-  // Redemande le choix une fois à chaque connexion (quel que soit le profil).
+  // Bandeau affiché une seule fois par connexion, sur la première page du profil
+  // (catalogue pour le client, tableau de bord pour l'admin, page livreur pour le livreur).
   const { user, loading } = useAuth();
+  const pathname = usePathname();
   useEffect(() => {
     if (loading) return;
     const cle = 'afro-cookies-connexion';
     try {
       if (!user) {
         sessionStorage.removeItem(cle);
-      } else if (!sessionStorage.getItem(cle)) {
+      } else if (pathname === accueilPourRole(user.role) && !sessionStorage.getItem(cle)) {
         sessionStorage.setItem(cle, '1');
         const actuel = readConsent();
         // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -86,7 +89,7 @@ export default function CookieConsent() {
         setVue('bandeau');
       }
     } catch {}
-  }, [user, loading]);
+  }, [user, loading, pathname]);
 
   useEffect(() => {
     if (vue !== 'preferences') return;

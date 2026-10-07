@@ -1,13 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { CONSENT_UPDATED_EVENT, readConsent } from '@/lib/consent';
 import { GUIDE_TEXTE, promptInstall, useCanInstall, useInstallGuide, useIsInstalled } from '@/lib/install';
 
 const CLE_REFUS = 'afro-install-refus';
 
+function abonnerConsentement(cb: () => void) {
+  window.addEventListener(CONSENT_UPDATED_EVENT, cb);
+  return () => window.removeEventListener(CONSENT_UPDATED_EVENT, cb);
+}
+// Cookies acceptés (au moins une catégorie) : condition pour proposer l'installation.
+function cookiesAcceptes() {
+  const c = readConsent();
+  return !!c && (c.statistiques || c.marketing);
+}
+
 export default function InstallApp() {
   const peutInstaller = useCanInstall();
   const installee = useIsInstalled();
+  const acceptes = useSyncExternalStore(abonnerConsentement, cookiesAcceptes, () => false);
   const guide = useInstallGuide();
   const [refuse, setRefuse] = useState(true);
   const [confirmation, setConfirmation] = useState(false);
@@ -46,6 +58,7 @@ export default function InstallApp() {
     return () => window.removeEventListener('appinstalled', onInstalled);
   }, []);
 
+  if (!acceptes) return null;
   if (installee && !confirmation) return null;
   if (refuse && !confirmation) return null;
   // Sans bouton natif : consigne manuelle seulement sur iPhone/iPad et Safari Mac.

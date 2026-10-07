@@ -149,8 +149,8 @@ export default function ContactPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                         </svg>
                       </span>
-                      <a href="mailto:contact@africanelegance.com" className="font-medium text-af-wood underline-offset-2 hover:text-af-ocre hover:underline">
-                        contact@africanelegance.com
+                      <a href="mailto:ouinsoul5@gmail.com" className="font-medium text-af-wood underline-offset-2 hover:text-af-ocre hover:underline">
+                        ouinsoul5@gmail.com
                       </a>
                     </li>
                     <li className="flex gap-3">
@@ -170,7 +170,7 @@ export default function ContactPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                       </span>
-                      <span className="text-af-wood">1 rue Louis Aragon, 94310 Orly</span>
+                      <span className="text-af-wood">24 avenue Aristide Briand, 33700 Mérignac</span>
                     </li>
                   </ul>
                 </div>
