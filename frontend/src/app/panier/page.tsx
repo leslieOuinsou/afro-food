@@ -410,7 +410,7 @@ export default function PanierPage() {
 
           {/* Étape Panier */}
           {step === 'panier' && (
-            <div className="grid gap-8 lg:grid-cols-12 lg:gap-10">
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
               <div className="lg:col-span-7 space-y-4">
                 {items.length === 0 ? (
                   <div className="rounded-[28px] border border-[var(--wood)]/10 bg-white/55 p-12 text-center backdrop-blur">
@@ -504,7 +504,7 @@ export default function PanierPage() {
 
           {/* Étape Livraison */}
           {step === 'livraison' && (
-            <div className="grid gap-8 lg:grid-cols-12 lg:gap-10">
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
               <div className="lg:col-span-7">
                 <div className="rounded-[28px] border border-[var(--wood)]/10 bg-white/55 p-6 backdrop-blur lg:p-8">
                   <h2 className="font-title text-2xl">Adresse de livraison</h2>
@@ -631,7 +631,7 @@ export default function PanierPage() {
 
           {/* Étape Paiement */}
           {step === 'paiement' && (
-            <div className="grid gap-8 lg:grid-cols-12 lg:gap-10">
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
               <div className="lg:col-span-7 space-y-6">
                 <div className="rounded-[28px] border border-[var(--wood)]/10 bg-white/55 p-6 backdrop-blur lg:p-8">
                   <h2 className="font-title text-2xl">Mode de paiement</h2>

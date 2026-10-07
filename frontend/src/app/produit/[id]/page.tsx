@@ -270,10 +270,10 @@ export default function ProduitPage({ params }: { params: { id: string } }) {
           </nav>
 
           {/* Layout asymétrique */}
-          <div className="mt-6 grid gap-8 lg:grid-cols-12 lg:gap-10">
+          <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
             {/* Galerie gauche */}
             <section className="lg:col-span-7">
-              <div className="grid gap-4 lg:grid-cols-[92px_1fr]">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[92px_1fr]">
                 <div className="hidden lg:grid gap-3">
                   {product.images.slice(0, 6).map((src, idx) => (
                     <button
@@ -464,7 +464,7 @@ export default function ProduitPage({ params }: { params: { id: string } }) {
           </div>
 
           {/* Sections dessous */}
-          <div className="mt-10 grid gap-6 lg:grid-cols-12">
+          <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-12">
             <section className="lg:col-span-8 space-y-6">
               {/* Description longue */}
               <div className="rounded-[28px] border border-[var(--wood)]/10 bg-white/55 p-6 shadow-sm backdrop-blur lg:p-8">
