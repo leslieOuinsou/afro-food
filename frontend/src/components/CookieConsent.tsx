@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 import {
   CONSENT_ACCEPTE,
   CONSENT_REFUSE,
@@ -68,6 +69,24 @@ export default function CookieConsent() {
     setChoix(categories);
     setVue('ferme');
   }, []);
+
+  // Redemande le choix une fois à chaque connexion (quel que soit le profil).
+  const { user, loading } = useAuth();
+  useEffect(() => {
+    if (loading) return;
+    const cle = 'afro-cookies-connexion';
+    try {
+      if (!user) {
+        sessionStorage.removeItem(cle);
+      } else if (!sessionStorage.getItem(cle)) {
+        sessionStorage.setItem(cle, '1');
+        const actuel = readConsent();
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setChoix(actuel ? { statistiques: actuel.statistiques, marketing: actuel.marketing } : CONSENT_REFUSE);
+        setVue('bandeau');
+      }
+    } catch {}
+  }, [user, loading]);
 
   useEffect(() => {
     if (vue !== 'preferences') return;
