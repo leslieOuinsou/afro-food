@@ -8,6 +8,7 @@ import Footer from '@/components/Footer';
 import { useAuth } from '@/context/AuthContext';
 import { dispatchFavoritesUpdated, FAVORITES_STORAGE_KEY } from '@/lib/favoritesStorage';
 import { updateProfil } from '@/services/auth';
+import InstallButton from '@/components/InstallButton';
 import { getMesCommandes } from '@/services/commandes';
 import { getMesAvis, type AvisItem } from '@/services/avis';
 
@@ -525,6 +526,10 @@ function DashboardContent() {
                     {profilSaving ? 'Enregistrement…' : 'Enregistrer'}
                   </button>
                 </form>
+                <div className="max-w-xl space-y-3 rounded-[28px] border border-[var(--wood)]/10 bg-white/55 p-6 backdrop-blur lg:p-8">
+                  <h2 className="font-title text-2xl tracking-tight">Application</h2>
+                  <InstallButton />
+                </div>
               </div>
             )}
 

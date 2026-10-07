@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Lato, Syne } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/Providers";
@@ -25,10 +25,15 @@ const fontBody = Lato({
 export const metadata: Metadata = {
   title: "Afro-food - Cuisine Camerounaise et Béninoise",
   description: "Découvrez les saveurs authentiques du Cameroun et du Bénin avec Afro-food. Livraison de plats traditionnels à domicile.",
+  appleWebApp: { capable: true, title: "Afro-food", statusBarStyle: "default" },
   icons: {
     icon: "/logo-afro-eats.png",
-    apple: "/logo-afro-eats.png",
+    apple: "/icon-192.png",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#d4651a",
 };
 
 export default function RootLayout({
@@ -43,7 +48,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="icon" href="/logo-afro-eats.png" />
-        <link rel="apple-touch-icon" href="/logo-afro-eats.png" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
       <body
         className={`${fontTitle.variable} ${fontUI.variable} ${fontBody.variable} antialiased`}

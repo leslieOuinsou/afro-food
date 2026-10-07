@@ -7,6 +7,7 @@ import ClientNotifier from '@/components/ClientNotifier';
 import RoleGuard from '@/components/RoleGuard';
 import GoogleAnalytics from '@/components/GoogleAnalytics';
 import FavorisSync from '@/components/FavorisSync';
+import InstallApp from '@/components/InstallApp';
 import { Suspense } from 'react';
 import { ToastProvider } from '@/context/ToastContext';
 
@@ -20,6 +21,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           <FavorisSync />
           {children}
           <CookieConsent />
+          <InstallApp />
           <Suspense fallback={null}>
             <GoogleAnalytics />
           </Suspense>
