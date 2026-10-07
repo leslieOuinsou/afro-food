@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import { CONSENT_UPDATED_EVENT, readConsent } from '@/lib/consent';
 import { GUIDE_TEXTE, promptInstall, useCanInstall, useInstallGuide, useIsInstalled } from '@/lib/install';
 
@@ -19,11 +20,13 @@ function cookiesAcceptes() {
 export default function InstallApp() {
   const peutInstaller = useCanInstall();
   const installee = useIsInstalled();
+  const { user } = useAuth();
   const acceptes = useSyncExternalStore(abonnerConsentement, cookiesAcceptes, () => false);
   const guide = useInstallGuide();
   const [refuse, setRefuse] = useState(true);
   const [confirmation, setConfirmation] = useState(false);
   const [aide, setAide] = useState(false);
+  const visible = !!user && acceptes && !(installee && !confirmation) && !(refuse && !confirmation);
 
   useEffect(() => {
     if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
@@ -31,7 +34,7 @@ export default function InstallApp() {
     }
     try {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setRefuse(localStorage.getItem(CLE_REFUS) === '1');
+      setRefuse(sessionStorage.getItem(CLE_REFUS) === '1');
     } catch {
       setRefuse(false);
     }
@@ -41,16 +44,18 @@ export default function InstallApp() {
     setConfirmation(false);
     setAide(false);
     try {
-      localStorage.setItem(CLE_REFUS, '1');
+      sessionStorage.setItem(CLE_REFUS, '1');
     } catch {}
     setRefuse(true);
   };
 
   useEffect(() => {
+    if (!visible) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && fermer();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
 
   useEffect(() => {
     const onInstalled = () => setConfirmation(true);
@@ -58,11 +63,8 @@ export default function InstallApp() {
     return () => window.removeEventListener('appinstalled', onInstalled);
   }, []);
 
-  if (!acceptes) return null;
-  if (installee && !confirmation) return null;
-  if (refuse && !confirmation) return null;
-  // Sans bouton natif : consigne manuelle seulement sur iPhone/iPad et Safari Mac.
-  if (!confirmation && !peutInstaller && guide !== 'ios' && guide !== 'safari-mac') return null;
+
+  if (!visible) return null;
 
   return (
     <div
