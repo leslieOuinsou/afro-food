@@ -419,7 +419,7 @@ export default function Navbar() {
       </div>
 
       <div
-        className={`fixed inset-0 z-[105] md:hidden ${drawerOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
+        className={`fixed inset-0 z-[105] overflow-hidden md:hidden${drawerOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}
         aria-hidden={!drawerOpen}
       >
         <button
