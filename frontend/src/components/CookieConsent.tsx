@@ -54,6 +54,7 @@ export default function CookieConsent() {
 
   useEffect(() => {
     const existant = readConsent();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (existant) setChoix({ statistiques: existant.statistiques, marketing: existant.marketing });
 
     const ouvrir = () => {

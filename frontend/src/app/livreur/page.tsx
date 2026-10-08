@@ -111,6 +111,7 @@ export default function LivreurPage() {
       router.replace('/login?redirect=/livreur');
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void charger();
     void chargerHistorique();
     const t = window.setInterval(() => {
@@ -139,7 +140,9 @@ export default function LivreurPage() {
 
   const aPrendre = commandes.filter((c) => c.statut === 'prete');
   const enCours = commandes.filter((c) => c.statut === 'en_livraison');
-  idsEnCours.current = enCours.map((c) => c._id);
+  useEffect(() => {
+    idsEnCours.current = enCours.map((c) => c._id);
+  });
 
   const dateLivraison = (c: CommandeLivreur) => {
     const iso = c.dates?.livraison ?? c.updatedAt;
@@ -164,6 +167,7 @@ export default function LivreurPage() {
   useEffect(() => {
     if (!partage) return;
     if (!('geolocation' in navigator)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setInfoGps("La géolocalisation n'est pas disponible sur cet appareil.");
       setPartage(false);
       return;

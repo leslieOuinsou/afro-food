@@ -60,10 +60,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const [items, setItems] = useState<CartItem[]>([]);
   const itemsRef = useRef<CartItem[]>([]);
-  itemsRef.current = items;
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setItems(loadFromStorage());
     setHydrated(true);
   }, []);

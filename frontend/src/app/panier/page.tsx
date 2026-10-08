@@ -687,7 +687,7 @@ export default function PanierPage() {
                       }`}
                     >
                       <p className="font-semibold text-[var(--wood)]">Espèces à la livraison</p>
-                      <p className="mt-1 text-xs text-[var(--wood)]/65">Préparez l'appoint si possible</p>
+                      <p className="mt-1 text-xs text-[var(--wood)]/65">Préparez l&apos;appoint si possible</p>
                     </button>
                   </div>
 
@@ -728,7 +728,7 @@ export default function PanierPage() {
                   )}
                   {paymentMode === 'mobile' && (
                     <p className="mt-8 rounded-2xl border border-[var(--wood)]/10 bg-[color:rgba(139,58,42,.07)] p-4 text-sm text-[var(--wood)]/75">
-                      Le paiement mobile est simulé pour l'instant, mais la méthode est transmise au backend.
+                      Le paiement mobile est simulé pour l&apos;instant, mais la méthode est transmise au backend.
                     </p>
                   )}
                   {paymentMode === 'especes' && (

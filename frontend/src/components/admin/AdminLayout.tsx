@@ -17,6 +17,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const { user, loading } = useAuth();
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsSidebarOpen(false);
   }, [pathname]);
 

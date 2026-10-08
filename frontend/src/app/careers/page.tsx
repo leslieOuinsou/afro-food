@@ -45,7 +45,7 @@ export default function CareersPage() {
             <div className="text-center mb-12">
               <h1 className="text-4xl font-bold text-gray-800 mb-4">Carrières</h1>
               <p className="text-xl text-gray-600">
-                Rejoignez l'équipe Afro-food et faites partie de notre aventure culinaire
+                Rejoignez l&apos;équipe Afro-food et faites partie de notre aventure culinaire
               </p>
             </div>
 
@@ -75,7 +75,7 @@ export default function CareersPage() {
                   <div>
                     <h3 className="text-xl font-semibold text-gray-800 mb-2">Croissance</h3>
                     <p className="text-gray-600">
-                      Opportunités d'évolution et de développement professionnel
+                      Opportunités d&apos;évolution et de développement professionnel
                     </p>
                   </div>
                 </div>

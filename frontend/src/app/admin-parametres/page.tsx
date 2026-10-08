@@ -560,7 +560,7 @@ export default function AdminParametresPage() {
               {activeTab === 'affichage' && (
                 <div className="space-y-6">
                   <div>
-                    <h2 className="text-xl font-bold text-gray-800 mb-4">Paramètres d'Affichage</h2>
+                    <h2 className="text-xl font-bold text-gray-800 mb-4">Paramètres d&apos;Affichage</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <label className="block text-sm font-medium text-gray-900 mb-2">

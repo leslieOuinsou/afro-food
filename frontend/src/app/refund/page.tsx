@@ -21,13 +21,13 @@ export default function RefundPage() {
               <section>
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">1. Droit de rétractation</h2>
                 <p className="text-gray-700 leading-relaxed mb-4">
-                  Conformément à la législation en vigueur, vous disposez d'un délai de 14 jours à compter 
+                  Conformément à la législation en vigueur, vous disposez d&apos;un délai de 14 jours à compter 
                   de la réception de votre commande pour exercer votre droit de rétractation, sauf pour les 
                   produits périssables (plats préparés).
                 </p>
                 <p className="text-gray-700 leading-relaxed">
                   <strong className="text-gray-800">Exception :</strong> Pour les plats préparés, le droit 
-                  de rétractation ne s'applique pas en raison de la nature périssable des produits.
+                  de rétractation ne s&apos;applique pas en raison de la nature périssable des produits.
                 </p>
               </section>
 
@@ -57,7 +57,7 @@ export default function RefundPage() {
                     <h3 className="text-xl font-semibold text-gray-800 mb-2">2.3 Retard de livraison</h3>
                     <p>
                       Si votre commande arrive avec plus de <strong>30 minutes de retard</strong> par rapport 
-                      à l'heure estimée, vous pouvez demander un remboursement partiel des frais de livraison.
+                      à l&apos;heure estimée, vous pouvez demander un remboursement partiel des frais de livraison.
                     </p>
                   </div>
                 </div>
@@ -98,7 +98,7 @@ export default function RefundPage() {
                   <p>
                     <strong className="text-gray-800">Paiement par carte bancaire :</strong> Le remboursement 
                     apparaîtra sur votre compte dans un délai de <strong>5 à 10 jours ouvrables</strong> suivant 
-                    l'approbation de votre demande.
+                    l&apos;approbation de votre demande.
                   </p>
                   <p>
                     <strong className="text-gray-800">Paiement par PayPal :</strong> Le remboursement sera 
@@ -124,8 +124,8 @@ export default function RefundPage() {
                   <li>Commande annulée après le début de la préparation (après 10 minutes)</li>
                   <li>Demande de remboursement effectuée plus de 48 heures après la livraison</li>
                   <li>Problème non signalé dans les délais</li>
-                  <li>Commande non récupérée à l'adresse indiquée (absence du destinataire)</li>
-                  <li>Changement d'avis après réception (sauf cas exceptionnel)</li>
+                  <li>Commande non récupérée à l&apos;adresse indiquée (absence du destinataire)</li>
+                  <li>Changement d&apos;avis après réception (sauf cas exceptionnel)</li>
                 </ul>
               </section>
 
@@ -146,7 +146,7 @@ export default function RefundPage() {
                 <p className="text-gray-700 leading-relaxed">
                   En alternative au remboursement, nous pouvons vous proposer un bon de réduction valable 
                   sur votre prochaine commande. Ce bon est valable pendant <strong>3 mois</strong> à compter 
-                  de sa date d'émission.
+                  de sa date d&apos;émission.
                 </p>
               </section>
 

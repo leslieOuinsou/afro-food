@@ -67,10 +67,10 @@ const TEAM = [
 ] as const;
 
 export default function AboutPage() {
-  const statsRef = useInViewOnce<HTMLDivElement>();
-  const guides = useCountUp(120, 1600, statsRef.inView);
-  const pays = useCountUp(18, 1600, statsRef.inView);
-  const produits = useCountUp(2100, 2000, statsRef.inView);
+  const { ref: statsRef, inView: statsInView } = useInViewOnce<HTMLDivElement>();
+  const guides = useCountUp(120, 1600, statsInView);
+  const pays = useCountUp(18, 1600, statsInView);
+  const produits = useCountUp(2100, 2000, statsInView);
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--ivory)] text-[var(--wood)]">
@@ -191,7 +191,7 @@ export default function AboutPage() {
 
       {/* Chiffres clés — animés */}
       <section
-        ref={statsRef.ref}
+        ref={statsRef}
         className="border-t border-[var(--wood)]/10 bg-[#2C1A0E] py-16 text-[var(--ivory)] lg:py-20"
       >
         <div className="mx-auto grid max-w-[1000px] grid-cols-1 gap-10 px-6 text-center sm:grid-cols-3 lg:px-12">

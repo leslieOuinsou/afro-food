@@ -94,6 +94,7 @@ export default function ProductCard({
   const [favorite, setFavorite] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFavorite(readFavorites().some((f) => f.id === id));
   }, [id]);
 

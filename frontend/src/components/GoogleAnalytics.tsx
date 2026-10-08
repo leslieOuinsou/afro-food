@@ -41,7 +41,9 @@ export default function GoogleAnalytics() {
   const searchParams = useSearchParams();
   const url = pathname + (searchParams?.toString() ? `?${searchParams}` : '');
   const urlRef = useRef(url);
-  urlRef.current = url;
+  useEffect(() => {
+    urlRef.current = url;
+  }, [url]);
 
   useEffect(() => {
     const synchroniser = () => {

@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import AvisClients from '@/components/AvisClients';
+import InstallButton from '@/components/InstallButton';
 import { useCart } from '@/context/CartContext';
 import {
   fetchCategories,
@@ -389,6 +390,7 @@ function CataloguePageInner() {
   useEffect(() => {
     const rawCat = searchParams.get('categorie');
     const rawPays = searchParams.get('pays') ?? searchParams.get('region');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (rawCat) setCategorie(decodeURIComponent(rawCat));
     if (rawPays) setRegion(decodeURIComponent(rawPays));
   }, [searchParams]);
@@ -423,6 +425,7 @@ function CataloguePageInner() {
 
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
 
     const triBackend =
@@ -526,6 +529,7 @@ function CataloguePageInner() {
   }, [loading, dataSource, apiTotalCount, filteredClient.length]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(1);
   }, [region, categorie, noteMin, prixMin, prixMax, sort, query]);
 
@@ -581,6 +585,11 @@ function CataloguePageInner() {
             <p className="mt-3 max-w-2xl text-sm text-[var(--wood)]/75 lg:text-base">
               Plats camerounais et béninois, boissons et spécialités : filtrez par région, catégorie ou budget.
             </p>
+            {user && (
+              <div className="mt-4">
+                <InstallButton />
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-8 lg:flex-row lg:gap-10">

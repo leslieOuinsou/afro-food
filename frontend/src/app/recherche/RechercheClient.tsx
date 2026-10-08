@@ -154,7 +154,7 @@ export default function RechercheSearch() {
   }, [q]);
 
   const productsSorted = useMemo(() => {
-    let list = [...filteredProducts];
+    const list = [...filteredProducts];
     if (sort === 'prix') list.sort((a, b) => a.price - b.price);
     else if (sort === 'pertinence') list.sort((a, b) => scoreProduct(b, q) - scoreProduct(a, q));
     else list.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
@@ -162,7 +162,7 @@ export default function RechercheSearch() {
   }, [filteredProducts, sort, q]);
 
   const articlesSorted = useMemo(() => {
-    let list = [...filteredArticles];
+    const list = [...filteredArticles];
     if (sort === 'recent') list.sort((a, b) => parseArticleDateId(b.id) - parseArticleDateId(a.id));
     else if (sort === 'pertinence') list.sort((a, b) => scoreArticle(b, q) - scoreArticle(a, q));
     else list.sort((a, b) => a.title.localeCompare(b.title, 'fr'));

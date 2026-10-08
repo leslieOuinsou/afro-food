@@ -111,6 +111,7 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     syncFavorites();
     const onFav = () => syncFavorites();
     window.addEventListener(FAVORITES_UPDATED_EVENT, onFav);

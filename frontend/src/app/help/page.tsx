@@ -59,9 +59,9 @@ export default function HelpPage() {
           <div className="max-w-6xl mx-auto">
             {/* En-tête */}
             <div className="text-center mb-12">
-              <h1 className="text-4xl font-bold text-gray-800 mb-4">Centre d'aide</h1>
+              <h1 className="text-4xl font-bold text-gray-800 mb-4">Centre d&apos;aide</h1>
               <p className="text-xl text-gray-600">
-                Trouvez l'aide dont vous avez besoin rapidement et facilement
+                Trouvez l&apos;aide dont vous avez besoin rapidement et facilement
               </p>
             </div>
 
@@ -122,7 +122,7 @@ export default function HelpPage() {
 
             {/* Contact */}
             <section className="bg-orange-500 text-white rounded-lg shadow-md p-8 text-center">
-              <h2 className="text-3xl font-bold mb-4">Besoin d'aide supplémentaire ?</h2>
+              <h2 className="text-3xl font-bold mb-4">Besoin d&apos;aide supplémentaire ?</h2>
               <p className="text-xl mb-6">
                 Notre équipe de support est disponible 7j/7 pour vous aider
               </p>

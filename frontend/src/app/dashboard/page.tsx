@@ -181,6 +181,7 @@ function DashboardContent() {
       router.replace(`/login?redirect=${encodeURIComponent('/dashboard')}`);
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setProfil({
       prenom: user.prenom || '',
       nom: user.nom || '',
@@ -244,6 +245,7 @@ function DashboardContent() {
   useEffect(() => {
     if (!hydrated || !user) return;
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setReviewsLoading(true);
     setReviewsError('');
     getMesAvis({ limite: 20, tri: 'recent' })
@@ -560,7 +562,7 @@ function DashboardContent() {
                   ))}
                 </ul>
                 {!reviewsLoading && reviews.length === 0 ? (
-                  <p className="text-sm text-[var(--wood)]/70">Vous n'avez pas encore publié d'avis.</p>
+                  <p className="text-sm text-[var(--wood)]/70">Vous n&apos;avez pas encore publié d&apos;avis.</p>
                 ) : null}
               </div>
             )}

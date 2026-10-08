@@ -108,7 +108,7 @@ export default function AdminDashboardPage() {
     <AdminLayout>
       <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-800 mb-2">Tableau de Bord</h1>
-            <p className="text-gray-600">Vue d'ensemble de votre activité</p>
+            <p className="text-gray-600">Vue d&apos;ensemble de votre activité</p>
             <button
               type="button"
               onClick={async () => setExportErreur((await telechargerExportCommandes()) ?? '')}

@@ -11,10 +11,9 @@ function abonnerConsentement(cb: () => void) {
   window.addEventListener(CONSENT_UPDATED_EVENT, cb);
   return () => window.removeEventListener(CONSENT_UPDATED_EVENT, cb);
 }
-// Cookies acceptés (au moins une catégorie) : condition pour proposer l'installation.
+// Bandeau cookies validé (accepté ou refusé) : condition pour proposer l'installation.
 function cookiesAcceptes() {
-  const c = readConsent();
-  return !!c && (c.statistiques || c.marketing);
+  return readConsent() !== null;
 }
 
 export default function InstallApp() {
@@ -33,6 +32,7 @@ export default function InstallApp() {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
     try {
+       
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setRefuse(sessionStorage.getItem(CLE_REFUS) === '1');
     } catch {
@@ -54,7 +54,7 @@ export default function InstallApp() {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && fermer();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [visible]);
 
   useEffect(() => {

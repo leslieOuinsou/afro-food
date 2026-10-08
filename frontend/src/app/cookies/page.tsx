@@ -21,7 +21,7 @@ export default function CookiesPage() {
             {/* Contenu */}
             <div className="bg-white rounded-lg shadow-md p-8 space-y-8">
               <section>
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">1. Qu'est-ce qu'un cookie ?</h2>
+                <h2 className="text-2xl font-bold text-gray-800 mb-4">1. Qu&apos;est-ce qu&apos;un cookie ?</h2>
                 <p className="text-gray-700 leading-relaxed">
                   Un cookie est un petit fichier texte stocké sur votre appareil (ordinateur, tablette, 
                   smartphone) lorsque vous visitez un site web. Les cookies permettent au site de reconnaître 
@@ -40,11 +40,11 @@ export default function CookiesPage() {
                     <ul className="list-disc list-inside space-y-2 text-gray-700 ml-4">
                       <li>Mémoriser vos préférences de langue</li>
                       <li>Maintenir votre session de connexion</li>
-                      <li>Gérer votre panier d'achat</li>
+                      <li>Gérer votre panier d&apos;achat</li>
                       <li>Assurer la sécurité du site</li>
                     </ul>
                     <p className="text-gray-700 leading-relaxed mt-4">
-                      <strong>Durée :</strong> Session ou jusqu'à 1 an
+                      <strong>Durée :</strong> Session ou jusqu&apos;à 1 an
                     </p>
                   </div>
 
@@ -55,27 +55,27 @@ export default function CookiesPage() {
                       des informations anonymes. Ils permettent de :
                     </p>
                     <ul className="list-disc list-inside space-y-2 text-gray-700 ml-4">
-                      <li>Analyser le trafic et l'utilisation du site</li>
+                      <li>Analyser le trafic et l&apos;utilisation du site</li>
                       <li>Identifier les pages les plus visitées</li>
                       <li>Améliorer les performances du site</li>
                     </ul>
                     <p className="text-gray-700 leading-relaxed mt-4">
-                      <strong>Durée :</strong> Jusqu'à 2 ans
+                      <strong>Durée :</strong> Jusqu&apos;à 2 ans
                     </p>
                   </div>
 
                   <div>
                     <h3 className="text-xl font-semibold text-gray-800 mb-3">2.3 Cookies de fonctionnalité</h3>
                     <p className="text-gray-700 leading-relaxed mb-2">
-                      Ces cookies permettent d'améliorer votre expérience en mémorisant :
+                      Ces cookies permettent d&apos;améliorer votre expérience en mémorisant :
                     </p>
                     <ul className="list-disc list-inside space-y-2 text-gray-700 ml-4">
                       <li>Vos préférences (langue, région)</li>
                       <li>Vos choix de personnalisation</li>
-                      <li>Vos informations de connexion (si vous choisissez "Se souvenir de moi")</li>
+                      <li>Vos informations de connexion (si vous choisissez &quot;Se souvenir de moi&quot;)</li>
                     </ul>
                     <p className="text-gray-700 leading-relaxed mt-4">
-                      <strong>Durée :</strong> Jusqu'à 1 an
+                      <strong>Durée :</strong> Jusqu&apos;à 1 an
                     </p>
                   </div>
 
@@ -83,15 +83,15 @@ export default function CookiesPage() {
                     <h3 className="text-xl font-semibold text-gray-800 mb-3">2.4 Cookies de ciblage/publicité</h3>
                     <p className="text-gray-700 leading-relaxed mb-2">
                       Ces cookies sont utilisés pour vous proposer des publicités pertinentes et mesurer 
-                      l'efficacité de nos campagnes publicitaires. Ils permettent de :
+                      l&apos;efficacité de nos campagnes publicitaires. Ils permettent de :
                     </p>
                     <ul className="list-disc list-inside space-y-2 text-gray-700 ml-4">
                       <li>Personnaliser les publicités selon vos intérêts</li>
-                      <li>Limiter le nombre de fois qu'une publicité vous est affichée</li>
-                      <li>Mesurer l'efficacité des campagnes</li>
+                      <li>Limiter le nombre de fois qu&apos;une publicité vous est affichée</li>
+                      <li>Mesurer l&apos;efficacité des campagnes</li>
                     </ul>
                     <p className="text-gray-700 leading-relaxed mt-4">
-                      <strong>Durée :</strong> Jusqu'à 1 an
+                      <strong>Durée :</strong> Jusqu&apos;à 1 an
                     </p>
                   </div>
                 </div>
@@ -106,9 +106,9 @@ export default function CookiesPage() {
                   <div>
                     <h4 className="font-semibold text-gray-800 mb-2">Google Analytics</h4>
                     <p>
-                      Si vous acceptez les cookies de mesure d'audience, nous pouvons utiliser un service d'analyse de
+                      Si vous acceptez les cookies de mesure d&apos;audience, nous pouvons utiliser un service d&apos;analyse de
                       trafic (par exemple Google Analytics) pour comprendre comment les visiteurs utilisent notre site.
-                      Aucun outil de ce type n'est chargé avant votre accord.
+                      Aucun outil de ce type n&apos;est chargé avant votre accord.
                     </p>
                   </div>
                   <div>
@@ -186,7 +186,7 @@ export default function CookiesPage() {
               <section>
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">7. Cookies et données personnelles</h2>
                 <p className="text-gray-700 leading-relaxed">
-                  Certains cookies peuvent collecter des données personnelles. Pour plus d'informations 
+                  Certains cookies peuvent collecter des données personnelles. Pour plus d&apos;informations 
                   sur le traitement de vos données, consultez notre{' '}
                   <Link href="/privacy" className="text-orange-500 hover:underline">
                     Politique de Confidentialité

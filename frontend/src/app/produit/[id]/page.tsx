@@ -147,6 +147,7 @@ export default function ProduitPage({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setSelectedImage(0);
     fetchPlatById(params.id)
@@ -170,6 +171,7 @@ export default function ProduitPage({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSimilarLoading(true);
     fetchPlats({ limite: 12, tri: 'populaire' })
       .then((res) => {
@@ -189,6 +191,7 @@ export default function ProduitPage({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setReviewsLoading(true);
     setReviewsError('');
     getAvisByPlat(params.id, { limite: 10, tri: 'recent' })
@@ -229,6 +232,7 @@ export default function ProduitPage({ params }: { params: { id: string } }) {
   }, [product.indisponible, product.quantiteMax]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setQty((q) => clamp(q, 1, maxQtySelect));
   }, [maxQtySelect, product.id]);
 

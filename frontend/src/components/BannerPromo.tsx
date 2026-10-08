@@ -122,6 +122,7 @@ function TimeSegment({
   useEffect(() => {
     if (value !== prev.current) {
       prev.current = value;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setBump(true);
       const t = window.setTimeout(() => setBump(false), 320);
       return () => window.clearTimeout(t);
@@ -226,6 +227,7 @@ export default function BannerPromo({
   }, [countdownEnd]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setReady(true);
     setDismissed(readDismissed(storageKey));
   }, [storageKey]);

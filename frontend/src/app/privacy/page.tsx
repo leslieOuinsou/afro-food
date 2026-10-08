@@ -22,7 +22,7 @@ export default function PrivacyPage() {
               <section>
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">1. Introduction</h2>
                 <p className="text-gray-700 leading-relaxed">
-                  Afro-food s'engage à protéger votre vie privée. Cette politique de confidentialité 
+                  Afro-food s&apos;engage à protéger votre vie privée. Cette politique de confidentialité 
                   explique comment nous collectons, utilisons et protégeons vos données personnelles 
                   conformément au Règlement Général sur la Protection des Données (RGPD).
                 </p>
@@ -32,7 +32,7 @@ export default function PrivacyPage() {
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">2. Données collectées</h2>
                 <div className="space-y-4 text-gray-700">
                   <p>
-                    <strong className="text-gray-800">2.1 Données d'identification :</strong> Nom, prénom, 
+                    <strong className="text-gray-800">2.1 Données d&apos;identification :</strong> Nom, prénom, 
                     adresse email, numéro de téléphone, adresse de livraison.
                   </p>
                   <p>
@@ -65,16 +65,16 @@ export default function PrivacyPage() {
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">4. Base légale du traitement</h2>
                 <div className="space-y-4 text-gray-700">
                   <p>
-                    <strong className="text-gray-800">4.1 Exécution d'un contrat :</strong> Pour traiter 
+                    <strong className="text-gray-800">4.1 Exécution d&apos;un contrat :</strong> Pour traiter 
                     vos commandes et livrer vos plats.
                   </p>
                   <p>
-                    <strong className="text-gray-800">4.2 Consentement :</strong> Pour l'envoi de 
+                    <strong className="text-gray-800">4.2 Consentement :</strong> Pour l&apos;envoi de 
                     newsletters et communications marketing.
                   </p>
                   <p>
                     <strong className="text-gray-800">4.3 Intérêt légitime :</strong> Pour améliorer 
-                    nos services et analyser l'utilisation du site.
+                    nos services et analyser l&apos;utilisation du site.
                   </p>
                   <p>
                     <strong className="text-gray-800">4.4 Obligation légale :</strong> Pour respecter 
@@ -110,11 +110,11 @@ export default function PrivacyPage() {
                   Conformément au RGPD, vous disposez des droits suivants :
                 </p>
                 <ul className="list-disc list-inside space-y-2 text-gray-700 ml-4">
-                  <li><strong>Droit d'accès :</strong> Obtenir une copie de vos données personnelles</li>
+                  <li><strong>Droit d&apos;accès :</strong> Obtenir une copie de vos données personnelles</li>
                   <li><strong>Droit de rectification :</strong> Corriger vos données inexactes</li>
-                  <li><strong>Droit à l'effacement :</strong> Demander la suppression de vos données</li>
+                  <li><strong>Droit à l&apos;effacement :</strong> Demander la suppression de vos données</li>
                   <li><strong>Droit à la portabilité :</strong> Récupérer vos données dans un format structuré</li>
-                  <li><strong>Droit d'opposition :</strong> Vous opposer au traitement de vos données</li>
+                  <li><strong>Droit d&apos;opposition :</strong> Vous opposer au traitement de vos données</li>
                   <li><strong>Droit de limitation :</strong> Limiter le traitement de vos données</li>
                   <li><strong>Droit de retirer votre consentement :</strong> À tout moment</li>
                 </ul>
@@ -126,7 +126,7 @@ export default function PrivacyPage() {
               <section>
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">8. Cookies</h2>
                 <p className="text-gray-700 leading-relaxed mb-4">
-                  Notre site utilise des cookies pour améliorer votre expérience. Pour plus d'informations, 
+                  Notre site utilise des cookies pour améliorer votre expérience. Pour plus d&apos;informations, 
                   consultez notre{' '}
                   <Link href="/cookies" className="text-orange-500 hover:underline">
                     Politique de Cookies

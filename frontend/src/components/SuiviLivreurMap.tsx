@@ -80,7 +80,7 @@ export default function SuiviLivreurMap({ position, adresse }: Props) {
       destination.current = null;
       trace.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   function majPosition() {
@@ -116,7 +116,7 @@ export default function SuiviLivreurMap({ position, adresse }: Props) {
     if (derniere.current === null) trackLiveTrackingView(); // 1re position affichée au client
     derniere.current = position.date;
     majPosition();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [position]);
 
   // Destination (adresse du client), géocodée une seule fois
@@ -149,7 +149,7 @@ export default function SuiviLivreurMap({ position, adresse }: Props) {
     return () => {
       annule = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [adresse]);
 
   return (

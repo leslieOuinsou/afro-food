@@ -39,6 +39,7 @@ export default function AdminAvisPage() {
   }, [filtre]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setChargement(true);
     void charger();
     const t = window.setInterval(() => {

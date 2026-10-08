@@ -13,7 +13,7 @@ export default function TermsPage() {
           <div className="max-w-4xl mx-auto">
             {/* En-tête */}
             <div className="text-center mb-12">
-              <h1 className="text-4xl font-bold text-gray-800 mb-4">Conditions Générales d'Utilisation</h1>
+              <h1 className="text-4xl font-bold text-gray-800 mb-4">Conditions Générales d&apos;Utilisation</h1>
               <p className="text-gray-600">Dernière mise à jour : 15 Janvier 2025</p>
             </div>
 
@@ -22,8 +22,8 @@ export default function TermsPage() {
               <section>
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">1. Acceptation des conditions</h2>
                 <p className="text-gray-700 leading-relaxed">
-                  En accédant et en utilisant le site web Afro-food, vous acceptez d'être lié par ces 
-                  Conditions Générales d'Utilisation. Si vous n'acceptez pas ces conditions, veuillez 
+                  En accédant et en utilisant le site web Afro-food, vous acceptez d&apos;être lié par ces 
+                  Conditions Générales d&apos;Utilisation. Si vous n&apos;acceptez pas ces conditions, veuillez 
                   ne pas utiliser notre service.
                 </p>
               </section>
@@ -73,8 +73,8 @@ export default function TermsPage() {
                     couvertes par notre service. Vérifiez votre adresse lors de la commande.
                   </p>
                   <p>
-                    <strong className="text-gray-800">4.3</strong> En cas d'absence, le livreur tentera 
-                    de vous contacter. Si aucun contact n'est établi, la commande pourra être reportée 
+                    <strong className="text-gray-800">4.3</strong> En cas d&apos;absence, le livreur tentera 
+                    de vous contacter. Si aucun contact n&apos;est établi, la commande pourra être reportée 
                     ou annulée.
                   </p>
                 </div>
@@ -88,7 +88,7 @@ export default function TermsPage() {
                     dans les 10 minutes suivant la confirmation sans frais.
                   </p>
                   <p>
-                    <strong className="text-gray-800">5.2</strong> Pour plus d'informations sur les 
+                    <strong className="text-gray-800">5.2</strong> Pour plus d&apos;informations sur les 
                     remboursements, consultez notre{' '}
                     <Link href="/refund" className="text-orange-500 hover:underline">
                       Politique de Remboursement
@@ -100,7 +100,7 @@ export default function TermsPage() {
               <section>
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">6. Propriété intellectuelle</h2>
                 <p className="text-gray-700 leading-relaxed">
-                  Tous les contenus du site (textes, images, logos, etc.) sont la propriété d'Afro-food 
+                  Tous les contenus du site (textes, images, logos, etc.) sont la propriété d&apos;Afro-food 
                   ou de ses partenaires et sont protégés par les lois sur la propriété intellectuelle. 
                   Toute reproduction non autorisée est interdite.
                 </p>
@@ -110,7 +110,7 @@ export default function TermsPage() {
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">7. Limitation de responsabilité</h2>
                 <p className="text-gray-700 leading-relaxed">
                   Afro-food ne saurait être tenu responsable des dommages indirects résultant de 
-                  l'utilisation ou de l'impossibilité d'utiliser notre service. Notre responsabilité 
+                  l&apos;utilisation ou de l&apos;impossibilité d&apos;utiliser notre service. Notre responsabilité 
                   est limitée au montant de votre commande.
                 </p>
               </section>
@@ -137,7 +137,7 @@ export default function TermsPage() {
               <section>
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">10. Droit applicable</h2>
                 <p className="text-gray-700 leading-relaxed">
-                  Ces conditions sont régies par le droit français. Tout litige relatif à l'utilisation 
+                  Ces conditions sont régies par le droit français. Tout litige relatif à l&apos;utilisation 
                   du site sera de la compétence exclusive des tribunaux français.
                 </p>
               </section>
