@@ -182,6 +182,11 @@ function SuiviContent() {
     else await charger();
   };
 
+  const clientCommande = commande?.client;
+  const idClient = commande?.clientId ?? (typeof clientCommande === 'string' ? clientCommande : (clientCommande?._id ?? clientCommande?.id));
+  // Si l'API n'indique pas le client, on laisse le formulaire visible (le serveur reste juge).
+  const estProprietaire = !idClient || !user || idClient === user.id;
+
   const indexActuel = commande ? ETAPES.findIndex((e) => e.statut === commande.statut) : -1;
   const annulee = commande?.statut === 'annulee' || commande?.statut === 'remboursee';
   const historique = [...(commande?.historiqueStatut ?? [])].sort(
@@ -300,6 +305,10 @@ function SuiviContent() {
                     <p className="mt-3 text-sm italic text-[var(--wood)]/80">« {commande.evaluation.commentaire} »</p>
                   ) : null}
                 </>
+              ) : !estProprietaire ? (
+                <p className="text-sm text-[var(--wood)]/70">
+                  Seul le client qui a passé cette commande peut laisser un avis.
+                </p>
               ) : (
                 <>
                   <h2 className="font-title text-2xl">Comment était votre commande ?</h2>

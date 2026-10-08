@@ -89,6 +89,8 @@ export type HistoriqueStatut = {
 };
 
 export type CommandeDetail = CommandeClient & {
+  client?: string | { _id?: string; id?: string };
+  clientId?: string;
   statutAffichage?: string;
   peutEtreAnnulee?: boolean;
   methodePaiement?: string;
