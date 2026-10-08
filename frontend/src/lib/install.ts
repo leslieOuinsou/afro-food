@@ -44,6 +44,13 @@ if (typeof window !== 'undefined') {
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     evenement = e as BeforeInstallPromptEvent;
+    // Le navigateur propose l'installation : l'app n'est pas (ou plus) installée, on efface le drapeau périmé.
+    if (installee && !enStandalone()) {
+      installee = false;
+      try {
+        localStorage.removeItem(CLE_INSTALLEE);
+      } catch {}
+    }
     notifier();
   });
   window.addEventListener('appinstalled', marquerInstallee);
