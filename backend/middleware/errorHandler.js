@@ -8,9 +8,12 @@ function attachCorsForBrowser(req, res) {
   try {
     const u = new URL(origin);
     const ok =
-      origin.endsWith('.vercel.app') ||
       origin === (process.env.FRONTEND_URL || '').replace(/\/$/, '') ||
-      ['https://afro-food.vercel.app', 'https://afrofood.vercel.app'].includes(origin);
+      [
+        'https://afro-food.vercel.app',
+        'https://afrofood.vercel.app',
+        'https://frontend-nine-beta-45.vercel.app',
+      ].includes(origin);
     const localhostOk =
       process.env.NODE_ENV !== 'production' &&
       (u.hostname === 'localhost' || u.hostname === '127.0.0.1');
