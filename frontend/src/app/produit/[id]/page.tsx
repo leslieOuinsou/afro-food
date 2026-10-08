@@ -131,6 +131,10 @@ export default function ProduitPage({ params }: { params: { id: string } }) {
   const [selectedImage, setSelectedImage] = useState(0);
   const [qty, setQty] = useState(1);
 
+  // Suggestions de menu : un plat de chaque catégorie complémentaire (boisson, accompagnement, dessert, entrée)
+  const [menuSuggere, setMenuSuggere] = useState<ProductView[]>([]);
+  const [menuAjoute, setMenuAjoute] = useState(false);
+
   const [similarLoading, setSimilarLoading] = useState(true);
   const [similar, setSimilar] = useState<ProductView[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
@@ -190,6 +194,27 @@ export default function ProduitPage({ params }: { params: { id: string } }) {
       cancelled = true;
     };
   }, [product.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const categories = ['boissons', 'accompagnements', 'desserts', 'entrees'].filter((c) => c !== product.categorie);
+    Promise.all(categories.map((categorie) => fetchPlats({ categorie, limite: 4, tri: 'populaire' }).catch(() => null)))
+      .then((reponses) => {
+        if (cancelled) return;
+        const choix: ProductView[] = [];
+        for (const r of reponses) {
+          const plats = r && r.success && r.data && Array.isArray(r.data.plats) ? r.data.plats : [];
+          const dispo = plats.map(toView).find((p) => p.id !== product.id && !p.indisponible);
+          if (dispo) choix.push(dispo);
+        }
+        setMenuSuggere(choix);
+        setMenuAjoute(false);
+      })
+      .catch(() => setMenuSuggere([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [product.id, product.categorie]);
 
   useEffect(() => {
     let cancelled = false;
@@ -483,9 +508,70 @@ export default function ProduitPage({ params }: { params: { id: string } }) {
                 </div>
               </div>
 
-              {/* Suggestions recettes */}
+              {/* Suggestions de menu : accompagnements réels du catalogue, ajoutables au panier */}
+              {menuSuggere.length > 0 && (
+                <div className="rounded-[28px] border border-[var(--ochre)]/30 bg-[color:rgba(233,162,59,.08)] p-6 shadow-sm backdrop-blur lg:p-8">
+                  <h2 className="font-title text-3xl">Complétez votre repas</h2>
+                  <p className="mt-1 text-sm text-[var(--wood)]/70">
+                    Nos accompagnements, boissons et desserts les plus appréciés avec ce plat.
+                  </p>
+                  <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                    {menuSuggere.map((m) => (
+                      <div key={m.id} className="flex gap-3 rounded-[22px] border border-[var(--wood)]/10 bg-white/70 p-3">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={m.images[0]} alt={m.nom} className="h-20 w-20 shrink-0 rounded-xl object-cover" />
+                        <div className="flex min-w-0 flex-1 flex-col">
+                          <Link href={`/produit/${m.id}`} className="truncate font-semibold hover:underline">
+                            {m.nom}
+                          </Link>
+                          <p className="text-sm text-[var(--ochre)]">{m.prix}</p>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              addItem({
+                                id: m.id,
+                                nom: m.nom,
+                                prixUnitaire: m.prixUnitaire,
+                                image: m.images[0] || '',
+                                quantite: 1,
+                                quantiteMax: m.quantiteMax,
+                              })
+                            }
+                            className="mt-auto self-start rounded-full border border-[var(--ochre)] px-4 py-1.5 text-xs font-semibold text-[var(--ochre)] hover:bg-[var(--ochre)]/10"
+                          >
+                            Ajouter au panier
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={product.indisponible || menuAjoute}
+                    onClick={() => {
+                      addItem({
+                        id: product.id,
+                        nom: product.nom,
+                        prixUnitaire: product.prixUnitaire,
+                        image: product.images[0] || '',
+                        quantite: qty,
+                        quantiteMax: product.quantiteMax,
+                      });
+                      menuSuggere.forEach((m) =>
+                        addItem({ id: m.id, nom: m.nom, prixUnitaire: m.prixUnitaire, image: m.images[0] || '', quantite: 1, quantiteMax: m.quantiteMax })
+                      );
+                      setMenuAjoute(true);
+                    }}
+                    className="mt-5 rounded-full bg-[var(--ochre)] px-6 py-3 text-sm font-semibold text-white hover:bg-[#a6500c] disabled:opacity-50"
+                  >
+                    {menuAjoute ? 'Menu ajouté au panier ✓' : 'Ajouter le plat + ce menu complet'}
+                  </button>
+                </div>
+              )}
+
+              {/* Astuces de préparation et de service */}
               <div className="rounded-[28px] border border-[var(--wood)]/10 bg-white/55 p-6 shadow-sm backdrop-blur lg:p-8">
-                <h2 className="font-title text-3xl">Suggestions de recettes</h2>
+                <h2 className="font-title text-3xl">Astuces de service</h2>
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
                   {[
                     {

@@ -1714,4 +1714,9 @@ export const EN: Record<string, string> = {
   "Profil aromatique: oignons confits, tomate, notes fumées et épices chaudes.": "Aroma profile: confit onions, tomato, smoky notes and warm spices.",
   "Texture: grains séparés, sauce nappante, finition légèrement pimentée.": "Texture: separate grains, coating sauce, slightly spicy finish.",
   "Conseil dégustation: accompagner d'une boisson au gingembre ou d'un bissap frais.": "Serving tip: pair with a ginger drink or a fresh bissap.",
+  "Complétez votre repas": "Complete your meal",
+  "Nos accompagnements, boissons et desserts les plus appréciés avec ce plat.": "Our most popular sides, drinks and desserts to go with this dish.",
+  "Ajouter le plat + ce menu complet": "Add the dish + this full menu",
+  "Menu ajouté au panier ✓": "Menu added to cart ✓",
+  "Astuces de service": "Serving tips",
 };
