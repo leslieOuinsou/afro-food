@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { getDocuments, refuserDocument, validerDocument, type DocumentClient } from '@/services/adminDocuments';
 import { ouvrirJustificatif, tailleLisible } from '@/services/justificatifs';
+import QrScanner from '@/components/admin/QrScanner';
+import { lireQrJustificatif } from '@/lib/qrJustificatif';
 
 const money = (n: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n);
 const dateHeure = (iso: string) => new Date(iso).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
@@ -22,6 +24,8 @@ export default function AdminDocumentsPage() {
   const [aValider, setAValider] = useState<DocumentClient | null>(null);
   const [saisie, setSaisie] = useState('');
   const [erreurValidation, setErreurValidation] = useState('');
+  const [scannerOuvert, setScannerOuvert] = useState(false);
+  const [qrLu, setQrLu] = useState(false);
   const [ouverts, setOuverts] = useState<Set<string>>(new Set());
 
   const charger = useCallback(async () => {
@@ -46,6 +50,28 @@ export default function AdminDocumentsPage() {
     setAValider(d);
     setSaisie('');
     setErreurValidation('');
+    setScannerOuvert(false);
+    setQrLu(false);
+  };
+
+  const traiterQr = (texte: string) => {
+    if (!aValider) return;
+    const qr = lireQrJustificatif(texte);
+    if (!qr) {
+      setErreurValidation('Ce QR code n’est pas un justificatif Afro-food.');
+      return;
+    }
+    if (qr.numero !== aValider.commande.numeroCommande || Math.abs(qr.total - aValider.commande.total) > 0.009) {
+      setErreurValidation(
+        `Ce justificatif concerne ${qr.numero} (${money(qr.total)}), pas la commande ${aValider.commande.numeroCommande} (${money(aValider.commande.total)}).`
+      );
+      setScannerOuvert(false);
+      return;
+    }
+    setErreurValidation('');
+    setSaisie(qr.code);
+    setQrLu(true);
+    setScannerOuvert(false);
   };
 
   const confirmerValidation = async () => {
@@ -198,6 +224,21 @@ export default function AdminDocumentsPage() {
                   Recopiez le <strong>code de vérification</strong> imprimé sur le document (ou scannez son QR code avec votre
                   téléphone). Vérifiez aussi que le montant et le numéro de commande correspondent.
                 </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setScannerOuvert((v) => !v)}
+                    className="rounded-lg bg-gray-900 px-3 py-2 text-sm font-semibold text-white"
+                  >
+                    {scannerOuvert ? 'Fermer le scanner' : 'Scanner le QR code'}
+                  </button>
+                </div>
+                {scannerOuvert && <QrScanner onResult={traiterQr} onClose={() => setScannerOuvert(false)} />}
+                {qrLu && (
+                  <p className="mt-2 rounded-lg bg-green-50 px-3 py-2 text-sm font-semibold text-green-800">
+                    QR code lu : commande et montant correspondent ✓
+                  </p>
+                )}
                 <input
                   value={saisie}
                   onChange={(e) => setSaisie(e.target.value)}

@@ -392,6 +392,32 @@ function SuiviContent() {
             </section>
           )}
 
+          {commande.methodePaiement === 'carte' && commande.statutPaiement === 'en_attente' && commande.statut !== 'annulee' && (
+            <section className="mt-6 rounded-[24px] border-2 border-[var(--ochre)] bg-white p-6">
+              <h2 className="font-title text-2xl">Paiement par carte bancaire</h2>
+              <p className="mt-2 text-sm text-[var(--wood)]/75">
+                Votre commande est enregistrée. Réglez-la sur la page de paiement sécurisée Stripe.
+              </p>
+              {paiementAnnule && <p className="mt-2 text-sm text-red-700">Paiement annulé. Vous pouvez réessayer.</p>}
+              {messageJustif && <p className="mt-2 text-sm text-red-700">{messageJustif}</p>}
+              <button
+                type="button"
+                disabled={redirectionStripe}
+                onClick={() => void payerEnLigne()}
+                className="mt-3 rounded-full bg-[var(--ochre)] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#a6500c] disabled:opacity-50"
+              >
+                {redirectionStripe ? 'Redirection…' : `Payer ${money(commande.montants.total)}`}
+              </button>
+              {stripeTest && (
+                <div className="mt-3 rounded-xl border border-dashed border-[var(--ochre)] bg-[var(--ochre)]/5 p-3 text-xs">
+                  <p className="font-semibold">Mode test — carte fictive à utiliser sur la page Stripe :</p>
+                  <p className="mt-1 font-mono">Numéro : 4242 4242 4242 4242</p>
+                  <p className="font-mono">Date : 12/30 · CVC : 123 · Code postal : 75001</p>
+                </div>
+              )}
+            </section>
+          )}
+
           {commande.methodePaiement === 'especes' && commande.statut === 'en_livraison' && commande.codeRemise && (
             <section className="mt-6 rounded-[24px] border-2 border-[var(--ochre)] bg-white p-6 text-center">
               <h2 className="font-title text-2xl">Code de remise</h2>

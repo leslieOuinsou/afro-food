@@ -296,6 +296,9 @@ export default function PanierPage() {
           window.location.href = session.data.url;
           return;
         }
+        // Redirection impossible : la commande est enregistrée, le client réessaie depuis sa page de commande
+        router.push(`/commande/${cmd._id}`);
+        return;
       }
       setStep('confirmation');
     } catch (err) {
