@@ -338,6 +338,17 @@ function SuiviContent() {
             </section>
           )}
 
+          {commande.methodePaiement === 'especes' && commande.statut === 'en_livraison' && commande.codeRemise && (
+            <section className="mt-6 rounded-[24px] border-2 border-[var(--ochre)] bg-white p-6 text-center">
+              <h2 className="font-title text-2xl">Code de remise</h2>
+              <p className="mt-2 text-sm text-[var(--wood)]/75">
+                Donnez ce code au livreur quand vous lui remettez les {money(commande.montants.total)} en espèces.
+              </p>
+              <p className="mt-4 font-mono text-5xl font-bold tracking-[0.35em] text-[var(--ochre)]">{commande.codeRemise}</p>
+              <p className="mt-3 text-xs text-[var(--wood)]/60">Ne le communiquez qu’au livreur, au moment de la remise.</p>
+            </section>
+          )}
+
           {commande.methodePaiement === 'virement' && commande.statutPaiement !== 'valide' && (
             <section className="mt-6 rounded-[24px] border-2 border-[var(--ochre)] bg-white p-6">
               <h2 className="font-title text-2xl">Paiement par virement</h2>

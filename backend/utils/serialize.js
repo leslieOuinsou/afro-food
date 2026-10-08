@@ -10,6 +10,7 @@ const SENSITIVE = new Set([
   'expirationTokenReset',
   'adresseIP',
   'userAgent',
+  'codeRemise', // visible uniquement par le client concerné (voir obtenirCommandeParId)
 ]);
 
 export function serialize(value) {

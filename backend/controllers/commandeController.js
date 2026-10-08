@@ -10,7 +10,16 @@ import {
   envoyerEmailNouvelleCommandeAdmin,
   envoyerEmailMerciLivraison,
   envoyerEmailAvisNegatif,
+  envoyerEmailCodeRemise,
+  envoyerEmailRecuEspeces,
 } from '../utils/email.js';
+import {
+  arrondir,
+  controlerEncaissement,
+  genererCodeRemise,
+  plafondEspeces,
+  syntheseLivreur,
+} from '../utils/caisse.js';
 import { pushVersRole, pushVersUtilisateur } from '../utils/push.js';
 import { offrirRecompense } from '../utils/recompenses.js';
 
@@ -599,6 +608,14 @@ export const obtenirCommandeParId = async (req, res, next) => {
       delete resultat.livraison.positionLivreur;
     }
 
+    if (
+      commande.methodePaiement === 'especes' &&
+      commande.statut === 'en_livraison' &&
+      commande.clientId === req.utilisateur.id
+    ) {
+      resultat.codeRemise = commande.codeRemise;
+    }
+
     if (estVirementEnAttente(commande) && commande.clientId === req.utilisateur.id) {
       resultat.virement = coordonneesVirement(commande);
     }
@@ -837,6 +854,41 @@ export const changerStatutCommande = async (req, res, next) => {
       }
     }
 
+    // Paiement en espèces : plafond avant la prise en charge, preuve de remise avant la livraison
+    const estEspeces = commande.methodePaiement === 'especes';
+    const livreurResponsable = estLivreur ? req.utilisateur.id : livreurId || commande.livreurId || null;
+    let encaissement = null;
+    if (estEspeces && statut === 'en_livraison' && livreurResponsable) {
+      const nonReverses = await prisma.commande.findMany({
+        where: { livreurId: livreurResponsable, especesStatut: 'a_reverser' },
+        select: { especesEncaissees: true, especesEncaisseLe: true },
+      });
+      if (syntheseLivreur(nonReverses).plafondAtteint) {
+        const error = new Error(
+          `Plafond d'espèces non reversées atteint (${plafondEspeces()} €). Remettez d'abord les espèces à l'administrateur.`
+        );
+        error.statusCode = 403;
+        return next(error);
+      }
+    }
+    if (estEspeces && statut === 'livree') {
+      const controle = controlerEncaissement(
+        commande,
+        {
+          codeRemise: req.body.codeRemise,
+          montantEncaisse: estLivreur ? req.body.montantEncaisse : (req.body.montantEncaisse ?? commande.total),
+          raisonEcart: req.body.raisonEcart,
+        },
+        { exigerCode: estLivreur }
+      );
+      if (!controle.ok) {
+        const error = new Error(controle.message);
+        error.statusCode = 400;
+        return next(error);
+      }
+      encaissement = controle;
+    }
+
     let livreurUpdate = {};
     if (estLivreur && ['en_livraison', 'livree'].includes(statut) && !commande.livreurId) {
       // un livreur ne peut s'assigner que lui-même
@@ -876,6 +928,70 @@ export const changerStatutCommande = async (req, res, next) => {
       commentaire,
       req.utilisateur.id
     );
+
+    if (estEspeces && statut === 'en_livraison') {
+      const code = genererCodeRemise();
+      await prisma.commande.update({ where: { id }, data: { codeRemise: code } });
+      const emailClient = miseAJour.informationsClient?.email;
+      if (emailClient) {
+        await envoyerEmailCodeRemise(emailClient, miseAJour, code).catch((err) =>
+          console.warn('Email code de remise non envoyé:', err.message)
+        );
+      }
+      await pushVersUtilisateur(miseAJour.clientId, {
+        titre: 'Votre livreur arrive',
+        corps: `Code de remise ${code} : à donner au livreur lors du paiement en espèces.`,
+        url: `/commande/${miseAJour.id}`,
+      });
+    }
+
+    if (estEspeces && statut === 'livree') {
+      const livreurFinal = commande.livreurId;
+      const maintenant = new Date();
+      await prisma.$transaction(async (tx) => {
+        await tx.commande.update({
+          where: { id },
+          data: {
+            statutPaiement: 'valide',
+            paiement: { ...(commande.paiement || {}), statut: 'valide', methode: 'especes', dateEncaissement: maintenant.toISOString() },
+            ...(livreurFinal && {
+              especesEncaissees: encaissement.montant,
+              especesEncaisseLe: maintenant,
+              especesEcartRaison: encaissement.raison,
+              especesStatut: 'a_reverser',
+            }),
+          },
+        });
+        if (livreurFinal) {
+          await tx.journalCaisse.create({
+            data: {
+              type: 'encaissement',
+              montant: encaissement.montant,
+              livreurId: livreurFinal,
+              auteurId: req.utilisateur.id,
+              commandeId: id,
+              note: encaissement.raison,
+            },
+          });
+        }
+      });
+      const emailClient = miseAJour.informationsClient?.email;
+      const livreurFiche = livreurFinal
+        ? await prisma.user.findUnique({ where: { id: livreurFinal }, select: { prenom: true } })
+        : null;
+      if (emailClient) {
+        await envoyerEmailRecuEspeces(emailClient, miseAJour, encaissement.montant, livreurFiche?.prenom).catch((err) =>
+          console.warn('Reçu espèces non envoyé:', err.message)
+        );
+      }
+      if (encaissement.ecart !== 0) {
+        await pushVersRole('admin', {
+          titre: 'Écart d’encaissement',
+          corps: `${miseAJour.numeroCommande} : ${arrondir(encaissement.montant)} € encaissés pour ${arrondir(miseAJour.total)} € (${encaissement.raison}).`,
+          url: '/admin-caisse',
+        }).catch(() => undefined);
+      }
+    }
 
     res.status(200).json({
       success: true,

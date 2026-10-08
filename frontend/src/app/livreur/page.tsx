@@ -6,6 +6,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useAuth } from '@/context/AuthContext';
 import { apiGet, apiPatch } from '@/lib/api';
+import { getMonSolde, type Synthese } from '@/services/caisse';
 import NotificationBell from '@/components/NotificationBell';
 import { trackDeliveryAction, trackDeliveryHistoryMore, trackPositionSharing } from '@/lib/analytics';
 import { NOTIFS_UPDATED_EVENT, ajouterNotif, jouerBip, lireNotifs, sonActif } from '@/lib/notifications';
@@ -52,6 +53,12 @@ export default function LivreurPage() {
   const [nbVisibles, setNbVisibles] = useState(10);
   const [partage, setPartage] = useState(false);
   const [infoGps, setInfoGps] = useState('');
+  const [solde, setSolde] = useState<(Synthese & { plafond: number }) | null>(null);
+  const [encaissement, setEncaissement] = useState<CommandeLivreur | null>(null);
+  const [codeSaisi, setCodeSaisi] = useState('');
+  const [montantSaisi, setMontantSaisi] = useState('');
+  const [raisonEcart, setRaisonEcart] = useState('');
+  const [erreurEncaissement, setErreurEncaissement] = useState('');
   const dernierEnvoi = useRef(0);
   const idsEnCours = useRef<string[]>([]);
   const pretesConnues = useRef<Set<string> | null>(null);
@@ -126,12 +133,58 @@ export default function LivreurPage() {
     };
   }, [authLoading, user, router, charger, chargerHistorique]);
 
+  const chargerSolde = useCallback(async () => {
+    const res = await getMonSolde();
+    if (res.success && res.data) setSolde(res.data);
+  }, []);
+
+  useEffect(() => {
+    if (authLoading || !user) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void chargerSolde();
+  }, [authLoading, user, chargerSolde]);
+
+  const ouvrirEncaissement = (c: CommandeLivreur) => {
+    setEncaissement(c);
+    setCodeSaisi('');
+    setMontantSaisi(String(c.montants.total));
+    setRaisonEcart('');
+    setErreurEncaissement('');
+  };
+
+  const confirmerEncaissement = async () => {
+    if (!encaissement) return;
+    setOccupe(encaissement._id);
+    setErreurEncaissement('');
+    const res = await apiPatch(`/api/commandes/${encaissement._id}/statut`, {
+      statut: 'livree',
+      codeRemise: codeSaisi.trim(),
+      montantEncaisse: Number(montantSaisi.replace(',', '.')),
+      raisonEcart: raisonEcart.trim() || undefined,
+    });
+    setOccupe(null);
+    if (!res.success) {
+      setErreurEncaissement(res.message || 'Confirmation impossible.');
+      return;
+    }
+    trackDeliveryAction('livree');
+    setEncaissement(null);
+    await charger();
+    await chargerHistorique();
+    await chargerSolde();
+  };
+
   const changer = async (c: CommandeLivreur, statut: 'en_livraison' | 'livree') => {
+    if (statut === 'livree' && c.methodePaiement === 'especes') {
+      ouvrirEncaissement(c);
+      return;
+    }
     setOccupe(c._id);
     const res = await apiPatch(`/api/commandes/${c._id}/statut`, { statut });
     setOccupe(null);
     if (!res.success) setErreur(res.message || 'Mise à jour impossible.');
     else {
+      void chargerSolde();
       trackDeliveryAction(statut === 'livree' ? 'livree' : 'prise_en_charge');
       await charger();
       if (statut === 'livree') await chargerHistorique();
@@ -254,6 +307,22 @@ export default function LivreurPage() {
         </div>
         <p className="mt-1 text-sm text-[var(--wood)]/70">Actualisation automatique toutes les 8 secondes. La cloche t’avertit quand une commande est prête.</p>
         {erreur && <p className="mt-4 rounded-2xl bg-red-50 p-3 text-sm text-red-700">{erreur}</p>}
+        {solde && (solde.solde > 0 || solde.nbCommandes > 0) && (
+          <div
+            className={`mt-4 rounded-2xl border p-4 text-sm ${
+              solde.plafondAtteint || solde.alerte
+                ? 'border-red-300 bg-red-50 text-red-800'
+                : 'border-[var(--ochre)]/30 bg-[color:rgba(233,162,59,.10)]'
+            }`}
+          >
+            <p className="font-semibold">Espèces à remettre à l’admin : {money(solde.solde)}</p>
+            <p className="mt-1 text-xs opacity-80">
+              {solde.nbCommandes} commande(s) · plafond {money(solde.plafond)}
+              {solde.alerte ? ' · remise en retard, contacte l’administrateur' : ''}
+              {solde.plafondAtteint ? ' · plafond atteint : tu ne peux plus prendre de commande en espèces' : ''}
+            </p>
+          </div>
+        )}
         {chargement ? (
           <p className="mt-8">Chargement…</p>
         ) : (
@@ -367,6 +436,64 @@ export default function LivreurPage() {
           </>
         )}
       </main>
+            {encaissement && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center" role="dialog" aria-modal="true">
+          <div className="w-full max-w-md rounded-3xl bg-[var(--ivory)] p-6 shadow-2xl">
+            <h2 className="font-title text-2xl">Encaissement en espèces</h2>
+            <p className="mt-1 text-sm text-[var(--wood)]/75">
+              Commande {encaissement.numeroCommande} · à encaisser {money(encaissement.montants.total)}
+            </p>
+            <label className="mt-4 block text-sm font-semibold">
+              Code de remise du client (4 chiffres)
+              <input
+                inputMode="numeric"
+                maxLength={4}
+                value={codeSaisi}
+                onChange={(e) => setCodeSaisi(e.target.value.replace(/\D/g, ''))}
+                className="mt-1 w-full rounded-2xl border border-[var(--wood)]/20 bg-white px-4 py-3 text-center text-2xl tracking-[0.5em] outline-none focus:border-[var(--ochre)]"
+              />
+            </label>
+            <label className="mt-4 block text-sm font-semibold">
+              Montant réellement encaissé (€)
+              <input
+                inputMode="decimal"
+                value={montantSaisi}
+                onChange={(e) => setMontantSaisi(e.target.value)}
+                className="mt-1 w-full rounded-2xl border border-[var(--wood)]/20 bg-white px-4 py-3 outline-none focus:border-[var(--ochre)]"
+              />
+            </label>
+            {Number(montantSaisi.replace(',', '.')) !== encaissement.montants.total && (
+              <label className="mt-4 block text-sm font-semibold">
+                Raison de l’écart
+                <textarea
+                  rows={2}
+                  value={raisonEcart}
+                  onChange={(e) => setRaisonEcart(e.target.value)}
+                  className="mt-1 w-full rounded-2xl border border-[var(--wood)]/20 bg-white px-4 py-3 text-sm outline-none focus:border-[var(--ochre)]"
+                />
+              </label>
+            )}
+            {erreurEncaissement && <p className="mt-3 text-sm text-red-700">{erreurEncaissement}</p>}
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setEncaissement(null)}
+                className="flex-1 rounded-full border border-[var(--wood)]/20 px-4 py-2.5 text-sm font-semibold"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                disabled={codeSaisi.length !== 4 || occupe === encaissement._id}
+                onClick={() => void confirmerEncaissement()}
+                className="flex-1 rounded-full bg-green-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-800 disabled:opacity-50"
+              >
+                {occupe === encaissement._id ? 'Envoi…' : 'Confirmer la livraison'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <Footer />
     </div>
   );

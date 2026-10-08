@@ -91,6 +91,7 @@ export type HistoriqueStatut = {
 export type CommandeDetail = CommandeClient & {
   client?: string | { _id?: string; id?: string };
   clientId?: string;
+  codeRemise?: string;
   virement?: { titulaire: string; iban: string; bic?: string; banque?: string; reference: string } | null;
   statutAffichage?: string;
   peutEtreAnnulee?: boolean;

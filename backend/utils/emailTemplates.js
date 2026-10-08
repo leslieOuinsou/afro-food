@@ -1384,7 +1384,35 @@ export const newOrderAdminEmail = (commande, lienAdmin) => {
   return baseTemplate(content, `Nouvelle commande ${commande.numeroCommande || ''} - Afro-food`);
 };
 
+/** E-mail client : code de remise à donner au livreur pour un paiement en espèces. */
+export const cashCodeEmail = (commande, code) => {
+  const prenom = escapeHtml(commande?.informationsClient?.prenom || '');
+  const total = formatMoneyEUR(commande?.total ?? commande?.montants?.total);
+  const content = `
+    <p style="margin:0 0 8px;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#C2610F;font-weight:700;">Livraison en cours</p>
+    <h2>${prenom ? `${prenom}, v` : 'V'}otre commande arrive</h2>
+    <p>Vous réglez <strong>${total}</strong> en espèces au livreur. À sa remise, donnez-lui ce code pour confirmer la livraison :</p>
+    <p style="text-align:center;margin:22px 0;"><span style="display:inline-block;background-color:#2C1A0E;color:#FFFDF8;font-family:'Courier New',monospace;font-size:38px;letter-spacing:12px;padding:14px 12px 14px 24px;border-radius:14px;font-weight:700;">${escapeHtml(code)}</span></p>
+    <p style="font-size:13px;color:#8A7664;">Ne communiquez ce code qu'au moment de la remise de la commande, et uniquement au livreur qui vous la remet. Vous recevrez un reçu après paiement.</p>
+  `;
+  return baseTemplate(content, `Code de remise ${commande?.numeroCommande || ''} - Afro-food`);
+};
+
+/** E-mail client : reçu du paiement en espèces. */
+export const cashReceiptEmail = (commande, montant, livreurPrenom) => {
+  const numero = escapeHtml(commande?.numeroCommande || '');
+  const content = `
+    <p style="margin:0 0 8px;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#C2610F;font-weight:700;">Reçu de paiement</p>
+    <h2>Merci pour votre commande</h2>
+    <p>Vous avez payé <strong>${formatMoneyEUR(montant)}</strong> en espèces${livreurPrenom ? ` à <strong>${escapeHtml(livreurPrenom)}</strong>` : ''} pour la commande <strong>${numero}</strong>, le ${escapeHtml(new Date().toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' }))}.</p>
+    <p style="font-size:13px;color:#8A7664;">Un doute sur ce paiement ? Répondez à ce message en indiquant le numéro de commande.</p>
+  `;
+  return baseTemplate(content, `Reçu commande ${commande?.numeroCommande || ''} - Afro-food`);
+};
+
 export default {
+  cashCodeEmail,
+  cashReceiptEmail,
   newOrderAdminEmail,
   thankYouEmail,
   promoRewardEmail,

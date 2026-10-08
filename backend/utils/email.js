@@ -8,6 +8,8 @@ import {
   thankYouEmail,
   promoRewardEmail,
   newOrderAdminEmail,
+  cashCodeEmail,
+  cashReceiptEmail,
 } from './emailTemplates.js';
 
 let transporter = null;
@@ -177,5 +179,25 @@ export async function envoyerEmailCodePromoMerci(email, commande, promo) {
     subject: 'Un cadeau pour vous : −10 % et livraison offerte — Afro-food',
     text: `Merci pour votre commande ${commande.numeroCommande} ! Votre code ${promo.code} : −10 % et livraison offerte sur vos prochaines commandes.`,
     html: promoRewardEmail({ ...commande.informationsClient, email }, promo, commande),
+  });
+}
+
+/** Code de remise (paiement en espèces) à donner au livreur. */
+export async function envoyerEmailCodeRemise(email, commande, code) {
+  return envoyerEmail({
+    to: email,
+    subject: `Votre code de remise ${code} — commande ${commande.numeroCommande}`,
+    text: `Votre commande ${commande.numeroCommande} arrive. Donnez ce code au livreur lors du paiement en espèces : ${code}`,
+    html: cashCodeEmail(commande, code),
+  });
+}
+
+/** Reçu après paiement en espèces. */
+export async function envoyerEmailRecuEspeces(email, commande, montant, livreurPrenom) {
+  return envoyerEmail({
+    to: email,
+    subject: `Reçu de paiement — commande ${commande.numeroCommande}`,
+    text: `Vous avez payé ${montant} € en espèces${livreurPrenom ? ` à ${livreurPrenom}` : ''} pour la commande ${commande.numeroCommande}.`,
+    html: cashReceiptEmail(commande, montant, livreurPrenom),
   });
 }

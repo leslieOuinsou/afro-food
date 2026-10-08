@@ -3,8 +3,23 @@
   "buildCommand": "echo 'No build required for API'",
   "installCommand": "npm install",
   "rewrites": [
-    { "source": "/", "destination": "/api" },
-    { "source": "/health", "destination": "/api/health" },
-    { "source": "/api/:path*", "destination": "/api" }
+    {
+      "source": "/",
+      "destination": "/api"
+    },
+    {
+      "source": "/health",
+      "destination": "/api/health"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "/api"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/caisse/alerte",
+      "schedule": "0 7 * * *"
+    }
   ]
 }

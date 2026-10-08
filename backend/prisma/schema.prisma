@@ -121,17 +121,21 @@ model User {
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
-  adresses           Adresse[]
-  commandes          Commande[]           @relation("ClientCommandes")
-  livraisons         Commande[]           @relation("LivreurCommandes")
-  avis               Avis[]
-  platsCrees         Plat[]               @relation("PlatAdmin")
-  votesAvis          AvisVote[]
-  signalementsAvis   AvisSignalement[]
-  historiqueStatuts  HistoriqueStatut[]
-  reponsesAvis       Avis[]               @relation("ReponseAvisAuteur")
-  favoris            Favori[]
-  pushSubscriptions  PushSubscription[]
+  adresses          Adresse[]
+  commandes         Commande[]           @relation("ClientCommandes")
+  livraisons        Commande[]           @relation("LivreurCommandes")
+  reversementsRecus ReversementEspeces[] @relation("ReversementsLivreur")
+  reversementsFaits ReversementEspeces[] @relation("ReversementsAdmin")
+  journalLivreur    JournalCaisse[]      @relation("JournalLivreur")
+  journalAuteur     JournalCaisse[]      @relation("JournalAuteur")
+  avis              Avis[]
+  platsCrees        Plat[]               @relation("PlatAdmin")
+  votesAvis         AvisVote[]
+  signalementsAvis  AvisSignalement[]
+  historiqueStatuts HistoriqueStatut[]
+  reponsesAvis      Avis[]               @relation("ReponseAvisAuteur")
+  favoris           Favori[]
+  pushSubscriptions PushSubscription[]
 
   @@index([role])
   @@map("users")
@@ -154,40 +158,40 @@ model Adresse {
 }
 
 model Plat {
-  id                  String        @id @default(cuid())
-  nom                 String
-  description         String
-  descriptionLongue   String?
-  prix                Float
-  prixPromo           Float?
-  categorie           String
-  sousCategorie       String?
-  origineAfricaine    Json
-  images              Json
-  nutrition           Json?
-  allergenes          String[]      @default([])
-  regimesCompatibles  String[]      @default([])
-  niveauEpice         String        @default("moyen")
-  ingredients         Json          @default("[]")
-  tempsPreparation    Int?
-  disponible          Boolean       @default(true)
-  enRupture           Boolean       @default(false)
-  quantiteDisponible  Int?
-  notemoyenne         Float         @default(0)
-  nombreAvis          Int           @default(0)
-  nombreCommandes     Int           @default(0)
-  tags                String[]      @default([])
-  slug                String        @unique
-  metaDescription     String?
-  creeParAdminId      String?
-  creeParAdmin        User?         @relation("PlatAdmin", fields: [creeParAdminId], references: [id], onDelete: SetNull)
-  derniereModification DateTime     @default(now())
-  estMisEnAvant       Boolean       @default(false)
-  estNouveaute        Boolean       @default(false)
-  dateFinNouveaute    DateTime?
-  variations          Json          @default("[]")
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
+  id                   String    @id @default(cuid())
+  nom                  String
+  description          String
+  descriptionLongue    String?
+  prix                 Float
+  prixPromo            Float?
+  categorie            String
+  sousCategorie        String?
+  origineAfricaine     Json
+  images               Json
+  nutrition            Json?
+  allergenes           String[]  @default([])
+  regimesCompatibles   String[]  @default([])
+  niveauEpice          String    @default("moyen")
+  ingredients          Json      @default("[]")
+  tempsPreparation     Int?
+  disponible           Boolean   @default(true)
+  enRupture            Boolean   @default(false)
+  quantiteDisponible   Int?
+  notemoyenne          Float     @default(0)
+  nombreAvis           Int       @default(0)
+  nombreCommandes      Int       @default(0)
+  tags                 String[]  @default([])
+  slug                 String    @unique
+  metaDescription      String?
+  creeParAdminId       String?
+  creeParAdmin         User?     @relation("PlatAdmin", fields: [creeParAdminId], references: [id], onDelete: SetNull)
+  derniereModification DateTime  @default(now())
+  estMisEnAvant        Boolean   @default(false)
+  estNouveaute         Boolean   @default(false)
+  dateFinNouveaute     DateTime?
+  variations           Json      @default("[]")
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   articles ArticleCommande[]
   avis     Avis[]
@@ -202,39 +206,39 @@ model Plat {
 }
 
 model Commande {
-  id                  String         @id @default(cuid())
-  numeroCommande      String         @unique
-  clientId            String
-  client              User           @relation("ClientCommandes", fields: [clientId], references: [id])
-  informationsClient  Json
-  adresseLivraison    Json
-  montants            Json
-  statut              StatutCommande @default(en_attente)
+  id                 String         @id @default(cuid())
+  numeroCommande     String         @unique
+  clientId           String
+  client             User           @relation("ClientCommandes", fields: [clientId], references: [id])
+  informationsClient Json
+  adresseLivraison   Json
+  montants           Json
+  statut             StatutCommande @default(en_attente)
 
   // Colonnes typées (requêtes SQL / statistiques). Les Json montants/paiement restent pour l'API.
-  sousTotal           Float          @default(0)
-  fraisLivraison      Float          @default(0)
-  taxes               Float          @default(0)
-  remise              Float          @default(0)
-  total               Float          @default(0)
-  codePromo           String?
-  methodePaiement     MethodePaiement @default(carte)
-  statutPaiement      StatutPaiement  @default(en_attente)
-  paiementReference   String?
+  sousTotal         Float           @default(0)
+  fraisLivraison    Float           @default(0)
+  taxes             Float           @default(0)
+  remise            Float           @default(0)
+  total             Float           @default(0)
+  codePromo         String?
+  methodePaiement   MethodePaiement @default(carte)
+  statutPaiement    StatutPaiement  @default(en_attente)
+  paiementReference String?
 
-  promoCodeId         String?
-  promoCode           PromoCode?     @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+  promoCodeId String?
+  promoCode   PromoCode? @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
 
-  paiement            Json
-  livraison           Json
-  dates               Json
-  preferences         Json?
-  evaluation          Json?
-  serviceClient       Json?
-  source              String         @default("web")
-  deviceInfo          Json?
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  paiement      Json
+  livraison     Json
+  dates         Json
+  preferences   Json?
+  evaluation    Json?
+  serviceClient Json?
+  source        String   @default("web")
+  deviceInfo    Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   // livreur optionnel (dénormalisé aussi dans livraison Json)
   livreurId String?
@@ -244,6 +248,17 @@ model Commande {
   historiqueStatuts HistoriqueStatut[]
   avis              Avis[]
 
+  // Paiement en espèces : preuve de remise et suivi du reversement à l'admin
+  codeRemise         String?
+  especesEncaissees  Float?
+  especesEcartRaison String?
+  especesStatut      EspecesStatut?
+  especesEncaisseLe  DateTime?
+  reversementId      String?
+  reversement        ReversementEspeces? @relation(fields: [reversementId], references: [id], onDelete: SetNull)
+  journalCaisse      JournalCaisse[]
+
+  @@index([especesStatut, livreurId])
   @@index([clientId, createdAt])
   @@index([statut])
   @@index([createdAt])
@@ -285,40 +300,40 @@ model HistoriqueStatut {
 }
 
 model Avis {
-  id                String     @id @default(cuid())
-  platId            String
-  plat              Plat       @relation(fields: [platId], references: [id], onDelete: Cascade)
-  utilisateurId     String
-  utilisateur       User       @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
-  commandeId        String
-  commande          Commande   @relation(fields: [commandeId], references: [id], onDelete: Cascade)
-  note              Int
-  titre             String?
-  commentaire       String
-  evaluations       Json?
-  recommande        Boolean
-  photos            Json       @default("[]")
-  tags              String[]   @default([])
-  statut            StatutAvis @default(en_attente)
-  dateApprobation   DateTime?
-  modereParId       String?
-  raisonRejet       String?
-  utile             Int        @default(0)
-  pasUtile          Int        @default(0)
-  reponseContenu    String?
-  reponseDate       DateTime?
-  reponseAuteurId   String?
-  reponseAuteur     User?      @relation("ReponseAvisAuteur", fields: [reponseAuteurId], references: [id], onDelete: SetNull)
-  langue            String     @default("fr")
-  adresseIP         String?
-  userAgent         String?
-  achatVerifie      Boolean    @default(false)
-  dateAchat         DateTime?
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
+  id              String     @id @default(cuid())
+  platId          String
+  plat            Plat       @relation(fields: [platId], references: [id], onDelete: Cascade)
+  utilisateurId   String
+  utilisateur     User       @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  commandeId      String
+  commande        Commande   @relation(fields: [commandeId], references: [id], onDelete: Cascade)
+  note            Int
+  titre           String?
+  commentaire     String
+  evaluations     Json?
+  recommande      Boolean
+  photos          Json       @default("[]")
+  tags            String[]   @default([])
+  statut          StatutAvis @default(en_attente)
+  dateApprobation DateTime?
+  modereParId     String?
+  raisonRejet     String?
+  utile           Int        @default(0)
+  pasUtile        Int        @default(0)
+  reponseContenu  String?
+  reponseDate     DateTime?
+  reponseAuteurId String?
+  reponseAuteur   User?      @relation("ReponseAvisAuteur", fields: [reponseAuteurId], references: [id], onDelete: SetNull)
+  langue          String     @default("fr")
+  adresseIP       String?
+  userAgent       String?
+  achatVerifie    Boolean    @default(false)
+  dateAchat       DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
-  votants       AvisVote[]
-  signalements  AvisSignalement[]
+  votants      AvisVote[]
+  signalements AvisSignalement[]
 
   @@unique([utilisateurId, commandeId, platId])
   @@index([platId, createdAt])
@@ -341,15 +356,15 @@ model AvisVote {
 }
 
 model AvisSignalement {
-  id               String   @id @default(cuid())
-  avisId           String
-  avis             Avis     @relation(fields: [avisId], references: [id], onDelete: Cascade)
-  utilisateurId    String
-  utilisateur      User     @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
-  raison           String
-  description      String?
-  dateSignalement  DateTime @default(now())
-  traite           Boolean  @default(false)
+  id              String   @id @default(cuid())
+  avisId          String
+  avis            Avis     @relation(fields: [avisId], references: [id], onDelete: Cascade)
+  utilisateurId   String
+  utilisateur     User     @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  raison          String
+  description     String?
+  dateSignalement DateTime @default(now())
+  traite          Boolean  @default(false)
 
   @@unique([avisId, utilisateurId])
   @@map("avis_signalements")
@@ -386,26 +401,26 @@ model ContactReponse {
 }
 
 model PromoCode {
-  id              String    @id @default(cuid())
-  code            String    @unique
-  description     String?
-  typeRemise      String    @default("pourcentage") // pourcentage | fixe | livraison
-  valeur          Float     @default(0)
-  montantMax      Float?
-  montantMinimum  Float?                          // sous-total minimum du panier
-  usageParClient  Int?                            // null = illimité
-  premiereCommandeSeulement Boolean @default(false)
-  livraisonOfferte Boolean  @default(false)       // en plus de la remise : frais de livraison offerts
-  clientId        String?                         // code personnel : réservé à ce client
-  sourceCommandeId String?  @unique               // commande qui a déclenché ce code (récompense)
-  categories      String[]  @default([])          // vide = tout le catalogue
-  actif           Boolean   @default(true)
-  dateDebut       DateTime  @default(now())
-  dateFin         DateTime?
-  utilisationsMax Int?
-  utilisations    Int       @default(0)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id                        String    @id @default(cuid())
+  code                      String    @unique
+  description               String?
+  typeRemise                String    @default("pourcentage") // pourcentage | fixe | livraison
+  valeur                    Float     @default(0)
+  montantMax                Float?
+  montantMinimum            Float? // sous-total minimum du panier
+  usageParClient            Int? // null = illimité
+  premiereCommandeSeulement Boolean   @default(false)
+  livraisonOfferte          Boolean   @default(false) // en plus de la remise : frais de livraison offerts
+  clientId                  String? // code personnel : réservé à ce client
+  sourceCommandeId          String?   @unique // commande qui a déclenché ce code (récompense)
+  categories                String[]  @default([]) // vide = tout le catalogue
+  actif                     Boolean   @default(true)
+  dateDebut                 DateTime  @default(now())
+  dateFin                   DateTime?
+  utilisationsMax           Int?
+  utilisations              Int       @default(0)
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
 
   commandes Commande[]
 
@@ -423,11 +438,11 @@ model Setting {
 }
 
 model NewsletterSubscriber {
-  id         String   @id @default(cuid())
-  email      String   @unique
-  actif      Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(cuid())
+  email     String   @unique
+  actif     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("newsletter_subscribers")
 }
@@ -456,4 +471,49 @@ model PushSubscription {
 
   @@index([userId])
   @@map("push_subscriptions")
+}
+
+enum EspecesStatut {
+  a_reverser
+  reverse
+}
+
+/// Remise d'espèces d'un livreur à l'admin (confirmée par l'admin).
+model ReversementEspeces {
+  id        String    @id @default(cuid())
+  livreurId String
+  livreur   User      @relation("ReversementsLivreur", fields: [livreurId], references: [id])
+  adminId   String
+  admin     User      @relation("ReversementsAdmin", fields: [adminId], references: [id])
+  montant   Float
+  note      String?
+  annuleLe  DateTime?
+  createdAt DateTime  @default(now())
+
+  commandes Commande[]
+  journal   JournalCaisse[]
+
+  @@index([livreurId, createdAt])
+  @@map("reversements_especes")
+}
+
+/// Journal de caisse en ajout seul : jamais modifié, annulé par une écriture inverse.
+model JournalCaisse {
+  id            String              @id @default(cuid())
+  type          String // encaissement | reversement | annulation_reversement
+  montant       Float // encaissement > 0, reversement < 0, annulation > 0
+  livreurId     String
+  livreur       User                @relation("JournalLivreur", fields: [livreurId], references: [id])
+  auteurId      String
+  auteur        User                @relation("JournalAuteur", fields: [auteurId], references: [id])
+  commandeId    String?
+  commande      Commande?           @relation(fields: [commandeId], references: [id], onDelete: SetNull)
+  reversementId String?
+  reversement   ReversementEspeces? @relation(fields: [reversementId], references: [id], onDelete: SetNull)
+  note          String?
+  createdAt     DateTime            @default(now())
+
+  @@index([livreurId, createdAt])
+  @@index([createdAt])
+  @@map("journal_caisse")
 }
