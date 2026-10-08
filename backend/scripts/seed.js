@@ -1,5 +1,5 @@
 /**
- * Seed complet Prisma : admin + plats démo + promo BIENVENUE10 + settings.
+ * Seed complet Prisma : admin + plats démo + promo BIENVENUE5 + settings.
  * Usage : node scripts/seed.js
  */
 import dotenv from 'dotenv';
@@ -100,24 +100,23 @@ async function seedPlats() {
 
 async function seedPromo() {
   await prisma.promoCode.upsert({
-    where: { code: 'BIENVENUE10' },
+    where: { code: 'BIENVENUE5' },
     create: {
-      code: 'BIENVENUE10',
-      description: 'Bienvenue — 10% jusqu\'à 10€ sur la première commande',
+      code: 'BIENVENUE5',
+      description: 'Bienvenue — 5% sur la première commande',
       typeRemise: 'pourcentage',
-      valeur: 10,
-      montantMax: 10,
+      valeur: 5,
       premiereCommandeSeulement: true,
       actif: true,
     },
     update: {
       actif: true,
-      valeur: 10,
-      montantMax: 10,
+      valeur: 5,
+      montantMax: null,
       premiereCommandeSeulement: true,
     },
   });
-  console.log('✓ Promo BIENVENUE10 prête');
+  console.log('✓ Promo BIENVENUE5 prête');
 }
 
 async function seedSettings() {

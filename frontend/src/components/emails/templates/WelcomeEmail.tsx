@@ -14,7 +14,7 @@ export function WelcomeEmail({
   patternId,
   prenom,
   nom,
-  codePromo = "BIENVENUE10",
+  codePromo = "BIENVENUE5",
 }: WelcomeEmailProps) {
   return (
     <>
@@ -165,7 +165,7 @@ export function WelcomeEmail({
               color: emailTheme.wood,
             }}
           >
-            −10&nbsp;% sur votre premier panier
+            −5&nbsp;% sur votre premier panier
           </p>
           <p
             style={{

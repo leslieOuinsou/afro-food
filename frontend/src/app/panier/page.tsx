@@ -355,7 +355,7 @@ export default function PanierPage() {
           <input
             value={promoInput}
             onChange={(e) => setPromoInput(e.target.value)}
-            placeholder="BIENVENUE10"
+            placeholder="BIENVENUE5"
             disabled={step === 'confirmation'}
             className="min-w-0 flex-1 rounded-2xl border border-[var(--wood)]/10 bg-white/50 px-4 py-2.5 text-sm text-[var(--wood)] outline-none focus:border-[var(--ochre)]/45"
           />

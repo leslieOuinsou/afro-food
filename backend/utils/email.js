@@ -244,7 +244,7 @@ export async function envoyerEmailBienvenue(email, utilisateur, codePromo) {
   return envoyerEmail({
     to: email,
     subject: 'Bienvenue chez Afro-food — votre code de bienvenue',
-    text: `Bienvenue ${utilisateur.prenom} ! Votre code ${codePromo} offre 10 % sur votre première commande : ${front}/catalogue`,
+    text: `Bienvenue ${utilisateur.prenom} ! Votre code ${codePromo} offre 5 % sur votre première commande : ${front}/catalogue`,
     html: welcomeEmail(utilisateur.nom, utilisateur.prenom, codePromo),
   });
 }

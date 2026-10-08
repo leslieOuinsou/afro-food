@@ -272,7 +272,7 @@ export default function AdminPromosPage() {
 
             <label className="block text-sm">
               <span className="font-medium text-gray-700">Code</span>
-              <input required value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="BIENVENUE10" className={`${champ} mt-1 font-mono uppercase`} />
+              <input required value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="BIENVENUE5" className={`${champ} mt-1 font-mono uppercase`} />
             </label>
 
             <label className="block text-sm">

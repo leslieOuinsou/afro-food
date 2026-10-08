@@ -77,13 +77,13 @@ const baseTemplate = (content, title = 'Afro-food') => `<!DOCTYPE html>
  *
  * @param {string} nom
  * @param {string} prenom
- * @param {string} [codePromo=BIENVENUE10] — code première commande
+ * @param {string} [codePromo=BIENVENUE5] — code première commande
  */
 export const welcomeEmail = (nom, prenom, codePromo) => {
   const p = escapeHtml(prenom || '');
   const n = escapeHtml(nom || '');
   const code = escapeHtml(
-    codePromo || process.env.WELCOME_PROMO_CODE || 'BIENVENUE10'
+    codePromo || process.env.WELCOME_PROMO_CODE || 'BIENVENUE5'
   );
   const logoUrl = `${FRONTEND}/logo-afro-eats.png`;
 
@@ -189,7 +189,7 @@ export const welcomeEmail = (nom, prenom, codePromo) => {
                 <tr>
                   <td style="padding:20px 22px;text-align:center;">
                     <p style="margin:0 0 8px 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#8B3A2A;">Offre première commande</p>
-                    <p style="margin:0 0 14px 0;font-family:Georgia,serif;font-size:18px;font-weight:700;color:#2C1A0E;">−10&nbsp;% sur votre premier panier</p>
+                    <p style="margin:0 0 14px 0;font-family:Georgia,serif;font-size:18px;font-weight:700;color:#2C1A0E;">−5&nbsp;% sur votre premier panier</p>
                     <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#2C1A0E;opacity:0.88;">
                       Code promo :
                       <span style="display:inline-block;margin-top:8px;padding:10px 20px;font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:800;letter-spacing:0.08em;color:#FAF3E0;background-color:#C2610F;border-radius:8px;">${code}</span>

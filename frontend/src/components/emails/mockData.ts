@@ -3,7 +3,7 @@
 export const mockWelcome = {
   prenom: "Marie",
   nom: "Dupont",
-  codePromo: "BIENVENUE10",
+  codePromo: "BIENVENUE5",
 };
 
 export const mockReview = {
