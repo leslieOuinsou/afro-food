@@ -133,6 +133,8 @@ model User {
   paiesFaites       PaieLivreur[]        @relation("PaiesAdmin")
   fichesRecues      FichePaie[]          @relation("FichesLivreur")
   fichesEmises      FichePaie[]          @relation("FichesAdmin")
+  pointsFidelite    Int                  @default(0)
+  mouvementsPoints  MouvementPoints[]
   avis              Avis[]
   platsCrees        Plat[]               @relation("PlatAdmin")
   votesAvis         AvisVote[]
@@ -252,6 +254,14 @@ model Commande {
   articles          ArticleCommande[]
   historiqueStatuts HistoriqueStatut[]
   avis              Avis[]
+
+  // Facture (numérotation continue, attribuée une seule fois à la première émission)
+  numeroFacture    String?   @unique
+  factureLe        DateTime?
+  // Commande programmée : créneau de livraison choisi par le client (null = dès que possible)
+  creneauLivraison DateTime?
+  // Fidélité : points créditionnés à la livraison (une seule fois par commande)
+  pointsGagnes     Int       @default(0)
 
   // Paiement en espèces : preuve de remise et suivi du reversement à l'admin
   codeRemise           String?
@@ -582,6 +592,8 @@ model PaieLivreur {
   tauxHoraire  Float
   montant      Float
   nbLivraisons Int      @default(0)
+  prime        Float    @default(0)
+  primeDetail  String?
   mode         String   @default("especes")
   note         String?
   createdAt    DateTime @default(now())
@@ -620,4 +632,18 @@ model FichePaie {
 
   @@index([livreurId, envoyeLe])
   @@map("fiches_paie")
+}
+
+/// Mouvements du programme de fidélité (en ajout seul) : gains à la livraison, échanges contre un code promo.
+model MouvementPoints {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  delta      Int
+  motif      String
+  commandeId String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("mouvements_points")
 }

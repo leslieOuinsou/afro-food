@@ -151,3 +151,21 @@ export async function getConfigPaiement(): Promise<boolean> {
 export async function creerSessionPaiement(commandeId: string): Promise<ApiResponse<{ url: string }>> {
   return apiPost<{ url: string }>('/api/paiements/session', { commandeId });
 }
+
+/** Télécharge la facture PDF d'une commande payée (téléchargement authentifié puis ouverture). */
+export async function ouvrirFacture(commandeId: string): Promise<string | null> {
+  const { API_URL } = await import('@/lib/api');
+  const token = sessionStorage.getItem('afro_eats_token') || localStorage.getItem('afro_eats_token');
+  const res = await fetch(`${API_URL}/api/commandes/${commandeId}/facture`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    return (d as { message?: string }).message || 'Facture indisponible pour le moment.';
+  }
+  const url = URL.createObjectURL(await res.blob());
+  window.open(url, '_blank', 'noopener');
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  return null;
+}

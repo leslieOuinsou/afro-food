@@ -200,7 +200,7 @@ export async function genererRecuPdf(commande, stripe, signature = null) {
     ligneTotal('Sous-total', eur(commande.sousTotal));
     ligneTotal('Livraison', Number(commande.fraisLivraison) > 0 ? eur(commande.fraisLivraison) : 'Offerte');
     if (Number(commande.taxes) > 0) ligneTotal('Dont TVA', eur(commande.taxes));
-    if (Number(commande.remise) > 0) ligneTotal('Remise', `− ${eur(commande.remise)}`, COULEURS.vert);
+    if (Number(commande.remise) > 0) ligneTotal('Remise', `- ${eur(commande.remise)}`, COULEURS.vert);
     y += 4;
     doc.roundedRect(L + 280, y, W - 280, 38, 8).fill(COULEURS.ocre);
     doc.fillColor(COULEURS.ivoire).font('Helvetica-Bold').fontSize(10).text('TOTAL PAYÉ', L + 296, y + 14, { characterSpacing: 1.5 });

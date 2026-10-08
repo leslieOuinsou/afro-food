@@ -26,6 +26,7 @@ import {
   validerPagination
 } from '../middleware/validation.js';
 
+import { telechargerFacture } from '../controllers/factureController.js';
 import {
   ajouterJustificatif,
   listerJustificatifs,
@@ -83,6 +84,11 @@ router.get('/:id/justificatifs',
 router.get('/:id/justificatifs/:jid/fichier',
   validerId(),
   lireJustificatif
+);
+
+router.get('/:id/facture',
+  validerId(),
+  telechargerFacture
 );
 
 router.get('/:id',

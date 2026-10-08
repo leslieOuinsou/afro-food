@@ -14,6 +14,7 @@ import documentRoutes from './documentRoutes.js';
 import signatureRoutes from './signatureRoutes.js';
 import paieRoutes from './paieRoutes.js';
 import panierRoutes from './panierRoutes.js';
+import { lireInfosEntreprise, majInfosEntreprise } from '../controllers/factureController.js';
 import { cronQuotidien } from '../controllers/cronController.js';
 import { obtenirAvisPublics } from '../controllers/commandeController.js';
 import { creerMessage } from '../controllers/contactMessageController.js';
@@ -58,6 +59,8 @@ router.use('/documents', documentRoutes);
 router.use('/signature', signatureRoutes);
 router.use('/paie', paieRoutes);
 router.use('/panier', panierRoutes);
+router.get('/entreprise', protegerRoute, restreindreAcces('admin'), lireInfosEntreprise);
+router.put('/entreprise', protegerRoute, restreindreAcces('admin'), majInfosEntreprise);
 router.get('/cron/quotidien', cronQuotidien);
 
 router.get('/avis-publics', obtenirAvisPublics);

@@ -16,7 +16,7 @@ import {
   type Justificatif,
 } from '@/services/justificatifs';
 import { trackPurchase, trackReviewEmailClick, trackReviewSubmitted } from '@/lib/analytics';
-import { annulerCommande, confirmerPaiementMobile, creerSessionPaiement, evaluerCommande, getCommande, getMobileTest, getStripeTest, initierPaiementMobile, type CommandeDetail } from '@/services/commandes';
+import { annulerCommande, confirmerPaiementMobile, creerSessionPaiement, evaluerCommande, getCommande, getMobileTest, getStripeTest, initierPaiementMobile, ouvrirFacture, type CommandeDetail } from '@/services/commandes';
 
 const ETAPES = [
   { statut: 'en_attente', label: 'Commande reçue' },
@@ -155,6 +155,7 @@ function SuiviContent() {
   }, [virementAttendu, id]);
 
   const [redirectionStripe, setRedirectionStripe] = useState(false);
+  const [erreurFacture, setErreurFacture] = useState('');
   const [mobileTest, setMobileTest] = useState(false);
   const [operateur, setOperateur] = useState('orange_money');
   const [telephoneMobile, setTelephoneMobile] = useState('');
@@ -701,6 +702,23 @@ function SuiviContent() {
                   Nos coordonnées bancaires vous seront communiquées très prochainement par notre équipe.
                 </p>
               )}
+            </section>
+          )}
+
+          {commande.statutPaiement === 'valide' && !['annulee', 'remboursee'].includes(commande.statut) && (
+            <section className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-[var(--wood)]/10 bg-white/55 p-6">
+              <div>
+                <h2 className="font-title text-2xl">Facture</h2>
+                <p className="mt-1 text-sm text-[var(--wood)]/70">Votre facture acquittée, avec la TVA, en PDF.</p>
+                {erreurFacture && <p className="mt-1 text-sm text-red-700">{erreurFacture}</p>}
+              </div>
+              <button
+                type="button"
+                onClick={async () => setErreurFacture((await ouvrirFacture(id)) ?? '')}
+                className="rounded-full bg-[var(--ochre)] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#a6500c]"
+              >
+                Télécharger ma facture
+              </button>
             </section>
           )}
 
