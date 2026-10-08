@@ -11,3 +11,4 @@ timestamper
 ansicolor
 junit
 matrix-auth
+embeddable-build-status

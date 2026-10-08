@@ -59,3 +59,14 @@ docker compose up -d --build
 - **Infrastructure as code** : Jenkins configuré par `Jenkins Configuration as Code`, plugins versionnés, conteneurs Docker éphémères, secrets hors du dépôt.
 - **Déploiement sûr** : migrations de base de données contrôlées (garde-fou contre les opérations destructrices), environnement protégé, vérifications de santé automatiques, déclenchement par version.
 - Bonnes pratiques : moindre privilège (`permissions: contents: read`), annulation des exécutions redondantes, cache des dépendances, délais d'expiration (timeouts).
+
+## Lien public vers les étapes du pipeline (Stage View)
+1. Héberger Jenkins sur une adresse publique :
+   - **Test rapide gratuit** : `cloudflared tunnel --url http://localhost:8080` affiche une adresse `https://….trycloudflare.com` (change à chaque lancement) ;
+   - **Durable** : un petit VPS (ou une VM gratuite) avec Docker + Caddy en HTTPS devant Jenkins.
+2. Dans `ci/jenkins/.env` : `JENKINS_URL=<adresse publique>/` et `JENKINS_LECTURE=anonymous` (lecture seule pour les visiteurs), puis `docker compose up -d --build`.
+3. Dans Vercel (projet frontend) : variable `JENKINS_PUBLIC_URL=<adresse publique>`, puis redéployer le frontend.
+4. Le lien à partager est alors **`https://afrofood.vercel.app/pipeline`** : il redirige vers `…/job/afro-food/job/main/`, qui affiche la **Stage View** (une colonne par étape : Vérifications, Backend, Frontend, Migrations, Déploiement) avec durées et statuts.
+5. Badge de statut (README ou CV) : `<adresse publique>/buildStatus/icon?job=afro-food/main`.
+
+Sécurité : en lecture anonyme, les journaux de build sont visibles. Les secrets sont masqués par Jenkins, mais ne mettez jamais de donnée sensible dans un `echo`.

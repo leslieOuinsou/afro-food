@@ -45,7 +45,14 @@ const nextConfig: NextConfig = {
     ];
   },
   async redirects() {
+    // Lien stable vers les étapes du pipeline Jenkins : afrofood…/pipeline (adresse réelle dans JENKINS_PUBLIC_URL)
+    const jenkins = (process.env.JENKINS_PUBLIC_URL || '').replace(/\/$/, '');
     return [
+      {
+        source: '/pipeline',
+        destination: jenkins ? `${jenkins}/job/afro-food/job/main/` : '/',
+        permanent: false,
+      },
       { source: '/menu', destination: '/catalogue', permanent: true },
       { source: '/menu/:path*', destination: '/catalogue', permanent: true },
       { source: '/vendeurs', destination: '/catalogue', permanent: false },

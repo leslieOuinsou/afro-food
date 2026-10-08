@@ -12,7 +12,11 @@ jenkins:
     globalMatrix:
       permissions:
         - "Overall/Administer:${JENKINS_ADMIN_ID}"
-        - "Overall/Read:authenticated"
+        # Lecture seule : « authenticated » (défaut) ou « anonymous » pour un lien public (CV, démonstration)
+        - "Overall/Read:${JENKINS_LECTURE:-authenticated}"
+        - "Job/Read:${JENKINS_LECTURE:-authenticated}"
+        - "Job/Discover:${JENKINS_LECTURE:-authenticated}"
+        - "View/Read:${JENKINS_LECTURE:-authenticated}"
   crumbIssuer:
     standard:
       excludeClientIPFromCrumb: false
@@ -62,4 +66,6 @@ jobs:
         }
         factory { workflowBranchProjectFactory { scriptPath('Jenkinsfile') } }
         orphanedItemStrategy { discardOldItems { numToKeep(10) } }
+        // Pas de webhook nécessaire : Jenkins interroge GitHub toutes les 5 minutes
+        triggers { periodicFolderTrigger { interval('5m') } }
       }
