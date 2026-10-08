@@ -11,9 +11,11 @@ import PanierSync from '@/components/PanierSync';
 import InstallApp from '@/components/InstallApp';
 import { Suspense } from 'react';
 import { ToastProvider } from '@/context/ToastContext';
+import { I18nProvider } from '@/context/I18nContext';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
+    <I18nProvider>
     <ToastProvider>
       <AuthProvider>
         <CartProvider>
@@ -30,5 +32,6 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         </CartProvider>
       </AuthProvider>
     </ToastProvider>
+    </I18nProvider>
   );
 }

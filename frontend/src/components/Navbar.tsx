@@ -1,5 +1,6 @@
 'use client';
 
+import LangueSwitcher from '@/components/LangueSwitcher';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -204,6 +205,7 @@ export default function Navbar() {
             </nav>
 
             <div className="hidden items-center gap-1 md:flex">
+              <LangueSwitcher className="mr-1" />
               {!isVendor && (
               <>
               <Link href="/recherche" className={iconBtnClass} aria-label="Rechercher" title="Recherche">
@@ -449,6 +451,9 @@ export default function Navbar() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
+          </div>
+          <div className="px-4 pt-3">
+            <LangueSwitcher />
           </div>
           <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4" aria-label="Menu mobile">
             {liensCentre.map((l) => (

@@ -1,5 +1,6 @@
 'use client';
 
+import { useLangue } from '@/context/I18nContext';
 import { openCookieSettings } from '@/lib/consent';
 import { trackNewsletter } from '@/lib/analytics';
 import { useState } from 'react';
@@ -104,7 +105,7 @@ function linkClassName() {
 export default function Footer() {
   const { toast } = useToast();
   const [email, setEmail] = useState('');
-  const [lang, setLang] = useState('fr');
+  const { langue: lang, changerLangue } = useLangue();
   const [busy, setBusy] = useState(false);
 
   const onNewsletterSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -287,7 +288,7 @@ export default function Footer() {
             <select
               id="footer-lang"
               value={lang}
-              onChange={(e) => setLang(e.target.value)}
+              onChange={(e) => changerLangue(e.target.value === 'en' ? 'en' : 'fr')}
               className="rounded-full border border-white/15 bg-white/5 py-1.5 pl-3 pr-8 font-ui text-xs text-[#FAF3E0] outline-none ring-[#C2610F]/0 transition focus:border-[#C2610F]/45 focus:ring-2 focus:ring-[#C2610F]/20"
             >
               <option value="fr">Français</option>
