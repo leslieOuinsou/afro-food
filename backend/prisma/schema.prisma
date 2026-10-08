@@ -128,6 +128,9 @@ model User {
   reversementsFaits ReversementEspeces[] @relation("ReversementsAdmin")
   journalLivreur    JournalCaisse[]      @relation("JournalLivreur")
   journalAuteur     JournalCaisse[]      @relation("JournalAuteur")
+  pointages         PointageLivreur[]    @relation("PointagesLivreur")
+  paiesRecues       PaieLivreur[]        @relation("PaiesLivreur")
+  paiesFaites       PaieLivreur[]        @relation("PaiesAdmin")
   avis              Avis[]
   platsCrees        Plat[]               @relation("PlatAdmin")
   votesAvis         AvisVote[]
@@ -541,4 +544,46 @@ model JustificatifVirement {
   @@index([commandeId])
   @@index([statut, createdAt])
   @@map("justificatifs_virement")
+}
+
+/// Session de travail d'un livreur (pointage début / fin).
+model PointageLivreur {
+  id           String       @id @default(cuid())
+  livreurId    String
+  livreur      User         @relation("PointagesLivreur", fields: [livreurId], references: [id])
+  debut        DateTime
+  fin          DateTime?
+  /// Jour de rattachement (AAAA-MM-JJ, fuseau de Paris) : le jour du début de la session
+  jour         String
+  paieId       String?
+  paie         PaieLivreur? @relation(fields: [paieId], references: [id], onDelete: SetNull)
+  corrigeParId String?
+  createdAt    DateTime     @default(now())
+
+  @@index([livreurId, jour])
+  @@index([paieId])
+  @@map("pointages_livreur")
+}
+
+/// Paiement de la journée d'un livreur (heures pointées × taux horaire), figé au moment du paiement.
+model PaieLivreur {
+  id           String   @id @default(cuid())
+  livreurId    String
+  livreur      User     @relation("PaiesLivreur", fields: [livreurId], references: [id])
+  adminId      String
+  admin        User     @relation("PaiesAdmin", fields: [adminId], references: [id])
+  jour         String
+  minutes      Int
+  tauxHoraire  Float
+  montant      Float
+  nbLivraisons Int      @default(0)
+  mode         String   @default("especes")
+  note         String?
+  createdAt    DateTime @default(now())
+
+  pointages PointageLivreur[]
+
+  @@index([livreurId, jour])
+  @@index([createdAt])
+  @@map("paies_livreur")
 }

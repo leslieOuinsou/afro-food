@@ -12,6 +12,7 @@ import pushRoutes from './pushRoutes.js';
 import caisseRoutes from './caisseRoutes.js';
 import documentRoutes from './documentRoutes.js';
 import signatureRoutes from './signatureRoutes.js';
+import paieRoutes from './paieRoutes.js';
 import { obtenirAvisPublics } from '../controllers/commandeController.js';
 import { creerMessage } from '../controllers/contactMessageController.js';
 import { subscribe } from '../controllers/newsletterController.js';
@@ -53,6 +54,7 @@ router.use('/push', pushRoutes);
 router.use('/caisse', caisseRoutes);
 router.use('/documents', documentRoutes);
 router.use('/signature', signatureRoutes);
+router.use('/paie', paieRoutes);
 
 router.get('/avis-publics', obtenirAvisPublics);
 router.post('/contact', creerMessage);

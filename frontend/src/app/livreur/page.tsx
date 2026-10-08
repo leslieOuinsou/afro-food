@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { apiGet, apiPatch } from '@/lib/api';
 import { declarerRemise, getMonSolde, type LigneCaisse, type Synthese } from '@/services/caisse';
 import NotificationBell from '@/components/NotificationBell';
+import PointageLivreurCard from '@/components/PointageLivreurCard';
 import { trackDeliveryAction, trackDeliveryHistoryMore, trackPositionSharing } from '@/lib/analytics';
 import { NOTIFS_UPDATED_EVENT, ajouterNotif, jouerBip, lireNotifs, sonActif } from '@/lib/notifications';
 
@@ -324,6 +325,7 @@ export default function LivreurPage() {
           <NotificationBell role="livreur" />
         </div>
         <p className="mt-1 text-sm text-[var(--wood)]/70">Actualisation automatique toutes les 8 secondes. La cloche t’avertit quand une commande est prête.</p>
+        <PointageLivreurCard />
         {erreur && <p className="mt-4 rounded-2xl bg-red-50 p-3 text-sm text-red-700">{erreur}</p>}
         {solde && (solde.solde > 0 || solde.nbCommandes > 0) && (
           <div
