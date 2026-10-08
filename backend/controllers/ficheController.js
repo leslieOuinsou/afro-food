@@ -5,6 +5,9 @@ import { arrondir } from '../utils/paie.js';
 import { genererFichePaiePdf } from '../utils/fichePaie.js';
 import { chargerSignature, idSignatureActive } from '../utils/signature.js';
 import { envoyerEmailFichePaie } from '../utils/email.js';
+import { genererBulletinPdf } from '../utils/bulletin.js';
+import { enregistrerCotisations, lireCotisations } from '../utils/cotisations.js';
+import { lireEntreprise } from '../utils/entreprise.js';
 
 const erreur = (message, statusCode) => Object.assign(new Error(message), { statusCode });
 const JOUR = /^\d{4}-\d{2}-\d{2}$/;
@@ -117,6 +120,45 @@ export const pdfFiche = async (req, res, next) => {
     res.setHeader('Content-Disposition', `inline; filename="fiche-${fiche.numero}.pdf"`);
     res.setHeader('Cache-Control', 'private, no-store');
     res.end(pdf);
+  } catch (e) {
+    next(e);
+  }
+};
+
+/** GET /api/paie/fiches/:id/bulletin — bulletin de rémunération simplifié (livreur concerné ou admin) */
+export const pdfBulletin = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!isValidId(id)) throw erreur('Identifiant invalide', 400);
+    const fiche = await prisma.fichePaie.findUnique({
+      where: { id },
+      include: { paies: true, livreur: { select: { nom: true, prenom: true, email: true, telephone: true } } },
+    });
+    if (!fiche) throw erreur('Fiche introuvable', 404);
+    const estAdmin = req.utilisateur.role === 'admin';
+    if (!estAdmin && fiche.livreurId !== req.utilisateur.id) throw erreur('Non autorisé', 403);
+    const [employeur, taux] = await Promise.all([lireEntreprise(prisma), lireCotisations(prisma)]);
+    const pdf = await genererBulletinPdf(fiche, fiche.paies, fiche.livreur, employeur, taux);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="bulletin-${fiche.numero}.pdf"`);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.end(pdf);
+  } catch (e) {
+    next(e);
+  }
+};
+
+/** GET/PUT /api/paie/admin/cotisations — taux utilisés par le bulletin simplifié */
+export const lireTauxCotisations = async (req, res, next) => {
+  try {
+    res.json({ success: true, data: await lireCotisations(prisma) });
+  } catch (e) {
+    next(e);
+  }
+};
+export const majTauxCotisations = async (req, res, next) => {
+  try {
+    res.json({ success: true, message: 'Taux enregistrés', data: await enregistrerCotisations(prisma, req.body) });
   } catch (e) {
     next(e);
   }

@@ -17,7 +17,7 @@ import {
   resume,
   sessionsJournee,
 } from '../controllers/paieController.js';
-import { emettreFiches, listerFiches, mesFiches, pdfFiche } from '../controllers/ficheController.js';
+import { emettreFiches, lireTauxCotisations, listerFiches, majTauxCotisations, mesFiches, pdfBulletin, pdfFiche } from '../controllers/ficheController.js';
 
 const router = express.Router();
 
@@ -35,6 +35,7 @@ router.get('/mon-pointage', restreindreAcces('livreur'), monPointage);
 
 router.get('/mes-fiches', restreindreAcces('livreur'), mesFiches);
 router.get('/fiches/:id/pdf', restreindreAcces('livreur', 'admin'), pdfFiche);
+router.get('/fiches/:id/bulletin', restreindreAcces('livreur', 'admin'), pdfBulletin);
 
 // Admin
 router.use('/admin', restreindreAcces('admin'));
@@ -49,5 +50,7 @@ router.put('/admin/primes', definirPrimes);
 router.put('/admin/attribution', reglerAttribution);
 router.post('/admin/fiches', emettreFiches);
 router.get('/admin/fiches', listerFiches);
+router.get('/admin/cotisations', lireTauxCotisations);
+router.put('/admin/cotisations', majTauxCotisations);
 
 export default router;

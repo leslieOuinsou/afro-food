@@ -5,7 +5,10 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import {
   corrigerSession,
   emettreFiches,
+  getCotisations,
   getToutesFiches,
+  saveCotisations,
+  type Cotisations,
   ouvrirFichePdf,
   type FichePaie,
   getPaies,
@@ -39,6 +42,7 @@ export default function AdminPaiePage() {
   const [taux, setTauxLocal] = useState(9);
   const [tauxSaisi, setTauxSaisi] = useState('9');
   const [primes, setPrimes] = useState<ConfigPrimes | null>(null);
+  const [cotis, setCotis] = useState<Cotisations>({ tauxSalarial: 22, tauxPatronal: 42 });
   const [attributionAuto, setAttributionAuto] = useState(true);
   const [plafond, setPlafondLocal] = useState(14);
   const [plafondSaisi, setPlafondSaisi] = useState('14');
@@ -57,6 +61,9 @@ export default function AdminPaiePage() {
   const charger = useCallback(async () => {
     const [r, p, f] = await Promise.all([getResumePaie(), getPaies(), getToutesFiches()]);
     if (f.success) setFiches(f.data?.fiches ?? []);
+    void getCotisations().then((c) => {
+      if (c.success && c.data) setCotis(c.data);
+    });
     if (!r.success) setErreur(r.message || 'Chargement impossible.');
     else if (r.data) {
       setJournees(r.data.journees);
@@ -105,8 +112,8 @@ export default function AdminPaiePage() {
     }
   };
 
-  const ouvrirFiche = async (f: FichePaie) => {
-    const err = await ouvrirFichePdf(f.id);
+  const ouvrirFiche = async (f: FichePaie, type: 'pdf' | 'bulletin' = 'pdf') => {
+    const err = await ouvrirFichePdf(f.id, type);
     if (err) setErreur(err);
   };
 
@@ -445,6 +452,33 @@ export default function AdminPaiePage() {
                 </button>
               </div>
             </div>
+            <div className={carte}>
+              <p className="font-semibold text-gray-900">Bulletin de rémunération simplifié</p>
+              <p className="text-xs text-gray-600">
+                Document informatif (brut, cotisations estimées, net avant impôt), disponible pour chaque fiche. Réglez les taux avec votre comptable : il ne remplace
+                pas un bulletin de paie établi avec un logiciel de paie conforme.
+              </p>
+              <div className="mt-3 flex flex-wrap items-end gap-3">
+                <label className="text-xs font-semibold text-gray-700">
+                  Cotisations salariales (%)
+                  <input className="mt-1 block w-24 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-normal" inputMode="decimal" value={cotis.tauxSalarial} onChange={(e) => setCotis({ ...cotis, tauxSalarial: Number(e.target.value.replace(',', '.')) || 0 })} />
+                </label>
+                <label className="text-xs font-semibold text-gray-700">
+                  Cotisations patronales (%)
+                  <input className="mt-1 block w-24 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-normal" inputMode="decimal" value={cotis.tauxPatronal} onChange={(e) => setCotis({ ...cotis, tauxPatronal: Number(e.target.value.replace(',', '.')) || 0 })} />
+                </label>
+                <button
+                  onClick={async () => {
+                    const r = await saveCotisations(cotis);
+                    if (r.success) setInfo('Taux de cotisations enregistrés.');
+                    else setErreur(r.message || 'Taux invalides.');
+                  }}
+                  className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700"
+                >
+                  Enregistrer
+                </button>
+              </div>
+            </div>
             <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
               <table className="w-full text-left text-sm">
                 <thead className="bg-gray-50 text-xs uppercase text-gray-500">
@@ -474,6 +508,9 @@ export default function AdminPaiePage() {
                       <td className="px-4 py-2 text-right">
                         <button onClick={() => void ouvrirFiche(f)} className="text-xs font-semibold text-orange-700 underline">
                           Voir
+                        </button>
+                        <button onClick={() => void ouvrirFiche(f, 'bulletin')} className="ml-3 text-xs font-semibold text-gray-700 underline">
+                          Bulletin
                         </button>
                       </td>
                     </tr>

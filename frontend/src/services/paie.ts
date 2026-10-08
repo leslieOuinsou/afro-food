@@ -81,10 +81,10 @@ export const emettreFiches = (du: string, au: string, livreurId?: string) =>
   apiPost<{ fiches: FichePaie[] }>('/api/paie/admin/fiches', { du, au, ...(livreurId ? { livreurId } : {}) });
 
 /** Ouvre le PDF d'une fiche dans un nouvel onglet (téléchargement authentifié). */
-export async function ouvrirFichePdf(id: string): Promise<string | null> {
+export async function ouvrirFichePdf(id: string, type: 'pdf' | 'bulletin' = 'pdf'): Promise<string | null> {
   const { API_URL } = await import('@/lib/api');
   const token = sessionStorage.getItem('afro_eats_token') || localStorage.getItem('afro_eats_token');
-  const res = await fetch(`${API_URL}/api/paie/fiches/${id}/pdf`, {
+  const res = await fetch(`${API_URL}/api/paie/fiches/${id}/${type}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     credentials: 'include',
   });
@@ -97,3 +97,7 @@ export async function ouvrirFichePdf(id: string): Promise<string | null> {
 
 export const savePrimes = (c: ConfigPrimes) => apiPut('/api/paie/admin/primes', c);
 export const setAttribution = (actif: boolean) => apiPut('/api/paie/admin/attribution', { actif });
+
+export type Cotisations = { tauxSalarial: number; tauxPatronal: number };
+export const getCotisations = () => apiGet<Cotisations>('/api/paie/admin/cotisations');
+export const saveCotisations = (c: Cotisations) => apiPut('/api/paie/admin/cotisations', c);

@@ -26,9 +26,9 @@ export default function FichesPaieLivreur() {
     return () => window.clearInterval(t);
   }, [charger]);
 
-  const ouvrir = async (f: FichePaie) => {
+  const ouvrir = async (f: FichePaie, type: 'pdf' | 'bulletin' = 'pdf') => {
     setErreur('');
-    const err = await ouvrirFichePdf(f.id);
+    const err = await ouvrirFichePdf(f.id, type);
     if (err) setErreur(err);
     else await charger();
   };
@@ -70,6 +70,13 @@ export default function FichesPaieLivreur() {
                   className="rounded-full bg-[var(--ochre)] px-4 py-2 text-sm font-semibold text-white hover:bg-[#a6500c]"
                 >
                   Voir la fiche
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void ouvrir(f, 'bulletin')}
+                  className="rounded-full border border-[var(--ochre)] px-4 py-2 text-sm font-semibold text-[var(--ochre)] hover:bg-[var(--ochre)]/10"
+                >
+                  Bulletin simplifié
                 </button>
               </div>
             </li>
