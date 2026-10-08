@@ -1481,7 +1481,64 @@ export const payslipEmail = (prenom, fiche) => {
   return baseTemplate(content, `Fiche de rémunération ${fiche.numero || ''} - Afro-food`);
 };
 
+/** E-mail admin : un client a donné une mauvaise note. */
+export const negativeReviewEmail = (commande, evaluation) => {
+  const info = commande.informationsClient || {};
+  const client = escapeHtml([info.prenom, info.nom].filter(Boolean).join(' ') || 'Un client');
+  const note = Math.max(0, Math.min(5, Number(evaluation.note) || 0));
+  const etoiles = `${'★'.repeat(note)}<span style="color:#E8DCC4;">${'★'.repeat(5 - note)}</span>`;
+  const lien = `${FRONTEND}/admin-avis`;
+  const content = `
+    <p style="margin:0 0 8px;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#B3261E;font-weight:700;">Avis à traiter</p>
+    <h2>${client} n'est pas satisfait</h2>
+    <p>Commande <strong>${escapeHtml(commande.numeroCommande || '')}</strong></p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0;">
+      <tr><td style="background-color:#FDECEC;border-left:5px solid #B3261E;border-radius:12px;padding:18px 22px;">
+        <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#8A7664;">Note donnée</div>
+        <div style="font-size:30px;line-height:1.2;color:#C2610F;margin:4px 0;">${etoiles} <span style="font-size:16px;color:#2C1A0E;font-weight:700;">${note}/5</span></div>
+        ${
+          evaluation.commentaire
+            ? `<div style="margin-top:10px;font-style:italic;color:#2C1A0E;">« ${escapeHtml(evaluation.commentaire)} »</div>`
+            : '<div style="margin-top:10px;color:#8A7664;">Sans commentaire.</div>'
+        }
+      </td></tr>
+    </table>
+    <p>Pensez à contacter le client rapidement pour comprendre le problème et le rassurer.</p>
+    ${info.telephone || info.email ? `<p style="color:#8A7664;font-size:13px;">${[info.telephone, info.email].filter(Boolean).map(escapeHtml).join(' · ')}</p>` : ''}
+    <p style="text-align:center;margin:26px 0 8px;"><a href="${escapeHtml(lien)}" class="button" style="display:inline-block;background:#C2610F;color:#FFFFFF;padding:14px 32px;text-decoration:none;border-radius:999px;font-weight:700;font-size:15px;">Voir les avis</a></p>
+  `;
+  return baseTemplate(content, `Avis ${note}/5 - Afro-food`);
+};
+
+/** E-mail admin : espèces non reversées par des livreurs. */
+export const cashAlertEmail = (lignes, delaiHeures) => {
+  const lien = `${FRONTEND}/admin-caisse`;
+  const total = lignes.reduce((t, l) => t + Number(l.solde || 0), 0);
+  const rows = lignes
+    .map(
+      (l) => `<tr>
+        <td style="padding:10px 0;border-bottom:1px solid #EFE6D4;font-size:14px;color:#2C1A0E;"><strong>${escapeHtml(l.nom)}</strong><br /><span style="font-size:12px;color:#8A7664;">non reversé depuis ${Number(l.ageHeures) || 0} h</span></td>
+        <td align="right" style="padding:10px 0;border-bottom:1px solid #EFE6D4;font-size:15px;font-weight:700;color:#B3261E;white-space:nowrap;">${formatMoneyEUR(l.solde)}</td>
+      </tr>`
+    )
+    .join('');
+  const content = `
+    <p style="margin:0 0 8px;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#B3261E;font-weight:700;">Alerte caisse</p>
+    <h2>Espèces non reversées</h2>
+    <p>Ces livreurs détiennent des espèces encaissées depuis plus de <strong>${Number(delaiHeures) || 48} h</strong>.</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:14px 0 6px;">${rows}</table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:10px 0 24px;"><tr>
+      <td style="font-size:15px;font-weight:700;color:#2C1A0E;">Total à récupérer</td>
+      <td align="right" style="font-size:20px;font-weight:700;color:#C2610F;">${formatMoneyEUR(total)}</td>
+    </tr></table>
+    <p style="text-align:center;margin:0 0 8px;"><a href="${escapeHtml(lien)}" class="button" style="display:inline-block;background:#C2610F;color:#FFFFFF;padding:14px 32px;text-decoration:none;border-radius:999px;font-weight:700;font-size:15px;">Ouvrir la caisse</a></p>
+  `;
+  return baseTemplate(content, 'Espèces non reversées - Afro-food');
+};
+
 export default {
+  negativeReviewEmail,
+  cashAlertEmail,
   payslipEmail,
   orderReadyCourierEmail,
   stripeVirementEmail,

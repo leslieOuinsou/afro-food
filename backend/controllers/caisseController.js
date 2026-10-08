@@ -2,7 +2,7 @@ import prisma from '../lib/prisma.js';
 import { isValidId } from '../utils/serialize.js';
 import { arrondir, delaiAlerteHeures, plafondEspeces, syntheseLivreur } from '../utils/caisse.js';
 import { pushVersRole, pushVersUtilisateur } from '../utils/push.js';
-import { envoyerEmail } from '../utils/email.js';
+import { envoyerEmailAlerteEspeces } from '../utils/email.js';
 
 const erreur = (message, statusCode) => Object.assign(new Error(message), { statusCode });
 
@@ -401,14 +401,11 @@ export const alerteSoldes = async (req, res, next) => {
       const admins = await prisma.user.findMany({ where: { role: 'admin', estActif: true }, select: { email: true } });
       await Promise.all(
         admins.map((a) =>
-          envoyerEmail({
-            to: a.email,
-            subject: 'Espèces non reversées par des livreurs',
-            text: `Soldes en retard : ${resume}`,
-            html: `<p><strong>Espèces non reversées depuis plus de ${delaiAlerteHeures()} h :</strong></p><p>${enAlerte
-              .map((l) => `${l.livreur.prenom} ${l.livreur.nom} : <strong>${l.solde} €</strong> (depuis ${l.ageHeures} h)`)
-              .join('<br />')}</p>`,
-          }).catch(() => undefined)
+          envoyerEmailAlerteEspeces(
+            a.email,
+            enAlerte.map((l) => ({ nom: `${l.livreur.prenom} ${l.livreur.nom}`, solde: l.solde, ageHeures: l.ageHeures })),
+            delaiAlerteHeures()
+          ).catch(() => undefined)
         )
       );
     }

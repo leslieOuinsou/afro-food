@@ -13,6 +13,8 @@ import {
   stripeVirementEmail,
   orderReadyCourierEmail,
   payslipEmail,
+  negativeReviewEmail,
+  cashAlertEmail,
 } from './emailTemplates.js';
 
 let transporter = null;
@@ -153,13 +155,11 @@ export async function envoyerEmailNouvelleCommandeAdmin(email, commande) {
 export async function envoyerEmailAvisNegatif(email, commande, evaluation) {
   const front = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
   const client = [commande.informationsClient?.prenom, commande.informationsClient?.nom].filter(Boolean).join(' ');
-  const echapper = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-  const etoiles = '★'.repeat(evaluation.note) + '☆'.repeat(5 - evaluation.note);
   return envoyerEmail({
     to: email,
     subject: `Avis ${evaluation.note}/5 sur la commande ${commande.numeroCommande}`,
     text: `${client || 'Un client'} a noté la commande ${commande.numeroCommande} : ${evaluation.note}/5.${evaluation.commentaire ? ` Commentaire : ${evaluation.commentaire}` : ''} ${front}/admin-avis`,
-    html: `<p><strong>${echapper(client) || 'Un client'}</strong> a noté la commande <strong>${echapper(commande.numeroCommande)}</strong> :</p><p style="font-size:26px;color:#C2610F;margin:6px 0;">${etoiles}</p>${evaluation.commentaire ? `<blockquote style="margin:12px 0;padding:10px 14px;border-left:4px solid #C2610F;background:#F4EBDD;">${echapper(evaluation.commentaire)}</blockquote>` : '<p><em>Sans commentaire.</em></p>'}<p><a href="${front}/admin-avis">Voir tous les avis</a></p>`,
+    html: negativeReviewEmail(commande, evaluation),
   });
 }
 
@@ -223,5 +223,16 @@ export async function envoyerEmailFichePaie(email, prenom, fiche) {
     subject: `Votre fiche de rémunération ${fiche.numero} est disponible`,
     text: `Votre fiche ${fiche.numero} (${fiche.du} au ${fiche.au}) : ${fiche.totalMontant} €. Consultez-la dans votre espace livreur.`,
     html: payslipEmail(prenom, fiche),
+  });
+}
+
+/** Alerte admin : espèces non reversées par des livreurs. */
+export async function envoyerEmailAlerteEspeces(email, lignes, delaiHeures) {
+  const resume = lignes.map((l) => `${l.nom} : ${l.solde} € (depuis ${l.ageHeures} h)`).join(' · ');
+  return envoyerEmail({
+    to: email,
+    subject: 'Espèces non reversées par des livreurs',
+    text: `Soldes en retard : ${resume}`,
+    html: cashAlertEmail(lignes, delaiHeures),
   });
 }
