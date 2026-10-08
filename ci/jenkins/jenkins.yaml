@@ -1,0 +1,65 @@
+# Configuration de Jenkins « as code » : aucun réglage manuel dans l'interface.
+jenkins:
+  systemMessage: "Jenkins CI/CD · Afro-food"
+  numExecutors: 0              # le contrôleur ne construit rien : les étapes tournent dans des conteneurs jetables
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "${JENKINS_ADMIN_ID}"
+          password: "${JENKINS_ADMIN_PASSWORD}"
+  authorizationStrategy:
+    globalMatrix:
+      permissions:
+        - "Overall/Administer:${JENKINS_ADMIN_ID}"
+        - "Overall/Read:authenticated"
+  crumbIssuer:
+    standard:
+      excludeClientIPFromCrumb: false
+security:
+  queueItemAuthenticator:
+    authenticators:
+      - global:
+          strategy: triggeringUsersAuthorizationStrategy
+unclassified:
+  location:
+    url: "${JENKINS_URL}"
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - string:
+              scope: GLOBAL
+              id: "vercel-token"
+              secret: "${VERCEL_TOKEN}"
+          - string:
+              scope: GLOBAL
+              id: "vercel-org-id"
+              secret: "${VERCEL_ORG_ID}"
+          - string:
+              scope: GLOBAL
+              id: "vercel-backend-project-id"
+              secret: "${VERCEL_BACKEND_PROJECT_ID}"
+          - string:
+              scope: GLOBAL
+              id: "vercel-frontend-project-id"
+              secret: "${VERCEL_FRONTEND_PROJECT_ID}"
+          - string:
+              scope: GLOBAL
+              id: "database-url-direct"
+              secret: "${DATABASE_URL_DIRECT}"
+jobs:
+  - script: >
+      multibranchPipelineJob('afro-food') {
+        branchSources {
+          github {
+            id('afro-food-github')
+            repoOwner('leslieOuinsou')
+            repository('afro-food')
+            buildOriginBranch(true)
+            buildOriginPRMerged(true)
+          }
+        }
+        factory { workflowBranchProjectFactory { scriptPath('Jenkinsfile') } }
+        orphanedItemStrategy { discardOldItems { numToKeep(10) } }
+      }

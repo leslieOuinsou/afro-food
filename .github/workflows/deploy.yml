@@ -1,0 +1,82 @@
+name: Déploiement
+
+# Déploiement contrôlé : uniquement sur une version (tag v*) ou à la demande, jamais à chaque push.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      cible:
+        description: Quoi déployer
+        type: choice
+        options: [tout, backend, frontend]
+        default: tout
+      migrer:
+        description: Appliquer les migrations de base de données avant le backend
+        type: boolean
+        default: true
+
+concurrency:
+  group: deploiement-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verifier:
+    name: Vérifications (CI)
+    uses: ./.github/workflows/ci.yml
+
+  backend:
+    name: Déployer le backend
+    needs: verifier
+    if: ${{ github.event_name == 'push' || inputs.cible == 'tout' || inputs.cible == 'backend' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_BACKEND_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Migrations de base de données (additives)
+        if: ${{ github.event_name == 'push' || inputs.migrer }}
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_DIRECT }}
+        run: |
+          npm ci
+          npx prisma migrate deploy
+      - name: Déploiement Vercel (production)
+        run: npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"
+      - name: Vérification de santé
+        run: bash scripts/verifier-sante.sh "${{ vars.BACKEND_URL }}/api/health"
+
+  frontend:
+    name: Déployer le frontend
+    needs: [verifier, backend]
+    # Le frontend part même si le backend est ignoré (cible = frontend)
+    if: ${{ always() && needs.verifier.result == 'success' && (needs.backend.result == 'success' || needs.backend.result == 'skipped') && (github.event_name == 'push' || inputs.cible == 'tout' || inputs.cible == 'frontend') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_FRONTEND_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Déploiement Vercel (production)
+        run: npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"
+      - name: Vérification de santé
+        run: bash scripts/verifier-sante.sh "${{ vars.FRONTEND_URL }}/catalogue"

@@ -1,5 +1,8 @@
 # Afro-Food
 
+[![CI](https://github.com/leslieOuinsou/afro-food/actions/workflows/ci.yml/badge.svg)](https://github.com/leslieOuinsou/afro-food/actions/workflows/ci.yml)
+
+
 Application de commande de plats africains (Afro-food).
 
 ## Structure
@@ -118,3 +121,7 @@ npx prisma generate && node server.js
 - **Frontend** : Next.js, React
 - **Backend** : Express (ESM)
 - **BDD** : PostgreSQL via **Prisma**
+
+## CI/CD
+
+Pipelines GitHub Actions et Jenkins, déploiement contrôlé, migrations sécurisées : voir [docs/CI-CD.md](docs/CI-CD.md).
