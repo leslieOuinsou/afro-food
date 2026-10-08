@@ -15,7 +15,7 @@ function chargerGa() {
   };
   window.gtag('js', new Date());
   // page_view envoyé manuellement (navigation SPA)
-  window.gtag('config', GA_ID, { send_page_view: false, anonymize_ip: true });
+  window.gtag('config', GA_ID, { send_page_view: false, anonymize_ip: true, cookie_domain: window.location.hostname, cookie_flags: 'SameSite=Lax;Secure' });
   const script = document.createElement('script');
   script.async = true;
   script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(GA_ID)}`;
