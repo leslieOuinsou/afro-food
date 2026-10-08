@@ -153,7 +153,9 @@ export default function LivreurPage() {
 
   const retirerDeLHistorique = async (ids?: string[]) => {
     const tout = !ids;
-    if (!window.confirm(tout ? 'Retirer toutes les commandes livrées de votre historique ?' : 'Retirer cette commande de votre historique ?')) return;
+    if (!window.confirm(tout
+        ? 'Supprimer toutes les commandes livrées de votre historique ?\nElles disparaissent de votre liste ; l’administration en garde la trace pour la comptabilité.'
+        : 'Supprimer cette commande de votre historique ?\nElle disparaît de votre liste ; l’administration en garde la trace pour la comptabilité.')) return;
     const res = await apiPost<{ retirees: number }>('/api/commandes/historique/masquer', tout ? { tout: true } : { ids });
     if (!res.success) {
       setMessageHistorique(res.message || 'Action impossible.');
@@ -485,7 +487,7 @@ export default function LivreurPage() {
                   onClick={() => void retirerDeLHistorique()}
                   className="rounded-full border border-[var(--wood)]/20 px-4 py-1.5 text-xs font-semibold hover:bg-white"
                 >
-                  Vider l’historique
+                  Supprimer tout l’historique
                 </button>
               )}
             </div>
@@ -521,9 +523,9 @@ export default function LivreurPage() {
                             type="button"
                             onClick={() => void retirerDeLHistorique([c._id])}
                             className="text-xs font-semibold text-red-700 underline"
-                            aria-label={`Retirer ${c.numeroCommande} de l’historique`}
+                            aria-label={`Supprimer ${c.numeroCommande} de l’historique`}
                           >
-                            Retirer
+                            Supprimer
                           </button>
                         </div>
                       </div>

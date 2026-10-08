@@ -1439,7 +1439,7 @@ export const masquerHistoriqueLivreur = async (req, res, next) => {
       update: { valeur },
       create: { cle: cleMasque(req.utilisateur.id), valeur },
     });
-    res.json({ success: true, message: `${candidates.length} commande(s) retirée(s) de votre historique`, data: { retirees: candidates.length } });
+    res.json({ success: true, message: `${candidates.length} commande(s) supprimée(s) de votre historique`, data: { retirees: candidates.length } });
   } catch (error) {
     next(error);
   }
