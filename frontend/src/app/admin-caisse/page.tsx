@@ -51,6 +51,11 @@ export default function AdminCaissePage() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void charger();
+    // Actualisation automatique : les encaissements des livreurs apparaissent sans recharger la page
+    const t = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void charger();
+    }, 15000);
+    return () => window.clearInterval(t);
   }, [charger]);
 
   const basculer = (livreurId: string, commandeId: string) =>
@@ -100,9 +105,18 @@ export default function AdminCaissePage() {
   return (
     <AdminLayout>
       <div className="p-4 sm:p-6">
-        <h1 className="text-2xl font-bold text-gray-900">Caisse livreurs</h1>
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-2xl font-bold text-gray-900">Caisse livreurs</h1>
+          <button
+            type="button"
+            onClick={() => void charger()}
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            Actualiser
+          </button>
+        </div>
         <p className="text-sm text-gray-600">
-          Espèces encaissées par les livreurs à la livraison, et leur remise à l’administration.
+          Espèces encaissées par les livreurs à la livraison, et leur remise à l’administration. Actualisation automatique toutes les 15 secondes.
         </p>
         {erreur && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{erreur}</p>}
 
