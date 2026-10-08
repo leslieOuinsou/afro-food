@@ -22,11 +22,11 @@ export type DocumentClient = {
     paiementStripe: boolean;
     payeLe: string | null;
     referenceStripe: string | null;
-    codeAttendu: string | null;
   };
 };
 
 export const getDocuments = (statut?: string) =>
   apiGet<{ documents: DocumentClient[] }>(`/api/documents${statut ? `?statut=${statut}` : ''}`);
-export const validerDocument = (id: string) => apiPost(`/api/documents/${id}/valider`, {});
+export const validerDocument = (id: string, body: { code?: string; verification?: string }) =>
+  apiPost(`/api/documents/${id}/valider`, body);
 export const refuserDocument = (id: string, motif: string) => apiPost(`/api/documents/${id}/refuser`, { motif });

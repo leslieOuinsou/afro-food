@@ -62,7 +62,6 @@ export const listerDocuments = async (req, res, next) => {
           paiementStripe: Boolean(stripe),
           payeLe: stripe?.payeLe ?? null,
           referenceStripe: stripe?.reference ?? null,
-          codeAttendu: stripe ? codeVerification({ numeroCommande: c.numeroCommande, total: c.total }, stripe.reference) : null,
         },
       };
     });
@@ -84,6 +83,24 @@ export const validerDocument = async (req, res, next) => {
     if (c.methodePaiement !== 'virement') throw erreur("Cette commande n'est pas payée par virement", 400);
     if (['annulee', 'remboursee'].includes(c.statut)) throw erreur('Commande annulée ou remboursée', 400);
 
+    // Vérification obligatoire : l'admin doit avoir lu le document pour valider
+    const stripe = c.paiement?.stripe;
+    let commentaire = 'Justificatif de paiement validé par l’administration';
+    if (stripe) {
+      const attendu = codeVerification(c, stripe.reference);
+      const saisi = String(req.body?.code ?? '').trim().toUpperCase().replace(/\s+/g, '');
+      if (saisi !== attendu) {
+        throw erreur('Code de vérification incorrect. Ouvrez le document et recopiez le code (ou scannez son QR code).', 400);
+      }
+      commentaire += ' (code de vérification contrôlé)';
+    } else {
+      const note = String(req.body?.verification ?? '').trim();
+      if (note.length < 10) {
+        throw erreur('Aucun paiement Stripe : décrivez ce que vous avez vérifié sur le document (montant, date, référence).', 400);
+      }
+      commentaire += ` — contrôle manuel : ${note.slice(0, 200)}`;
+    }
+
     await prisma.justificatifVirement.update({
       where: { id: jid },
       data: { statut: 'valide', motifRefus: null, traiteLe: new Date(), traiteParId: req.utilisateur.id },
@@ -92,7 +109,7 @@ export const validerDocument = async (req, res, next) => {
       await marquerPaye(
         c.id,
         c.paiement?.stripe?.reference || `virement-${c.numeroCommande}`,
-        'Justificatif de paiement validé par l’administration',
+        commentaire,
         'Votre justificatif est validé, votre commande va être préparée.'
       );
     }

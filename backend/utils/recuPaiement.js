@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import PDFDocument from 'pdfkit';
+import QRCode from 'qrcode';
 
 const eur = (n) => `${Number(n).toFixed(2).replace('.', ',')} EUR`;
 
@@ -15,7 +16,13 @@ export function codeVerification(commande, referenceStripe) {
 }
 
 /** Justificatif de paiement PDF remis au client après son paiement Stripe. */
-export function genererRecuPdf(commande, stripe) {
+export async function genererRecuPdf(commande, stripe) {
+  const code = codeVerification(commande, stripe.reference);
+  // QR code : l'admin le scanne avec un téléphone pour lire le code de vérification
+  const qr = await QRCode.toBuffer(`AFRO-FOOD|${commande.numeroCommande}|${Number(commande.total).toFixed(2)}|${code}`, {
+    margin: 1,
+    width: 220,
+  });
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 56, info: { Title: `Justificatif ${commande.numeroCommande}` } });
     const morceaux = [];
@@ -25,7 +32,6 @@ export function genererRecuPdf(commande, stripe) {
 
     const info = commande.informationsClient || {};
     const client = [info.prenom, info.nom].filter(Boolean).join(' ');
-    const code = codeVerification(commande, stripe.reference);
 
     doc.rect(0, 0, doc.page.width, 90).fill('#2C1A0E');
     doc.fillColor('#FFFDF8').font('Helvetica-Bold').fontSize(24).text('Afro-food', 56, 32);
@@ -50,6 +56,8 @@ export function genererRecuPdf(commande, stripe) {
     doc.moveTo(56, y + 6).lineTo(doc.page.width - 56, y + 6).strokeColor('#E8DCC4').stroke();
     doc.font('Helvetica').fontSize(10).fillColor('#8A7664').text('Code de vérification', 56, y + 22);
     doc.font('Courier-Bold').fontSize(20).fillColor('#C2610F').text(code, 56, y + 38);
+    doc.image(qr, doc.page.width - 56 - 110, y + 14, { width: 110 });
+    doc.font('Helvetica').fontSize(8).fillColor('#8A7664').text('Scannez pour lire le code', doc.page.width - 56 - 110, y + 126, { width: 110, align: 'center' });
     doc
       .font('Helvetica')
       .fontSize(9)
@@ -57,7 +65,7 @@ export function genererRecuPdf(commande, stripe) {
       .text(
         'Envoyez ce document depuis la page de votre commande. L’administration vérifie le paiement avant de lancer la préparation et la livraison.',
         56,
-        y + 80,
+        y + 160,
         { width: doc.page.width - 112 }
       );
     doc.end();

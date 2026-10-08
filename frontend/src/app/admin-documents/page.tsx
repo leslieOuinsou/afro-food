@@ -19,6 +19,10 @@ export default function AdminDocumentsPage() {
   const [nbAVerifier, setNbAVerifier] = useState(0);
   const [erreur, setErreur] = useState('');
   const [occupe, setOccupe] = useState<string | null>(null);
+  const [aValider, setAValider] = useState<DocumentClient | null>(null);
+  const [saisie, setSaisie] = useState('');
+  const [erreurValidation, setErreurValidation] = useState('');
+  const [ouverts, setOuverts] = useState<Set<string>>(new Set());
 
   const charger = useCallback(async () => {
     const [liste, attente] = await Promise.all([getDocuments(onglet), getDocuments('en_attente')]);
@@ -35,24 +39,30 @@ export default function AdminDocumentsPage() {
   const ouvrir = async (d: DocumentClient) => {
     const err = await ouvrirJustificatif(d.commande._id, d.id);
     if (err) setErreur(err);
+    else setOuverts((prev) => new Set(prev).add(d.id));
   };
 
-  const valider = async (d: DocumentClient) => {
-    const avertissement = d.verification.paiementStripe
-      ? ''
-      : '\n\nATTENTION : aucun paiement Stripe n’est enregistré pour cette commande.';
-    if (
-      !window.confirm(
-        `Valider ce document ?\nLa commande ${d.commande.numeroCommande} (${money(d.commande.total)}) sera confirmée et pourra partir en préparation puis en livraison.${avertissement}`
-      )
-    )
-      return;
-    setOccupe(d.id);
-    setErreur('');
-    const res = await validerDocument(d.id);
+  const demanderValidation = (d: DocumentClient) => {
+    setAValider(d);
+    setSaisie('');
+    setErreurValidation('');
+  };
+
+  const confirmerValidation = async () => {
+    if (!aValider) return;
+    setOccupe(aValider.id);
+    setErreurValidation('');
+    const res = await validerDocument(
+      aValider.id,
+      aValider.verification.paiementStripe ? { code: saisie } : { verification: saisie }
+    );
     setOccupe(null);
-    if (!res.success) setErreur(res.message || 'Validation impossible.');
-    else await charger();
+    if (!res.success) {
+      setErreurValidation(res.message || 'Validation impossible.');
+      return;
+    }
+    setAValider(null);
+    await charger();
   };
 
   const refuser = async (d: DocumentClient) => {
@@ -132,7 +142,7 @@ export default function AdminDocumentsPage() {
                       {' · '}réf. {d.verification.referenceStripe}
                     </p>
                     <p className="text-xs">
-                      Code de vérification attendu sur le PDF : <span className="font-mono font-bold">{d.verification.codeAttendu}</span>
+                      Ouvrez le document : le code de vérification et son QR code y figurent. Vous devez les saisir pour valider.
                     </p>
                   </>
                 ) : (
@@ -144,8 +154,9 @@ export default function AdminDocumentsPage() {
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    disabled={occupe === d.id}
-                    onClick={() => void valider(d)}
+                    disabled={occupe === d.id || !ouverts.has(d.id)}
+                    title={ouverts.has(d.id) ? '' : 'Ouvrez d’abord le document'}
+                    onClick={() => demanderValidation(d)}
                     className="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800 disabled:opacity-50"
                   >
                     Valider
@@ -174,6 +185,60 @@ export default function AdminDocumentsPage() {
           ))}
         </div>
       </div>
+      {aValider && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900">Vérifier le document</h3>
+            <p className="mt-1 text-sm text-gray-600">
+              Commande {aValider.commande.numeroCommande} · {money(aValider.commande.total)}
+            </p>
+            {aValider.verification.paiementStripe ? (
+              <>
+                <p className="mt-3 text-sm text-gray-700">
+                  Recopiez le <strong>code de vérification</strong> imprimé sur le document (ou scannez son QR code avec votre
+                  téléphone). Vérifiez aussi que le montant et le numéro de commande correspondent.
+                </p>
+                <input
+                  value={saisie}
+                  onChange={(e) => setSaisie(e.target.value)}
+                  placeholder="Code de vérification"
+                  autoFocus
+                  className="mt-3 w-full rounded-lg border border-gray-300 px-3 py-2 font-mono tracking-widest uppercase focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </>
+            ) : (
+              <>
+                <p className="mt-3 text-sm text-amber-800">
+                  Aucun paiement Stripe n’est enregistré. Décrivez ce que vous avez vérifié (montant, date, référence du virement
+                  sur le relevé).
+                </p>
+                <textarea
+                  value={saisie}
+                  onChange={(e) => setSaisie(e.target.value)}
+                  rows={3}
+                  className="mt-3 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </>
+            )}
+            {erreurValidation && <p className="mt-2 text-sm text-red-700">{erreurValidation}</p>}
+            <div className="mt-4 flex gap-3">
+              <button
+                onClick={() => setAValider(null)}
+                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold"
+              >
+                Annuler
+              </button>
+              <button
+                disabled={!saisie.trim() || occupe === aValider.id}
+                onClick={() => void confirmerValidation()}
+                className="flex-1 rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800 disabled:opacity-50"
+              >
+                Valider la commande
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }
