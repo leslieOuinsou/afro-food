@@ -8,6 +8,7 @@ export type JourPaie = {
   enCours: boolean;
   nbLivraisons: number;
   sessions: number;
+  minutesAuDelaPlafond?: number;
   montantAPayer: number;
   montantPaye?: number;
   livreur?: { _id: string; nom: string; prenom: string; telephone?: string } | null;
@@ -17,19 +18,22 @@ export type MonPointage = {
   tauxHoraire: number;
   enService: boolean;
   debutSession: string | null;
+  finPrevue: string | null;
+  plafondHeures: number;
   aujourdhui: { minutes: number; nbLivraisons: number; gainEstime: number };
   jours: JourPaie[];
 };
 
 export const getMonPointage = () => apiGet<MonPointage>('/api/paie/mon-pointage');
-export const debutPointage = () => apiPost('/api/paie/pointage/debut', {});
+export const debutPointage = (dureeHeures?: number) => apiPost('/api/paie/pointage/debut', { dureeHeures });
+export const prolongerPointage = (heures = 1) => apiPost('/api/paie/pointage/prolonger', { heures });
 export const finPointage = () => apiPost('/api/paie/pointage/fin', {});
 
-export type ResumePaie = { tauxHoraire: number; du: string; au: string; journees: JourPaie[]; totalAPayer: number };
+export type ResumePaie = { tauxHoraire: number; plafondHeures?: number; du: string; au: string; journees: JourPaie[]; totalAPayer: number };
 export const getResumePaie = (du?: string, au?: string) =>
   apiGet<ResumePaie>(`/api/paie/admin/resume${du && au ? `?du=${du}&au=${au}` : ''}`);
 
-export type SessionPointage = { id: string; debut: string; fin: string | null; paieId: string | null };
+export type SessionPointage = { id: string; debut: string; fin: string | null; paieId: string | null; finPrevue?: string | null; clotureAuto?: boolean };
 export const getSessions = (livreurId: string, jour: string) =>
   apiGet<{ pointages: SessionPointage[] }>(`/api/paie/admin/pointages?livreurId=${livreurId}&jour=${jour}`);
 export const corrigerSession = (id: string, fin: string, debut?: string) =>
@@ -52,6 +56,7 @@ export type PaieFaite = {
   admin: { nom: string; prenom: string };
 };
 export const getPaies = () => apiGet<{ paies: PaieFaite[] }>('/api/paie/admin/paiements');
+export const setPlafond = (heures: number) => apiPut('/api/paie/admin/plafond', { heures });
 export const setTaux = (taux: number) => apiPut('/api/paie/admin/taux', { taux });
 
 export type FichePaie = {

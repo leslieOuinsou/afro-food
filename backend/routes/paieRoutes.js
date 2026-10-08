@@ -2,23 +2,31 @@ import express from 'express';
 import { protegerRoute, restreindreAcces } from '../middleware/auth.js';
 import {
   corrigerPointage,
+  cronCloture,
   debutPointage,
+  definirPlafond,
   definirTaux,
   finPointage,
   listerPaies,
   monPointage,
   payerJournee,
+  prolongerPointage,
   resume,
   sessionsJournee,
 } from '../controllers/paieController.js';
 import { emettreFiches, listerFiches, mesFiches, pdfFiche } from '../controllers/ficheController.js';
 
 const router = express.Router();
+
+// Cron Vercel : authentifié par CRON_SECRET
+router.get('/cron', cronCloture);
+
 router.use(protegerRoute);
 
 // Livreur
 router.post('/pointage/debut', restreindreAcces('livreur'), debutPointage);
 router.post('/pointage/fin', restreindreAcces('livreur'), finPointage);
+router.post('/pointage/prolonger', restreindreAcces('livreur'), prolongerPointage);
 router.get('/mon-pointage', restreindreAcces('livreur'), monPointage);
 
 router.get('/mes-fiches', restreindreAcces('livreur'), mesFiches);
@@ -32,6 +40,7 @@ router.patch('/admin/pointages/:id', corrigerPointage);
 router.post('/admin/payer', payerJournee);
 router.get('/admin/paiements', listerPaies);
 router.put('/admin/taux', definirTaux);
+router.put('/admin/plafond', definirPlafond);
 router.post('/admin/fiches', emettreFiches);
 router.get('/admin/fiches', listerFiches);
 

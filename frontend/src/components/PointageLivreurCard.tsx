@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { debutPointage, finPointage, getMonPointage, type MonPointage } from '@/services/paie';
+import { debutPointage, finPointage, getMonPointage, prolongerPointage, type MonPointage } from '@/services/paie';
 
 const money = (n: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n);
 const duree = (min: number) => `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')}`;
@@ -14,6 +14,7 @@ export default function PointageLivreurCard() {
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState('');
   const [maintenant, setMaintenant] = useState(0);
+  const [dureeHeures, setDureeHeures] = useState(8);
 
   const charger = useCallback(async () => {
     const res = await getMonPointage();
@@ -37,9 +38,18 @@ export default function PointageLivreurCard() {
     if (data.enService && !window.confirm('Terminer votre service ? Les heures seront comptées jusqu’à maintenant.')) return;
     setOccupe(true);
     setErreur('');
-    const res = data.enService ? await finPointage() : await debutPointage();
+    const res = data.enService ? await finPointage() : await debutPointage(dureeHeures);
     setOccupe(false);
     if (!res.success) setErreur(res.message || 'Action impossible.');
+    await charger();
+  };
+
+  const prolonger = async () => {
+    setOccupe(true);
+    setErreur('');
+    const res = await prolongerPointage(1);
+    setOccupe(false);
+    if (!res.success) setErreur(res.message || 'Prolongation impossible.');
     await charger();
   };
 
@@ -60,6 +70,22 @@ export default function PointageLivreurCard() {
             )}
           </p>
         </div>
+        {!data.enService && (
+          <label className="text-xs font-semibold text-[var(--wood)]/70">
+            Durée prévue
+            <select
+              value={dureeHeures}
+              onChange={(e) => setDureeHeures(Number(e.target.value))}
+              className="ml-2 rounded-lg border border-[var(--wood)]/20 bg-white px-2 py-1.5 text-sm font-normal"
+            >
+              {[2, 4, 6, 8, 10, 12].map((h) => (
+                <option key={h} value={h}>
+                  {h} h
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <button
           type="button"
           disabled={occupe}
@@ -72,6 +98,26 @@ export default function PointageLivreurCard() {
         </button>
       </div>
       {erreur && <p className="mt-2 text-sm text-red-700">{erreur}</p>}
+      {data.enService && data.finPrevue && (
+        <p className="mt-2 text-xs text-[var(--wood)]/65">
+          Fin prévue à {new Date(data.finPrevue).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}. Si vous ne
+          terminez pas, votre service est clôturé automatiquement 30 min après.
+        </p>
+      )}
+      {data.enService && data.finPrevue && maintenant > 0 && maintenant >= new Date(data.finPrevue).getTime() && (
+        <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <p className="font-semibold">Votre durée prévue est écoulée.</p>
+          <p className="text-xs">Terminez votre service, ou prolongez-le d’une heure. Sans action, il sera clôturé automatiquement.</p>
+          <button
+            type="button"
+            disabled={occupe}
+            onClick={() => void prolonger()}
+            className="mt-2 rounded-full border border-amber-600 px-4 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-50"
+          >
+            Prolonger d’1 heure
+          </button>
+        </div>
+      )}
 
       <div className="mt-4 grid grid-cols-3 gap-3 text-center">
         <div className="rounded-xl bg-[var(--ivory)] p-3">
@@ -87,7 +133,7 @@ export default function PointageLivreurCard() {
           <p className="mt-1 font-semibold text-[var(--ochre)]">{money(data.aujourdhui.gainEstime)}</p>
         </div>
       </div>
-      <p className="mt-2 text-xs text-[var(--wood)]/60">Taux : {money(data.tauxHoraire)} de l’heure, payé chaque jour.</p>
+      <p className="mt-2 text-xs text-[var(--wood)]/60">Taux : {money(data.tauxHoraire)} de l’heure, payé chaque jour (maximum {data.plafondHeures} h payées par jour).</p>
 
       {data.jours.length > 0 && (
         <ul className="mt-4 divide-y divide-[var(--wood)]/10 text-sm">

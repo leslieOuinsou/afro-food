@@ -559,6 +559,9 @@ model PointageLivreur {
   jour         String
   paieId       String?
   paie         PaieLivreur? @relation(fields: [paieId], references: [id], onDelete: SetNull)
+  /// Heure de fin prévue choisie au pointage ; clôture automatique 30 min après si le livreur n'a pas terminé
+  finPrevue    DateTime?
+  clotureAuto  Boolean      @default(false)
   corrigeParId String?
   createdAt    DateTime     @default(now())
 

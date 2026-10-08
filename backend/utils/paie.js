@@ -2,6 +2,11 @@
 export const TAUX_HORAIRE_DEFAUT = 9;
 /** Une session de pointage ne peut pas dépasser cette durée (oubli de « Je termine »). */
 export const DUREE_MAX_SESSION_MIN = 14 * 60;
+/** Plafond d'heures payées par livreur et par jour (réglable par l'admin). */
+export const PLAFOND_HEURES_JOUR_DEFAUT = 14;
+/** Délai de grâce après l'heure prévue avant la clôture automatique. */
+export const GRACE_CLOTURE_MIN = 30;
+export const DUREE_PREVUE_DEFAUT_H = 8;
 
 const FUSEAU = 'Europe/Paris';
 
@@ -30,7 +35,7 @@ export const formaterDuree = (minutes) => `${Math.floor(minutes / 60)} h ${Strin
  * pointages : { livreurId, jour, debut, fin, paieId }
  * livraisons : { livreurId, jour }
  */
-export function agregerJournees(pointages, livraisons, taux, maintenant = new Date()) {
+export function agregerJournees(pointages, livraisons, taux, plafondHeures = PLAFOND_HEURES_JOUR_DEFAUT) {
   const lignes = new Map();
   const ligne = (livreurId, jour) => {
     const cle = `${livreurId}|${jour}`;
@@ -51,7 +56,32 @@ export function agregerJournees(pointages, livraisons, taux, maintenant = new Da
     else l.minutesAPayer += min;
   }
   for (const d of livraisons) ligne(d.livreurId, d.jour).nbLivraisons += 1;
+  const plafondMin = Math.round(Number(plafondHeures) * 60);
   return [...lignes.values()]
-    .map((l) => ({ ...l, montantAPayer: montantPourMinutes(l.minutesAPayer, taux) }))
+    .map((l) => {
+      // Plafond journalier : au-delà, les minutes ne sont pas payées
+      const total = l.minutesAPayer + l.minutesPayees;
+      const payables = Math.max(0, Math.min(total, plafondMin) - l.minutesPayees);
+      return {
+        ...l,
+        minutesAuDelaPlafond: Math.max(0, l.minutesAPayer - payables),
+        minutesAPayer: payables,
+        montantAPayer: montantPourMinutes(payables, taux),
+      };
+    })
     .sort((a, b) => (a.jour === b.jour ? 0 : a.jour < b.jour ? 1 : -1));
+}
+
+/** Fin d'une session expirée : l'heure prévue (ou la durée maximale si aucune heure n'avait été prévue). */
+export function finDeCloture(debut, finPrevue) {
+  return finPrevue ? new Date(finPrevue) : new Date(new Date(debut).getTime() + DUREE_MAX_SESSION_MIN * 60000);
+}
+
+/** Une session ouverte est expirée 30 min après l'heure prévue (ou après la durée maximale sans heure prévue). */
+export function sessionExpiree(session, maintenant = new Date()) {
+  if (session.fin) return false;
+  const limite = session.finPrevue
+    ? new Date(session.finPrevue).getTime() + GRACE_CLOTURE_MIN * 60000
+    : new Date(session.debut).getTime() + DUREE_MAX_SESSION_MIN * 60000;
+  return maintenant.getTime() >= limite;
 }

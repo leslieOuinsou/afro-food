@@ -12,6 +12,7 @@ import {
   getResumePaie,
   getSessions,
   payerJournee,
+  setPlafond,
   setTaux,
   type JourPaie,
   type PaieFaite,
@@ -34,6 +35,8 @@ export default function AdminPaiePage() {
   const [journees, setJournees] = useState<JourPaie[]>([]);
   const [taux, setTauxLocal] = useState(9);
   const [tauxSaisi, setTauxSaisi] = useState('9');
+  const [plafond, setPlafondLocal] = useState(14);
+  const [plafondSaisi, setPlafondSaisi] = useState('14');
   const [totalAPayer, setTotalAPayer] = useState(0);
   const [paies, setPaies] = useState<PaieFaite[]>([]);
   const [onglet, setOnglet] = useState<'jours' | 'historique' | 'fiches'>('jours');
@@ -55,6 +58,10 @@ export default function AdminPaiePage() {
       setTauxLocal(r.data.tauxHoraire);
       setTauxSaisi(String(r.data.tauxHoraire));
       setTotalAPayer(r.data.totalAPayer);
+      if (r.data.plafondHeures) {
+        setPlafondLocal(r.data.plafondHeures);
+        setPlafondSaisi(String(r.data.plafondHeures));
+      }
     }
     if (p.success) setPaies(p.data?.paies ?? []);
   }, []);
@@ -102,6 +109,16 @@ export default function AdminPaiePage() {
     else {
       setErreur('');
       setInfo('Taux enregistré : il s’applique aux prochains paiements.');
+      await charger();
+    }
+  };
+
+  const enregistrerPlafond = async () => {
+    const res = await setPlafond(Number(plafondSaisi.replace(',', '.')));
+    if (!res.success) setErreur(res.message || 'Plafond invalide.');
+    else {
+      setErreur('');
+      setInfo('Plafond enregistré : il s’applique aux prochains calculs et paiements.');
       await charger();
     }
   };
@@ -200,6 +217,26 @@ export default function AdminPaiePage() {
               </button>
             </div>
           </div>
+          <div className={`${carte} col-span-2`}>
+            <p className="text-xs uppercase text-gray-500">Plafond d’heures payées par jour</p>
+            <div className="mt-1 flex items-center gap-2">
+              <input
+                inputMode="decimal"
+                value={plafondSaisi}
+                onChange={(e) => setPlafondSaisi(e.target.value)}
+                className="w-24 rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
+                aria-label="Plafond d'heures par jour"
+              />
+              <span className="text-sm text-gray-600">h / jour</span>
+              <button
+                onClick={() => void enregistrerPlafond()}
+                disabled={Number(plafondSaisi.replace(',', '.')) === plafond}
+                className="rounded-lg bg-orange-600 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40"
+              >
+                Enregistrer
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="mt-6 flex gap-2 border-b border-gray-200">
@@ -236,6 +273,11 @@ export default function AdminPaiePage() {
                       <p className="text-sm text-gray-600">
                         {duree(j.minutesAPayer + j.minutesPayees)} pointées · {j.nbLivraisons} livraison{j.nbLivraisons > 1 ? 's' : ''}
                         {j.enCours && <span className="ml-2 font-semibold text-green-700">● en service</span>}
+                        {(j.minutesAuDelaPlafond ?? 0) > 0 && (
+                          <span className="ml-2 font-semibold text-amber-700">
+                            {duree(j.minutesAuDelaPlafond ?? 0)} au-delà du plafond (non payées)
+                          </span>
+                        )}
                       </p>
                     </div>
                     <div className="text-right">
@@ -267,6 +309,7 @@ export default function AdminPaiePage() {
                           <span>
                             {heure(s.debut)} → {s.fin ? heure(s.fin) : <em className="text-green-700">en cours</em>}
                             {s.paieId && <span className="ml-2 text-xs text-green-700">payée</span>}
+                            {s.clotureAuto && <span className="ml-2 text-xs text-amber-700">clôturée automatiquement</span>}
                           </span>
                           {!s.paieId && (
                             <button onClick={() => void corriger(s, j)} className="text-xs font-semibold text-orange-700 underline">
