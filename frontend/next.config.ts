@@ -50,7 +50,8 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/pipeline',
-        destination: jenkins ? `${jenkins}/job/afro-food/job/main/` : '/',
+        // Sans Jenkins hébergé : le lien mène aux étapes du pipeline GitHub Actions
+        destination: jenkins ? `${jenkins}/job/afro-food/job/main/` : 'https://github.com/leslieOuinsou/afro-food/actions/workflows/ci.yml',
         permanent: false,
       },
       { source: '/menu', destination: '/catalogue', permanent: true },

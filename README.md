@@ -126,4 +126,4 @@ npx prisma generate && node server.js
 
 Pipelines GitHub Actions et Jenkins, déploiement contrôlé, migrations sécurisées : voir [docs/CI-CD.md](docs/CI-CD.md).
 
-- Étapes du pipeline Jenkins (Stage View) : <https://afrofood.vercel.app/pipeline> (actif quand Jenkins est hébergé, voir la documentation).
+- Étapes du pipeline Jenkins (Stage View) : <https://afrofood.vercel.app/pipeline> (mène à Jenkins s'il est hébergé, sinon aux étapes du pipeline GitHub Actions).
