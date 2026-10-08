@@ -53,3 +53,35 @@ export type PaieFaite = {
 };
 export const getPaies = () => apiGet<{ paies: PaieFaite[] }>('/api/paie/admin/paiements');
 export const setTaux = (taux: number) => apiPut('/api/paie/admin/taux', { taux });
+
+export type FichePaie = {
+  id: string;
+  numero: string;
+  du: string;
+  au: string;
+  totalMinutes: number;
+  totalMontant: number;
+  nbLivraisons: number;
+  envoyeLe: string;
+  luLe: string | null;
+  livreur?: { nom: string; prenom: string };
+};
+export const getMesFiches = () => apiGet<{ fiches: FichePaie[] }>('/api/paie/mes-fiches');
+export const getToutesFiches = () => apiGet<{ fiches: FichePaie[] }>('/api/paie/admin/fiches');
+export const emettreFiches = (du: string, au: string, livreurId?: string) =>
+  apiPost<{ fiches: FichePaie[] }>('/api/paie/admin/fiches', { du, au, ...(livreurId ? { livreurId } : {}) });
+
+/** Ouvre le PDF d'une fiche dans un nouvel onglet (téléchargement authentifié). */
+export async function ouvrirFichePdf(id: string): Promise<string | null> {
+  const { API_URL } = await import('@/lib/api');
+  const token = sessionStorage.getItem('afro_eats_token') || localStorage.getItem('afro_eats_token');
+  const res = await fetch(`${API_URL}/api/paie/fiches/${id}/pdf`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: 'include',
+  });
+  if (!res.ok) return 'Fiche indisponible pour le moment.';
+  const url = URL.createObjectURL(await res.blob());
+  window.open(url, '_blank', 'noopener');
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  return null;
+}

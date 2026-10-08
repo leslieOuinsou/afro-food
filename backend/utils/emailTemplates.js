@@ -1468,7 +1468,21 @@ export const orderReadyCourierEmail = (commande, lienLivreur) => {
   return baseTemplate(content, `Commande prête ${commande.numeroCommande || ''} - Afro-food`);
 };
 
+/** E-mail livreur : une fiche de rémunération est disponible. */
+export const payslipEmail = (prenom, fiche) => {
+  const lien = `${FRONTEND}/livreur`;
+  const content = `
+    <p style="margin:0 0 8px;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#C2610F;font-weight:700;">Fiche de rémunération</p>
+    <h2>${prenom ? `${escapeHtml(prenom)}, v` : 'V'}otre fiche est disponible</h2>
+    <p>Votre fiche <strong>${escapeHtml(fiche.numero)}</strong> couvre la période du <strong>${escapeHtml(fiche.du)}</strong> au <strong>${escapeHtml(fiche.au)}</strong> : <strong>${formatMoneyEUR(fiche.totalMontant)}</strong> pour ${Number(fiche.nbLivraisons) || 0} livraison(s).</p>
+    <p style="text-align:center;margin:26px 0 8px;"><a href="${escapeHtml(lien)}" class="button" style="display:inline-block;background:#C2610F;color:#FFFFFF;padding:14px 32px;text-decoration:none;border-radius:999px;font-weight:700;font-size:15px;">Voir ma fiche</a></p>
+    <p style="font-size:13px;color:#8A7664;">Retrouvez-la dans la section « Mes fiches de paie » de votre espace livreur.</p>
+  `;
+  return baseTemplate(content, `Fiche de rémunération ${fiche.numero || ''} - Afro-food`);
+};
+
 export default {
+  payslipEmail,
   orderReadyCourierEmail,
   stripeVirementEmail,
   cashCodeEmail,

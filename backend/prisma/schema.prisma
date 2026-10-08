@@ -131,6 +131,8 @@ model User {
   pointages         PointageLivreur[]    @relation("PointagesLivreur")
   paiesRecues       PaieLivreur[]        @relation("PaiesLivreur")
   paiesFaites       PaieLivreur[]        @relation("PaiesAdmin")
+  fichesRecues      FichePaie[]          @relation("FichesLivreur")
+  fichesEmises      FichePaie[]          @relation("FichesAdmin")
   avis              Avis[]
   platsCrees        Plat[]               @relation("PlatAdmin")
   votesAvis         AvisVote[]
@@ -581,9 +583,38 @@ model PaieLivreur {
   note         String?
   createdAt    DateTime @default(now())
 
+  ficheId String?
+  fiche   FichePaie? @relation(fields: [ficheId], references: [id], onDelete: SetNull)
+
   pointages PointageLivreur[]
 
   @@index([livreurId, jour])
+  @@index([ficheId])
   @@index([createdAt])
   @@map("paies_livreur")
+}
+
+/// Fiche de rémunération envoyée par l'admin au livreur : récapitulatif des journées payées sur une période.
+model FichePaie {
+  id           String    @id @default(cuid())
+  numero       String    @unique
+  livreurId    String
+  livreur      User      @relation("FichesLivreur", fields: [livreurId], references: [id])
+  adminId      String
+  admin        User      @relation("FichesAdmin", fields: [adminId], references: [id])
+  /// Période couverte (AAAA-MM-JJ)
+  du           String
+  au           String
+  totalMinutes Int
+  totalMontant Float
+  nbLivraisons Int       @default(0)
+  /// Version de la signature en vigueur à l'émission (null = signature par défaut)
+  signatureId  String?
+  envoyeLe     DateTime  @default(now())
+  luLe         DateTime?
+
+  paies PaieLivreur[]
+
+  @@index([livreurId, envoyeLe])
+  @@map("fiches_paie")
 }

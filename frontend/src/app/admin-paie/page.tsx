@@ -4,6 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import {
   corrigerSession,
+  emettreFiches,
+  getToutesFiches,
+  ouvrirFichePdf,
+  type FichePaie,
   getPaies,
   getResumePaie,
   getSessions,
@@ -32,7 +36,10 @@ export default function AdminPaiePage() {
   const [tauxSaisi, setTauxSaisi] = useState('9');
   const [totalAPayer, setTotalAPayer] = useState(0);
   const [paies, setPaies] = useState<PaieFaite[]>([]);
-  const [onglet, setOnglet] = useState<'jours' | 'historique'>('jours');
+  const [onglet, setOnglet] = useState<'jours' | 'historique' | 'fiches'>('jours');
+  const [fiches, setFiches] = useState<FichePaie[]>([]);
+  const [du, setDu] = useState('');
+  const [au, setAu] = useState('');
   const [erreur, setErreur] = useState('');
   const [info, setInfo] = useState('');
   const [occupe, setOccupe] = useState(false);
@@ -40,7 +47,8 @@ export default function AdminPaiePage() {
   const [sessions, setSessions] = useState<SessionPointage[]>([]);
 
   const charger = useCallback(async () => {
-    const [r, p] = await Promise.all([getResumePaie(), getPaies()]);
+    const [r, p, f] = await Promise.all([getResumePaie(), getPaies(), getToutesFiches()]);
+    if (f.success) setFiches(f.data?.fiches ?? []);
     if (!r.success) setErreur(r.message || 'Chargement impossible.');
     else if (r.data) {
       setJournees(r.data.journees);
@@ -59,6 +67,34 @@ export default function AdminPaiePage() {
     }, 30000);
     return () => window.clearInterval(t);
   }, [charger]);
+
+  // Période par défaut du formulaire d'émission : le mois en cours
+  useEffect(() => {
+    const n = new Date();
+    const mois = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDu(`${mois}-01`);
+    setAu(n.toISOString().slice(0, 10));
+  }, []);
+
+  const emettre = async () => {
+    if (!window.confirm(`Envoyer les fiches de rémunération du ${du} au ${au} à tous les livreurs concernés ?`)) return;
+    setOccupe(true);
+    setErreur('');
+    setInfo('');
+    const res = await emettreFiches(du, au);
+    setOccupe(false);
+    if (!res.success) setErreur(res.message || 'Émission impossible.');
+    else {
+      setInfo(res.message || 'Fiches envoyées.');
+      await charger();
+    }
+  };
+
+  const ouvrirFiche = async (f: FichePaie) => {
+    const err = await ouvrirFichePdf(f.id);
+    if (err) setErreur(err);
+  };
 
   const enregistrerTaux = async () => {
     const res = await setTaux(Number(tauxSaisi.replace(',', '.')));
@@ -171,6 +207,7 @@ export default function AdminPaiePage() {
             [
               ['jours', 'Journées'],
               ['historique', 'Paiements effectués'],
+              ['fiches', 'Fiches de paie'],
             ] as const
           ).map(([id, label]) => (
             <button
@@ -243,6 +280,78 @@ export default function AdminPaiePage() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {onglet === 'fiches' && (
+          <div className="mt-4 space-y-4">
+            <div className={carte}>
+              <p className="font-semibold text-gray-900">Envoyer les fiches de rémunération</p>
+              <p className="text-xs text-gray-600">
+                Chaque livreur reçoit une fiche regroupant ses journées déjà payées sur la période. Une journée n’est incluse
+                qu’une seule fois.
+              </p>
+              <div className="mt-3 flex flex-wrap items-end gap-3">
+                <label className="text-xs font-semibold text-gray-700">
+                  Du
+                  <input type="date" value={du} onChange={(e) => setDu(e.target.value)} className="mt-1 block rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-normal" />
+                </label>
+                <label className="text-xs font-semibold text-gray-700">
+                  Au
+                  <input type="date" value={au} onChange={(e) => setAu(e.target.value)} className="mt-1 block rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-normal" />
+                </label>
+                <button
+                  onClick={() => void emettre()}
+                  disabled={!du || !au || du > au || occupe}
+                  className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-50"
+                >
+                  Générer et envoyer
+                </button>
+              </div>
+            </div>
+            <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+                  <tr>
+                    <th className="px-4 py-2">N°</th>
+                    <th className="px-4 py-2">Livreur</th>
+                    <th className="px-4 py-2">Période</th>
+                    <th className="px-4 py-2">Total</th>
+                    <th className="px-4 py-2">Envoyée le</th>
+                    <th className="px-4 py-2">Lue</th>
+                    <th className="px-4 py-2" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {fiches.map((f) => (
+                    <tr key={f.id}>
+                      <td className="px-4 py-2 font-mono text-xs">{f.numero}</td>
+                      <td className="px-4 py-2">
+                        {f.livreur?.prenom} {f.livreur?.nom}
+                      </td>
+                      <td className="px-4 py-2">
+                        {f.du} → {f.au}
+                      </td>
+                      <td className="px-4 py-2 font-semibold">{money(f.totalMontant)}</td>
+                      <td className="px-4 py-2">{new Date(f.envoyeLe).toLocaleDateString('fr-FR')}</td>
+                      <td className="px-4 py-2">{f.luLe ? <span className="text-green-700">Oui</span> : <span className="text-orange-700">Pas encore</span>}</td>
+                      <td className="px-4 py-2 text-right">
+                        <button onClick={() => void ouvrirFiche(f)} className="text-xs font-semibold text-orange-700 underline">
+                          Voir
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {fiches.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-6 text-center text-gray-500">
+                        Aucune fiche envoyée.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

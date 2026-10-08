@@ -12,6 +12,7 @@ import {
   cashReceiptEmail,
   stripeVirementEmail,
   orderReadyCourierEmail,
+  payslipEmail,
 } from './emailTemplates.js';
 
 let transporter = null;
@@ -212,5 +213,15 @@ export async function envoyerEmailPaiementStripeVirement(email, commande) {
     subject: `Paiement enregistré — envoyez votre justificatif (${commande.numeroCommande})`,
     text: `Votre paiement de ${commande.total} € est enregistré. Téléchargez puis envoyez votre justificatif : ${front}/commande/${commande.id}`,
     html: stripeVirementEmail(commande),
+  });
+}
+
+/** Prévient un livreur qu'une fiche de rémunération est disponible. */
+export async function envoyerEmailFichePaie(email, prenom, fiche) {
+  return envoyerEmail({
+    to: email,
+    subject: `Votre fiche de rémunération ${fiche.numero} est disponible`,
+    text: `Votre fiche ${fiche.numero} (${fiche.du} au ${fiche.au}) : ${fiche.totalMontant} €. Consultez-la dans votre espace livreur.`,
+    html: payslipEmail(prenom, fiche),
   });
 }
