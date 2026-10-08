@@ -708,7 +708,7 @@ export default function PanierPage() {
                   )}
                   {paymentMode === 'mobile' && (
                     <p className="mt-8 rounded-2xl border border-[var(--wood)]/10 bg-[color:rgba(139,58,42,.07)] p-4 text-sm text-[var(--wood)]/75">
-                      Le paiement mobile est simulé pour l&apos;instant, mais la méthode est transmise au backend.
+                      Après confirmation de la commande, vous choisirez votre opérateur (Orange Money, MTN MoMo, Moov Money, Wave) et validerez le paiement avec votre code secret.
                     </p>
                   )}
                   {paymentMode === 'especes' && (

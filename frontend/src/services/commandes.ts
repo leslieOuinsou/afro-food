@@ -124,6 +124,19 @@ export async function annulerCommande(id: string, raison?: string): Promise<ApiR
   return apiPatch<{ commande: CommandeDetail }>(`/api/commandes/${id}/annuler`, { raison });
 }
 
+export async function getMobileTest(): Promise<boolean> {
+  const res = await apiGet<{ mobileTest?: boolean }>('/api/paiements/config');
+  return Boolean(res.success && res.data?.mobileTest);
+}
+
+export function initierPaiementMobile(commandeId: string, operateur: string, telephone: string) {
+  return apiPost<{ reference: string; montant: number }>('/api/paiements/mobile/initier', { commandeId, operateur, telephone });
+}
+
+export function confirmerPaiementMobile(commandeId: string, code: string) {
+  return apiPost('/api/paiements/mobile/confirmer', { commandeId, code });
+}
+
 export async function getStripeTest(): Promise<boolean> {
   const res = await apiGet<{ stripeTest?: boolean }>('/api/paiements/config');
   return Boolean(res.success && res.data?.stripeTest);

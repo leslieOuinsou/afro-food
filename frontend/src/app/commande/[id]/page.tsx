@@ -16,7 +16,7 @@ import {
   type Justificatif,
 } from '@/services/justificatifs';
 import { trackPurchase, trackReviewEmailClick, trackReviewSubmitted } from '@/lib/analytics';
-import { annulerCommande, creerSessionPaiement, evaluerCommande, getCommande, getStripeTest, type CommandeDetail } from '@/services/commandes';
+import { annulerCommande, confirmerPaiementMobile, creerSessionPaiement, evaluerCommande, getCommande, getMobileTest, getStripeTest, initierPaiementMobile, type CommandeDetail } from '@/services/commandes';
 
 const ETAPES = [
   { statut: 'en_attente', label: 'Commande reçue' },
@@ -155,6 +155,44 @@ function SuiviContent() {
   }, [virementAttendu, id]);
 
   const [redirectionStripe, setRedirectionStripe] = useState(false);
+  const [mobileTest, setMobileTest] = useState(false);
+  const [operateur, setOperateur] = useState('orange_money');
+  const [telephoneMobile, setTelephoneMobile] = useState('');
+  const [etapeMobile, setEtapeMobile] = useState<'numero' | 'code'>('numero');
+  const [codeMobile, setCodeMobile] = useState('');
+  const [chargementMobile, setChargementMobile] = useState(false);
+  const [messageMobile, setMessageMobile] = useState('');
+  useEffect(() => {
+    void getMobileTest().then(setMobileTest);
+  }, []);
+
+  const demarrerMobile = async () => {
+    setChargementMobile(true);
+    setMessageMobile('');
+    const res = await initierPaiementMobile(id, operateur, telephoneMobile);
+    setChargementMobile(false);
+    if (!res.success) {
+      setMessageMobile(res.message || 'Paiement mobile impossible.');
+      return;
+    }
+    setCodeMobile('');
+    setEtapeMobile('code');
+  };
+
+  const validerMobile = async () => {
+    setChargementMobile(true);
+    setMessageMobile('');
+    const res = await confirmerPaiementMobile(id, codeMobile);
+    setChargementMobile(false);
+    if (!res.success) {
+      setMessageMobile(res.message || 'Paiement refusé.');
+      if (res.status === 402 || res.status === 409 || res.status === 429) setEtapeMobile('numero');
+      return;
+    }
+    setMessageMobile('');
+    await charger();
+  };
+
   const [stripeTest, setStripeTest] = useState(false);
   useEffect(() => {
     void getStripeTest().then(setStripeTest);
@@ -388,6 +426,104 @@ function SuiviContent() {
                     {envoiAvis ? 'Envoi…' : 'Envoyer mon avis'}
                   </button>
                 </>
+              )}
+            </section>
+          )}
+
+          {commande.methodePaiement === 'mobile' && commande.statutPaiement !== 'valide' && commande.statut !== 'annulee' && (
+            <section className="mt-6 rounded-[24px] border-2 border-[var(--ochre)] bg-white p-6">
+              <h2 className="font-title text-2xl">Paiement par Mobile Money</h2>
+              {etapeMobile === 'numero' ? (
+                <>
+                  <p className="mt-2 text-sm text-[var(--wood)]/75">Choisissez votre opérateur et saisissez votre numéro.</p>
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {[
+                      ['orange_money', 'Orange Money'],
+                      ['mtn_momo', 'MTN MoMo'],
+                      ['moov_money', 'Moov Money'],
+                      ['wave', 'Wave'],
+                    ].map(([valeur, libelle]) => (
+                      <button
+                        key={valeur}
+                        type="button"
+                        onClick={() => setOperateur(valeur)}
+                        className={`rounded-2xl border px-3 py-2.5 text-sm font-semibold ${
+                          operateur === valeur
+                            ? 'border-[var(--ochre)] bg-[var(--ochre)]/10 text-[var(--ochre)]'
+                            : 'border-[var(--wood)]/15'
+                        }`}
+                      >
+                        {libelle}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="mt-4 block text-sm font-semibold">
+                    Numéro de téléphone
+                    <input
+                      inputMode="tel"
+                      value={telephoneMobile}
+                      onChange={(e) => setTelephoneMobile(e.target.value)}
+                      placeholder="Ex. 6 70 00 00 00"
+                      className="mt-1 w-full rounded-2xl border border-[var(--wood)]/20 bg-white px-4 py-3 outline-none focus:border-[var(--ochre)]"
+                    />
+                  </label>
+                  {messageMobile && <p className="mt-2 text-sm text-red-700">{messageMobile}</p>}
+                  <button
+                    type="button"
+                    disabled={chargementMobile || telephoneMobile.replace(/\D/g, '').length < 8}
+                    onClick={() => void demarrerMobile()}
+                    className="mt-4 rounded-full bg-[var(--ochre)] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#a6500c] disabled:opacity-50"
+                  >
+                    {chargementMobile ? 'Envoi…' : `Payer ${money(commande.montants.total)}`}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="mt-2 text-sm text-[var(--wood)]/75">
+                    Une demande de paiement de {money(commande.montants.total)} vient d’être envoyée sur votre téléphone. Saisissez
+                    votre code secret pour valider.
+                  </p>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={codeMobile}
+                    onChange={(e) => setCodeMobile(e.target.value.replace(/\D/g, ''))}
+                    placeholder="Code secret"
+                    className="mt-3 w-full max-w-[200px] rounded-2xl border border-[var(--wood)]/20 bg-white px-4 py-3 text-center text-xl tracking-[0.4em] outline-none focus:border-[var(--ochre)]"
+                  />
+                  {messageMobile && <p className="mt-2 text-sm text-red-700">{messageMobile}</p>}
+                  <div className="mt-4 flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEtapeMobile('numero');
+                        setMessageMobile('');
+                      }}
+                      className="rounded-full border border-[var(--wood)]/20 px-5 py-2.5 text-sm font-semibold"
+                    >
+                      Retour
+                    </button>
+                    <button
+                      type="button"
+                      disabled={chargementMobile || codeMobile.length < 4}
+                      onClick={() => void validerMobile()}
+                      className="rounded-full bg-green-700 px-6 py-2.5 text-sm font-semibold text-white hover:bg-green-800 disabled:opacity-50"
+                    >
+                      {chargementMobile ? 'Validation…' : 'Valider le paiement'}
+                    </button>
+                  </div>
+                </>
+              )}
+              {mobileTest && (
+                <div className="mt-4 rounded-xl border border-dashed border-[var(--ochre)] bg-[var(--ochre)]/5 p-3 text-xs">
+                  <p className="font-semibold">Mode test — simulation, aucun vrai prélèvement.</p>
+                  <p className="mt-1">Numéro : n’importe lequel (8 chiffres minimum), par exemple <span className="font-mono">670 00 00 00</span></p>
+                  <p>
+                    Code secret <span className="font-mono font-bold">1234</span> = paiement accepté ·{' '}
+                    <span className="font-mono font-bold">0000</span> = paiement refusé (solde insuffisant)
+                  </p>
+                </div>
               )}
             </section>
           )}

@@ -793,7 +793,7 @@ export const obtenirToutesCommandes = async (req, res, next) => {
     if (req.utilisateur.role === 'livreur') {
       // Jamais de course à prendre tant qu'un virement ou un paiement par carte n'est pas confirmé
       where.NOT = {
-        methodePaiement: { in: ['virement', 'carte'] },
+        methodePaiement: { in: ['virement', 'carte', 'mobile'] },
         statutPaiement: { not: 'valide' },
         statut: { in: ['prete', 'en_livraison'] },
       };
@@ -864,14 +864,16 @@ export const changerStatutCommande = async (req, res, next) => {
 
     // Virement et carte : payer avant la livraison (le paiement doit être confirmé)
     if (
-      ['virement', 'carte'].includes(commande.methodePaiement) &&
+      ['virement', 'carte', 'mobile'].includes(commande.methodePaiement) &&
       commande.statutPaiement !== 'valide' &&
       ['en_livraison', 'livree'].includes(statut)
     ) {
       const error = new Error(
         commande.methodePaiement === 'virement'
           ? "Virement non reçu : confirmez le virement (« Virement reçu ») avant de lancer la livraison."
-          : 'Paiement par carte non confirmé : la livraison ne peut pas démarrer.'
+          : commande.methodePaiement === 'mobile'
+            ? 'Paiement mobile money non confirmé : la livraison ne peut pas démarrer.'
+            : 'Paiement par carte non confirmé : la livraison ne peut pas démarrer.'
       );
       error.statusCode = 400;
       return next(error);

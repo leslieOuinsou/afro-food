@@ -24,6 +24,8 @@ export const configPaiement = (req, res) => {
       stripeActif: Boolean(getStripe()),
       // Mode test : le frontend affiche la carte de test (jamais avec une clé sk_live_)
       stripeTest: (process.env.STRIPE_SECRET_KEY || '').startsWith('sk_test_'),
+      // Mobile money : simulateur de test (aucun vrai prélèvement) tant qu'aucun prestataire n'est branché
+      mobileTest: true,
     },
   });
 };
@@ -167,6 +169,88 @@ export const telechargerRecu = async (req, res, next) => {
     res.setHeader('Content-Disposition', `attachment; filename="justificatif-${commande.numeroCommande}.pdf"`);
     res.setHeader('Cache-Control', 'private, no-store');
     res.end(pdf);
+  } catch (e) {
+    next(e);
+  }
+};
+
+const OPERATEURS_MOBILE = ['orange_money', 'mtn_momo', 'moov_money', 'wave'];
+const CODE_TEST_SUCCES = '1234';
+const CODE_TEST_REFUS = '0000';
+const TENTATIVES_MAX = 5;
+
+async function commandeMobileDuClient(commandeId, utilisateur) {
+  if (!isValidId(commandeId)) throw erreur('ID de commande invalide', 400);
+  const commande = await prisma.commande.findUnique({ where: { id: commandeId } });
+  if (!commande || commande.clientId !== utilisateur.id) throw erreur('Commande non trouvée', 404);
+  if (commande.methodePaiement !== 'mobile') throw erreur('Cette commande ne se paie pas par mobile money', 400);
+  if (commande.statutPaiement === 'valide') throw erreur('Cette commande est déjà réglée', 409);
+  if (['annulee', 'remboursee'].includes(commande.statut)) throw erreur('Commande annulée', 400);
+  return commande;
+}
+
+/** POST /api/paiements/mobile/initier { commandeId, operateur, telephone } — SIMULATEUR de test */
+export const initierPaiementMobile = async (req, res, next) => {
+  try {
+    const { commandeId, operateur, telephone } = req.body;
+    const commande = await commandeMobileDuClient(commandeId, req.utilisateur);
+    if (!OPERATEURS_MOBILE.includes(operateur)) throw erreur('Opérateur invalide', 400);
+    const chiffres = String(telephone ?? '').replace(/[^\d]/g, '');
+    if (chiffres.length < 8 || chiffres.length > 15) throw erreur('Numéro de téléphone invalide', 400);
+
+    const reference = `MM-TEST-${Date.now().toString(36).toUpperCase()}`;
+    await prisma.commande.update({
+      where: { id: commande.id },
+      data: {
+        paiement: {
+          ...(commande.paiement || {}),
+          mobile: {
+            operateur,
+            telephone: `••••${chiffres.slice(-3)}`,
+            reference,
+            statut: 'en_attente',
+            tentatives: 0,
+            initieLe: new Date().toISOString(),
+            simulation: true,
+          },
+        },
+      },
+    });
+    res.json({ success: true, data: { reference, montant: commande.total } });
+  } catch (e) {
+    next(e);
+  }
+};
+
+/** POST /api/paiements/mobile/confirmer { commandeId, code } — code secret saisi par le client (test : 1234 = succès) */
+export const confirmerPaiementMobile = async (req, res, next) => {
+  try {
+    const { commandeId, code } = req.body;
+    const commande = await commandeMobileDuClient(commandeId, req.utilisateur);
+    const mobile = commande.paiement?.mobile;
+    if (!mobile || mobile.statut !== 'en_attente') throw erreur('Aucun paiement mobile en cours : recommencez', 409);
+    if ((mobile.tentatives ?? 0) >= TENTATIVES_MAX) {
+      throw erreur('Trop de tentatives : recommencez le paiement', 429);
+    }
+    const saisi = String(code ?? '').trim();
+
+    const maj = async (statut, extra = {}) =>
+      prisma.commande.update({
+        where: { id: commande.id },
+        data: { paiement: { ...(commande.paiement || {}), mobile: { ...mobile, statut, tentatives: (mobile.tentatives ?? 0) + 1, ...extra } } },
+      });
+
+    if (saisi === CODE_TEST_SUCCES) {
+      await maj('valide', { valideLe: new Date().toISOString() });
+      await marquerPaye(commande.id, mobile.reference, 'Paiement mobile money reçu (test)', 'Paiement mobile money reçu, merci !');
+      return res.json({ success: true, message: 'Paiement mobile money confirmé' });
+    }
+    if (saisi === CODE_TEST_REFUS) {
+      await maj('echec', { motif: 'Solde insuffisant (simulation)' });
+      throw erreur('Paiement refusé : solde insuffisant (simulation). Recommencez.', 402);
+    }
+    await maj('en_attente');
+    throw erreur('Code secret incorrect', 400);
   } catch (e) {
     next(e);
   }
