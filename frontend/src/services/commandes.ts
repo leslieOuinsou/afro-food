@@ -124,6 +124,11 @@ export async function annulerCommande(id: string, raison?: string): Promise<ApiR
   return apiPatch<{ commande: CommandeDetail }>(`/api/commandes/${id}/annuler`, { raison });
 }
 
+export async function getStripeTest(): Promise<boolean> {
+  const res = await apiGet<{ stripeTest?: boolean }>('/api/paiements/config');
+  return Boolean(res.success && res.data?.stripeTest);
+}
+
 export async function getConfigPaiement(): Promise<boolean> {
   const res = await apiGet<{ stripeActif: boolean }>('/api/paiements/config');
   return Boolean(res.success && res.data?.stripeActif);

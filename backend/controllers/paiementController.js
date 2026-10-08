@@ -18,7 +18,14 @@ const erreur = (message, statusCode) => Object.assign(new Error(message), { stat
 
 /** GET /api/paiements/config — le frontend sait si le paiement en ligne est actif */
 export const configPaiement = (req, res) => {
-  res.json({ success: true, data: { stripeActif: Boolean(getStripe()) } });
+  res.json({
+    success: true,
+    data: {
+      stripeActif: Boolean(getStripe()),
+      // Mode test : le frontend affiche la carte de test (jamais avec une clé sk_live_)
+      stripeTest: (process.env.STRIPE_SECRET_KEY || '').startsWith('sk_test_'),
+    },
+  });
 };
 
 /** POST /api/paiements/session { commandeId } → { url } vers Stripe Checkout */

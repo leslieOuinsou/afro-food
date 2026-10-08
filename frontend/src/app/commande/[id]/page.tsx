@@ -16,7 +16,7 @@ import {
   type Justificatif,
 } from '@/services/justificatifs';
 import { trackPurchase, trackReviewEmailClick, trackReviewSubmitted } from '@/lib/analytics';
-import { annulerCommande, creerSessionPaiement, evaluerCommande, getCommande, type CommandeDetail } from '@/services/commandes';
+import { annulerCommande, creerSessionPaiement, evaluerCommande, getCommande, getStripeTest, type CommandeDetail } from '@/services/commandes';
 
 const ETAPES = [
   { statut: 'en_attente', label: 'Commande reçue' },
@@ -155,6 +155,10 @@ function SuiviContent() {
   }, [virementAttendu, id]);
 
   const [redirectionStripe, setRedirectionStripe] = useState(false);
+  const [stripeTest, setStripeTest] = useState(false);
+  useEffect(() => {
+    void getStripeTest().then(setStripeTest);
+  }, []);
   const paiementAnnule = searchParams.get('paiement') === 'annule';
 
   const payerEnLigne = async () => {
@@ -449,6 +453,14 @@ function SuiviContent() {
                         >
                           {redirectionStripe ? 'Redirection…' : `Payer ${money(commande.montants.total)}`}
                         </button>
+                        {stripeTest && (
+                          <div className="mt-3 rounded-xl border border-dashed border-[var(--ochre)] bg-[var(--ochre)]/5 p-3 text-xs">
+                            <p className="font-semibold">Mode test — utilisez cette carte fictive sur la page Stripe :</p>
+                            <p className="mt-1 font-mono">Numéro : 4242 4242 4242 4242</p>
+                            <p className="font-mono">Date : 12/30 · CVC : 123 · Code postal : 75001</p>
+                            <p className="mt-1 text-[var(--wood)]/60">Une vraie carte est refusée en mode test.</p>
+                          </div>
+                        )}
                       </>
                     ) : (
                       <>
