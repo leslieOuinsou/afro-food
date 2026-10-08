@@ -338,6 +338,45 @@ function SuiviContent() {
             </section>
           )}
 
+          {commande.methodePaiement === 'virement' && commande.statutPaiement !== 'valide' && (
+            <section className="mt-6 rounded-[24px] border-2 border-[var(--ochre)] bg-white p-6">
+              <h2 className="font-title text-2xl">Paiement par virement</h2>
+              {commande.virement ? (
+                <>
+                  <dl className="mt-4 grid grid-cols-[110px_1fr] gap-x-3 gap-y-2 text-sm">
+                    <dt className="text-[var(--wood)]/60">Bénéficiaire</dt>
+                    <dd className="font-semibold">{commande.virement.titulaire}</dd>
+                    <dt className="text-[var(--wood)]/60">IBAN</dt>
+                    <dd className="break-all font-semibold">{commande.virement.iban}</dd>
+                    {commande.virement.bic && (
+                      <>
+                        <dt className="text-[var(--wood)]/60">BIC</dt>
+                        <dd className="font-semibold">{commande.virement.bic}</dd>
+                      </>
+                    )}
+                    {commande.virement.banque && (
+                      <>
+                        <dt className="text-[var(--wood)]/60">Banque</dt>
+                        <dd className="font-semibold">{commande.virement.banque}</dd>
+                      </>
+                    )}
+                    <dt className="text-[var(--wood)]/60">Montant</dt>
+                    <dd className="font-semibold">{money(commande.montants.total)}</dd>
+                    <dt className="text-[var(--wood)]/60">Référence</dt>
+                    <dd className="font-semibold">{commande.virement.reference}</dd>
+                  </dl>
+                  <p className="mt-3 text-xs text-[var(--wood)]/65">
+                    Indiquez la référence dans le libellé du virement. Votre commande sera préparée dès réception.
+                  </p>
+                </>
+              ) : (
+                <p className="mt-2 text-sm text-[var(--wood)]/75">
+                  Nos coordonnées bancaires vous seront communiquées très prochainement par notre équipe.
+                </p>
+              )}
+            </section>
+          )}
+
           <section className="mt-6 rounded-[24px] border border-[var(--wood)]/10 bg-white/55 p-6">
             <h2 className="font-title text-2xl">Détail</h2>
             <ul className="mt-4 divide-y divide-[var(--wood)]/10 text-sm">

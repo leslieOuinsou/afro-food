@@ -2,6 +2,8 @@
  * Templates d'email pour l'application Afro-food
  */
 
+import { coordonneesVirement, estVirementEnAttente } from './virement.js';
+
 const FRONTEND = process.env.FRONTEND_URL || 'https://afro-eats.com';
 
 /** Échappe les caractères HTML pour les contenus dynamiques */
@@ -300,6 +302,27 @@ export const orderConfirmationEmail = (commande, client) => {
       </tr>`
       : '';
 
+  const vir = estVirementEnAttente(commande) ? coordonneesVirement(commande) : null;
+  const ligneVir = (l, v) =>
+    v
+      ? `<tr><td style="padding:3px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#8A7664;width:110px;">${l}</td><td style="padding:3px 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#2C1A0E;">${escapeHtml(v)}</td></tr>`
+      : '';
+  const virementBloc = estVirementEnAttente(commande)
+    ? `<tr><td style="background-color:#FAF3E0;padding:0 24px 22px 24px;border-left:1px solid #e8dcc4;border-right:1px solid #e8dcc4;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFFFFF;border:2px solid #C2610F;border-radius:12px;">
+          <tr><td style="padding:16px 18px;">
+            <p style="margin:0 0 10px;font-family:Arial,Helvetica,sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:700;color:#C2610F;">Paiement par virement</p>
+            ${
+              vir
+                ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0">${ligneVir('Bénéficiaire', vir.titulaire)}${ligneVir('IBAN', vir.iban)}${ligneVir('BIC', vir.bic)}${ligneVir('Banque', vir.banque)}${ligneVir('Montant', formatMoneyEUR(m.total))}${ligneVir('Référence', vir.reference)}</table>
+            <p style="margin:10px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12.5px;color:#8A7664;">Indiquez la référence <strong>${escapeHtml(vir.reference)}</strong> dans le libellé du virement. Votre commande sera préparée dès réception.</p>`
+                : `<p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#2C1A0E;">Nos coordonnées bancaires vous seront communiquées très prochainement par notre équipe.</p>`
+            }
+          </td></tr>
+        </table>
+      </td></tr>`
+    : '';
+
   const totalTtc = formatMoneyEUR(m.total);
 
   const emailQuery = client?.email
@@ -430,6 +453,7 @@ export const orderConfirmationEmail = (commande, client) => {
               </table>
             </td>
           </tr>
+${virementBloc}
           <tr>
             <td align="center" style="background-color:#FAF3E0;padding:8px 24px 28px 24px;border-left:1px solid #e8dcc4;border-right:1px solid #e8dcc4;border-radius:0 0 12px 12px;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">

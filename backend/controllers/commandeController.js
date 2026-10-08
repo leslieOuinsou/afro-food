@@ -1,3 +1,4 @@
+import { coordonneesVirement, estVirementEnAttente } from '../utils/virement.js';
 import prisma from '../lib/prisma.js';
 import { evaluerPromo, decrirePromo } from '../utils/promo.js';
 import { genererNumeroCommande } from '../utils/helpers.js';
@@ -609,6 +610,10 @@ export const obtenirCommandeParId = async (req, res, next) => {
     if (resultat.livraison?.positionLivreur && commande.statut !== 'en_livraison') {
       resultat.livraison = { ...resultat.livraison };
       delete resultat.livraison.positionLivreur;
+    }
+
+    if (estVirementEnAttente(commande) && commande.clientId === req.utilisateur.id) {
+      resultat.virement = coordonneesVirement(commande);
     }
 
     res.status(200).json({
