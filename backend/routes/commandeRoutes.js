@@ -11,7 +11,9 @@ import {
   obtenirStatistiques,
   exporterCommandesCsv,
   mettreAJourPositionLivreur,
-  obtenirAvis
+  obtenirAvis,
+  supprimerCommandesTerminees,
+  masquerHistoriqueLivreur
 } from '../controllers/commandeController.js';
 import {
   protegerRoute,
@@ -39,6 +41,8 @@ router.use(protegerRoute);
 // Routes pour les clients
 router.post('/', validerCommande, creerCommande);
 router.post('/promo/valider', validerCodePromo);
+router.post('/supprimer', restreindreAcces('admin'), supprimerCommandesTerminees);
+router.post('/historique/masquer', restreindreAcces('livreur'), masquerHistoriqueLivreur);
 
 router.get('/mes-commandes',
   validerPagination,

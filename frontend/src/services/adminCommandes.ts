@@ -2,7 +2,7 @@
  * Service pour la gestion des commandes (admin)
  */
 
-import { apiGet, apiPatch } from '@/lib/api';
+import { apiGet, apiPatch, apiPost } from '@/lib/api';
 
 export interface CommandeApiArticle {
   _id?: string;
@@ -147,4 +147,14 @@ export async function updateStatut(
 export async function confirmerVirement(commandeId: string): Promise<{ success: boolean; error?: string }> {
   const res = await apiPatch(`/api/paiements/${commandeId}/virement-recu`, {});
   return { success: res.success === true, error: res.success ? undefined : res.message };
+}
+
+export async function supprimerCommandes(ids: string[]): Promise<{ success: boolean; supprimees?: number; ignorees?: number; error?: string }> {
+  const res = await apiPost<{ supprimees: number; ignorees: number }>('/api/commandes/supprimer', { ids });
+  return {
+    success: res.success === true,
+    supprimees: res.data?.supprimees,
+    ignorees: res.data?.ignorees,
+    error: res.success ? undefined : res.message,
+  };
 }

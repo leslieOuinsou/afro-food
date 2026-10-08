@@ -34,6 +34,17 @@ const TRANSITIONS_VALIDES = {
   remboursee: [],
 };
 
+/** Le livreur a-t-il un pointage ouvert (en service) ? */
+async function livreurEnService(livreurId) {
+  return Boolean(await prisma.pointageLivreur.findFirst({ where: { livreurId, fin: null }, select: { id: true } }));
+}
+
+const cleMasque = (livreurId) => `historique_masque:${livreurId}`;
+async function idsHistoriqueMasque(livreurId) {
+  const s = await prisma.setting.findUnique({ where: { cle: cleMasque(livreurId) } });
+  return Array.isArray(s?.valeur?.ids) ? s.valeur.ids : [];
+}
+
 const commandeInclude = {
   client: {
     select: { id: true, nom: true, prenom: true, email: true, telephone: true, avatar: true },
@@ -287,23 +298,28 @@ async function changerStatutInterne(commande, nouveauStatut, commentaire, modifi
       url: `/commande/${miseAJour.id}`,
     }).catch((err) => console.warn('Push client non envoyé:', err.message));
   }
-  if (nouveauStatut === 'prete' && !miseAJour.livreurId) {
-    pushVersRole('livreur', {
-      titre: 'Commande prête à livrer',
-      corps: `${miseAJour.numeroCommande} · ${miseAJour.adresseLivraison?.ville ?? ''}`.trim(),
-      url: '/livreur',
-    }).catch((err) => console.warn('Push livreurs non envoyé:', err.message));
-  }
 
-  // Commande prête sans livreur : prévient les livreurs actifs
+  // Commande prête sans livreur : prévient uniquement les livreurs EN SERVICE (pointage ouvert)
   if (nouveauStatut === 'prete' && !miseAJour.livreurId) {
     // await : sur Vercel, le traitement s'arrête dès que la réponse HTTP part
-    await prisma.user
-      .findMany({ where: { role: 'livreur', estActif: true }, select: { email: true } })
-      .then((livreurs) =>
-        Promise.all(livreurs.map((l) => envoyerEmailCommandePrete(l.email, miseAJour)))
+    await prisma.pointageLivreur
+      .findMany({
+        where: { fin: null, livreur: { estActif: true } },
+        select: { livreur: { select: { id: true, email: true } } },
+      })
+      .then((sessions) =>
+        Promise.all(
+          sessions.flatMap(({ livreur }) => [
+            pushVersUtilisateur(livreur.id, {
+              titre: 'Commande prête à livrer',
+              corps: `${miseAJour.numeroCommande} · ${miseAJour.adresseLivraison?.ville ?? ''}`.trim(),
+              url: '/livreur',
+            }),
+            envoyerEmailCommandePrete(livreur.email, miseAJour),
+          ])
+        )
       )
-      .catch((err) => console.warn('Email commande prête non envoyé:', err.message));
+      .catch((err) => console.warn('Notification commande prête non envoyée:', err.message));
   }
 
   return miseAJour;
@@ -797,10 +813,15 @@ export const obtenirToutesCommandes = async (req, res, next) => {
         statutPaiement: { not: 'valide' },
         statut: { in: ['prete', 'en_livraison'] },
       };
+      // Les commandes à prendre ne sont proposées qu'aux livreurs en service (pointage ouvert)
+      const enService = await livreurEnService(req.utilisateur.id);
       where.OR = [
         { livreurId: req.utilisateur.id },
-        { livreurId: null, statut: { in: ['prete', 'en_livraison'] } },
+        ...(enService ? [{ livreurId: null, statut: { in: ['prete', 'en_livraison'] } }] : []),
       ];
+      // Commandes retirées de son historique
+      const masquees = await idsHistoriqueMasque(req.utilisateur.id);
+      if (masquees.length) where.id = { notIn: masquees };
     }
 
     const [commandes, total] = await Promise.all([
@@ -848,6 +869,15 @@ export const changerStatutCommande = async (req, res, next) => {
       return next(error);
     }
 
+    // Déjà dans cet état (page non rafraîchie, paiement confirmé entre-temps) : rien à faire
+    if (statut === commande.statut) {
+      return res.status(200).json({
+        success: true,
+        message: 'La commande est déjà à ce statut',
+        data: { commande: serializeCommande(commande) },
+      });
+    }
+
     const estLivreur = req.utilisateur.role === 'livreur';
     if (estLivreur) {
       if (!['en_livraison', 'livree'].includes(statut)) {
@@ -857,6 +887,20 @@ export const changerStatutCommande = async (req, res, next) => {
       }
       if (commande.livreurId && commande.livreurId !== req.utilisateur.id) {
         const error = new Error('Commande assignée à un autre livreur');
+        error.statusCode = 403;
+        return next(error);
+      }
+    }
+
+    // Pointage obligatoire : un livreur doit être en service pour démarrer une livraison
+    if (statut === 'en_livraison') {
+      const responsable = estLivreur ? req.utilisateur.id : livreurId || commande.livreurId;
+      if (responsable && !(await livreurEnService(responsable))) {
+        const error = new Error(
+          estLivreur
+            ? 'Commencez votre service (pointage) avant de prendre une commande.'
+            : "Ce livreur n'est pas en service : il doit d'abord pointer avant de démarrer une livraison."
+        );
         error.statusCode = 403;
         return next(error);
       }
@@ -1340,6 +1384,62 @@ export const obtenirAvisPublics = async (req, res, next) => {
       message: 'Avis publics',
       data: { moyenne: moyenne == null ? null : Math.round(moyenne * 10) / 10, total: tous.length, avis },
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** POST /api/commandes/supprimer { ids } — l'admin supprime des commandes terminées pour libérer de l'espace */
+export const supprimerCommandesTerminees = async (req, res, next) => {
+  try {
+    const ids = Array.isArray(req.body?.ids) ? [...new Set(req.body.ids)].filter(isValidId).slice(0, 500) : [];
+    if (ids.length === 0) {
+      const error = new Error('Aucune commande sélectionnée');
+      error.statusCode = 400;
+      return next(error);
+    }
+    const eligibles = await prisma.commande.findMany({
+      where: {
+        id: { in: ids },
+        statut: { in: ['livree', 'annulee', 'remboursee'] },
+        // Espèces encaissées mais pas encore remises à l'admin : on garde la trace tant que l'argent n'est pas reversé
+        NOT: { especesStatut: 'a_reverser' },
+      },
+      select: { id: true },
+    });
+    const { count } = await prisma.commande.deleteMany({ where: { id: { in: eligibles.map((c) => c.id) } } });
+    res.json({
+      success: true,
+      message: `${count} commande(s) supprimée(s)`,
+      data: { supprimees: count, ignorees: ids.length - count },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** POST /api/commandes/historique/masquer { ids? , tout? } — le livreur retire des commandes livrées de son historique */
+export const masquerHistoriqueLivreur = async (req, res, next) => {
+  try {
+    const demandes = req.body?.tout === true ? null : Array.isArray(req.body?.ids) ? req.body.ids.filter(isValidId) : [];
+    const candidates = await prisma.commande.findMany({
+      where: {
+        livreurId: req.utilisateur.id,
+        statut: 'livree',
+        NOT: { especesStatut: 'a_reverser' },
+        ...(demandes ? { id: { in: demandes } } : {}),
+      },
+      select: { id: true },
+    });
+    const deja = await idsHistoriqueMasque(req.utilisateur.id);
+    const ids = [...new Set([...deja, ...candidates.map((c) => c.id)])].slice(-2000);
+    const valeur = { ids };
+    await prisma.setting.upsert({
+      where: { cle: cleMasque(req.utilisateur.id) },
+      update: { valeur },
+      create: { cle: cleMasque(req.utilisateur.id), valeur },
+    });
+    res.json({ success: true, message: `${candidates.length} commande(s) retirée(s) de votre historique`, data: { retirees: candidates.length } });
   } catch (error) {
     next(error);
   }

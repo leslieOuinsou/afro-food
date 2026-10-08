@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { trackAdminOrderStatus } from '@/lib/analytics';
-import { confirmerVirement, getCommandes, updateStatut, type CommandeAdmin } from '@/services/adminCommandes';
+import { confirmerVirement, getCommandes, supprimerCommandes, updateStatut, type CommandeAdmin } from '@/services/adminCommandes';
 
 const statutsCommande = [
   { value: 'en_attente', label: 'En attente', color: 'bg-yellow-100 text-yellow-800' },
@@ -29,6 +29,7 @@ const TRANSITIONS: Record<string, string[]> = {
 };
 
 export default function CommandeAdminPage() {
+  const [infoSuppression, setInfoSuppression] = useState('');
   const [commandes, setCommandes] = useState<CommandeAdmin[]>([]);
   const [filtreStatut, setFiltreStatut] = useState<string>('tous');
   const [recherche, setRecherche] = useState('');
@@ -89,6 +90,27 @@ export default function CommandeAdminPage() {
 
   const getStatutInfo = (statut: string) => {
     return statutsCommande.find(s => s.value === statut) || statutsCommande[0];
+  };
+
+const supprimer = async (liste: CommandeAdmin[], libelle: string) => {
+    if (liste.length === 0) return;
+    if (
+      !window.confirm(
+        `Supprimer définitivement ${libelle} ?\nLes avis clients associés sont supprimés avec elles. Cette action est irréversible.\n(Les commandes dont les espèces ne sont pas encore reversées sont conservées.)`
+      )
+    )
+      return;
+    const res = await supprimerCommandes(liste.map((c) => c.id));
+    if (!res.success) {
+      setError(res.error || 'Suppression impossible.');
+      return;
+    }
+    setError(null);
+    setInfoSuppression(
+      `${res.supprimees} commande(s) supprimée(s)${res.ignorees ? `, ${res.ignorees} conservée(s) (espèces non reversées)` : ''}.`
+    );
+    const { commandes: list } = await getCommandes({ limite: 100 });
+    if (list) setCommandes(list);
   };
 
 const virementRecu = async (commande: CommandeAdmin) => {
@@ -163,6 +185,20 @@ const changerStatut = async (commandeId: string, nouveauStatut: string) => {
             <p className="mt-2 text-sm text-gray-500">Actualisation automatique toutes les 8 secondes.</p>
           </div>
 
+          {infoSuppression && (
+            <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">{infoSuppression}</div>
+          )}
+          {commandes.some((c) => c.statut === 'livree') && (
+            <div className="mb-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => void supprimer(commandes.filter((c) => c.statut === 'livree'), 'toutes les commandes livrées')}
+                className="rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+              >
+                Supprimer les commandes livrées ({commandes.filter((c) => c.statut === 'livree').length})
+              </button>
+            </div>
+          )}
           {error && (
             <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 flex items-center justify-between">
               <span>{error}</span>
@@ -298,6 +334,9 @@ const changerStatut = async (commandeId: string, nouveauStatut: string) => {
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statutInfo.color}`}>
                             {statutInfo.label}
                           </span>
+                          <div className={`mt-1 text-xs font-semibold ${commande.statutPaiement === 'valide' ? 'text-green-700' : 'text-orange-700'}`}>
+                            {commande.modePaiement} · {commande.statutPaiement === 'valide' ? 'payé' : 'non payé'}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <div>
@@ -344,6 +383,14 @@ const changerStatut = async (commandeId: string, nouveauStatut: string) => {
                             >
                               Détails
                             </button>
+                            {['livree', 'annulee', 'remboursee'].includes(commande.statut) && (
+                              <button
+                                onClick={() => void supprimer([commande], `la commande ${commande.numeroCommande}`)}
+                                className="text-xs font-semibold text-red-700 hover:underline"
+                              >
+                                Supprimer
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

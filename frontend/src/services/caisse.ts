@@ -30,8 +30,17 @@ export const getSoldes = () =>
     '/api/caisse/livreurs'
   );
 
+export type RemiseLivreur = {
+  id: string;
+  montant: number;
+  statut: 'en_attente' | 'valide' | 'refuse';
+  motifRefus?: string | null;
+  annuleLe?: string | null;
+  createdAt: string;
+};
+
 export const getMonSolde = () =>
-  apiGet<Synthese & { plafond: number; commandes: LigneCaisse[] }>('/api/caisse/mon-solde');
+  apiGet<Synthese & { plafond: number; commandes: LigneCaisse[]; remises?: RemiseLivreur[] }>('/api/caisse/mon-solde');
 
 export const creerReversement = (livreurId: string, commandeIds: string[], note?: string) =>
   apiPost('/api/caisse/reversements', { livreurId, commandeIds, note });

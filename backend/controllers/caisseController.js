@@ -81,9 +81,16 @@ export const monSolde = async (req, res, next) => {
       select: selectCommandeCaisse,
       orderBy: { especesEncaisseLe: 'asc' },
     });
+    // Décisions de l'admin sur les remises déclarées : le livreur voit si elles sont validées ou refusées
+    const remises = await prisma.reversementEspeces.findMany({
+      where: { livreurId: req.utilisateur.id },
+      orderBy: { createdAt: 'desc' },
+      take: 6,
+      select: { id: true, montant: true, statut: true, motifRefus: true, annuleLe: true, createdAt: true },
+    });
     res.json({
       success: true,
-      data: { ...syntheseLivreur(commandes), plafond: plafondEspeces(), commandes: commandes.map(versLigne) },
+      data: { ...syntheseLivreur(commandes), plafond: plafondEspeces(), commandes: commandes.map(versLigne), remises },
     });
   } catch (e) {
     next(e);

@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useAuth } from '@/context/AuthContext';
-import { apiGet, apiPatch } from '@/lib/api';
-import { declarerRemise, getMonSolde, type LigneCaisse, type Synthese } from '@/services/caisse';
+import { apiGet, apiPatch, apiPost } from '@/lib/api';
+import { declarerRemise, getMonSolde, type LigneCaisse, type RemiseLivreur, type Synthese } from '@/services/caisse';
 import NotificationBell from '@/components/NotificationBell';
 import PointageLivreurCard from '@/components/PointageLivreurCard';
 import FichesPaieLivreur from '@/components/FichesPaieLivreur';
@@ -55,7 +55,9 @@ export default function LivreurPage() {
   const [nbVisibles, setNbVisibles] = useState(10);
   const [partage, setPartage] = useState(false);
   const [infoGps, setInfoGps] = useState('');
-  const [solde, setSolde] = useState<(Synthese & { plafond: number; commandes?: LigneCaisse[] }) | null>(null);
+  const [solde, setSolde] = useState<(Synthese & { plafond: number; commandes?: LigneCaisse[]; remises?: RemiseLivreur[] }) | null>(null);
+  const [enService, setEnService] = useState(true);
+  const [messageHistorique, setMessageHistorique] = useState('');
   const [aRemettre, setARemettre] = useState<Set<string>>(new Set());
   const [remiseEnCours, setRemiseEnCours] = useState(false);
   const [messageRemise, setMessageRemise] = useState('');
@@ -148,6 +150,18 @@ export default function LivreurPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void chargerSolde();
   }, [authLoading, user, chargerSolde]);
+
+  const retirerDeLHistorique = async (ids?: string[]) => {
+    const tout = !ids;
+    if (!window.confirm(tout ? 'Retirer toutes les commandes livrées de votre historique ?' : 'Retirer cette commande de votre historique ?')) return;
+    const res = await apiPost<{ retirees: number }>('/api/commandes/historique/masquer', tout ? { tout: true } : { ids });
+    if (!res.success) {
+      setMessageHistorique(res.message || 'Action impossible.');
+      return;
+    }
+    setMessageHistorique(res.message || 'Historique mis à jour.');
+    await chargerHistorique();
+  };
 
   const remettreEspeces = async () => {
     if (aRemettre.size === 0) return;
@@ -297,11 +311,12 @@ export default function LivreurPage() {
         {c.statut === 'prete' ? (
           <button
             type="button"
-            disabled={occupe === c._id}
+            disabled={occupe === c._id || !enService}
+            title={enService ? '' : 'Commencez votre service (pointage) pour prendre une commande'}
             onClick={() => void changer(c, 'en_livraison')}
             className="rounded-full bg-[var(--ochre)] px-5 py-2 text-sm font-semibold text-white hover:bg-[#a6500c] disabled:opacity-50"
           >
-            Prendre en charge
+            {enService ? 'Prendre en charge' : 'Pointez pour prendre en charge'}
           </button>
         ) : (
           <button
@@ -326,7 +341,7 @@ export default function LivreurPage() {
           <NotificationBell role="livreur" />
         </div>
         <p className="mt-1 text-sm text-[var(--wood)]/70">Actualisation automatique toutes les 8 secondes. La cloche t’avertit quand une commande est prête.</p>
-        <PointageLivreurCard />
+        <PointageLivreurCard onChangement={(actif) => { setEnService(actif); void charger(); }} />
         <FichesPaieLivreur />
         {erreur && <p className="mt-4 rounded-2xl bg-red-50 p-3 text-sm text-red-700">{erreur}</p>}
         {solde && (solde.solde > 0 || solde.nbCommandes > 0) && (
@@ -384,6 +399,31 @@ export default function LivreurPage() {
               </>
             )}
             {messageRemise && <p className="mt-2 text-xs">{messageRemise}</p>}
+            {(solde.remises?.length ?? 0) > 0 && (
+              <ul className="mt-3 space-y-1.5 border-t border-black/10 pt-3">
+                {solde.remises!.map((r) => (
+                  <li
+                    key={r.id}
+                    className={`rounded-lg px-3 py-2 text-xs ${
+                      r.statut === 'refuse'
+                        ? 'bg-red-100 text-red-800'
+                        : r.statut === 'valide' && !r.annuleLe
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-white/70 text-[var(--wood)]/80'
+                    }`}
+                  >
+                    <strong>{money(r.montant)}</strong> ·{' '}
+                    {r.annuleLe
+                      ? 'Validation annulée par l’administration : l’argent est de nouveau à remettre.'
+                      : r.statut === 'valide'
+                        ? 'L’administration a confirmé avoir reçu cet argent ✓'
+                        : r.statut === 'refuse'
+                          ? `Remise refusée par l’administration : ${r.motifRefus ?? 'motif non précisé'}. Contactez-la.`
+                          : 'En attente de validation par l’administration'}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
         {chargement ? (
@@ -437,7 +477,19 @@ export default function LivreurPage() {
               {aPrendre.length ? aPrendre.map(carte) : <p className="text-sm text-[var(--wood)]/60">Aucune commande prête.</p>}
             </div>
 
-            <h2 className="mt-10 font-title text-2xl">Mon historique ({historique.length})</h2>
+            <div className="mt-10 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="font-title text-2xl">Mon historique ({historique.length})</h2>
+              {historique.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => void retirerDeLHistorique()}
+                  className="rounded-full border border-[var(--wood)]/20 px-4 py-1.5 text-xs font-semibold hover:bg-white"
+                >
+                  Vider l’historique
+                </button>
+              )}
+            </div>
+            {messageHistorique && <p className="mt-2 text-xs text-[var(--wood)]/70">{messageHistorique}</p>}
             {historique.length === 0 ? (
               <p className="mt-3 text-sm text-[var(--wood)]/60">Tu n’as pas encore livré de commande.</p>
             ) : (
@@ -463,7 +515,17 @@ export default function LivreurPage() {
                           <p className="font-mono text-sm font-semibold">{c.numeroCommande}</p>
                           <p className="text-xs text-[var(--wood)]/60">{dateLivraison(c)}</p>
                         </div>
-                        <p className="text-sm font-semibold">{money(c.montants.total)}</p>
+                        <div className="flex items-center gap-3">
+                          <p className="text-sm font-semibold">{money(c.montants.total)}</p>
+                          <button
+                            type="button"
+                            onClick={() => void retirerDeLHistorique([c._id])}
+                            className="text-xs font-semibold text-red-700 underline"
+                            aria-label={`Retirer ${c.numeroCommande} de l’historique`}
+                          >
+                            Retirer
+                          </button>
+                        </div>
                       </div>
                       <p className="mt-2 text-sm">
                         {c.informationsClient.prenom} {c.informationsClient.nom}

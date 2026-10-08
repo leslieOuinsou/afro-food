@@ -101,6 +101,9 @@ export const finPointage = async (req, res, next) => {
   try {
     const ouvert = await prisma.pointageLivreur.findFirst({ where: { livreurId: req.utilisateur.id, fin: null } });
     if (!ouvert) throw erreur('Aucune session en cours', 409);
+    // Pas de fin de service avec une livraison en cours : le livreur doit d'abord la terminer
+    const enCours = await prisma.commande.count({ where: { livreurId: req.utilisateur.id, statut: 'en_livraison' } });
+    if (enCours > 0) throw erreur(`Terminez d'abord vos ${enCours} livraison(s) en cours avant de finir votre service`, 409);
     const maj = await prisma.pointageLivreur.updateMany({
       where: { id: ouvert.id, fin: null },
       data: { fin: new Date() },
