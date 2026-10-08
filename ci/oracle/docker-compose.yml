@@ -1,0 +1,35 @@
+# Jenkins derrière Caddy (HTTPS automatique) sur la machine Oracle.
+# Lancer depuis ce dossier :  docker compose --env-file ../jenkins/.env up -d --build
+services:
+  jenkins:
+    build: ../jenkins
+    container_name: jenkins-afro-food
+    restart: unless-stopped
+    env_file: ../jenkins/.env
+    environment:
+      - JENKINS_URL=https://${JENKINS_DOMAIN}/
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    expose:
+      - "8080"            # accessible uniquement par Caddy, jamais directement depuis Internet
+
+  caddy:
+    image: caddy:2
+    container_name: caddy-afro-food
+    restart: unless-stopped
+    depends_on: [jenkins]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - JENKINS_DOMAIN=${JENKINS_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  jenkins_home:
+  caddy_data:
+  caddy_config:
