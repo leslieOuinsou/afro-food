@@ -695,38 +695,15 @@ export default function PanierPage() {
                   </div>
 
                   {paymentMode === 'carte' && (
-                    <div className="mt-8 space-y-4 border-t border-[var(--wood)]/10 pt-8">
-                      <p className="text-xs font-semibold text-[var(--wood)]/70">Coordonnées carte (démo)</p>
-                      <label className="block text-xs font-semibold text-[var(--wood)]/80">
-                        Numéro de carte
-                        <input
-                          placeholder="1234 5678 9012 3456"
-                          className="mt-2 w-full rounded-2xl border border-[var(--wood)]/10 bg-white/50 px-4 py-3 text-sm outline-none focus:border-[var(--ochre)]/45"
-                          autoComplete="cc-number"
-                        />
-                      </label>
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <label className="text-xs font-semibold text-[var(--wood)]/80">
-                          Expiration
-                          <input
-                            placeholder="MM/AA"
-                            className="mt-2 w-full rounded-2xl border border-[var(--wood)]/10 bg-white/50 px-4 py-3 text-sm outline-none focus:border-[var(--ochre)]/45"
-                          />
-                        </label>
-                        <label className="text-xs font-semibold text-[var(--wood)]/80">
-                          CVV
-                          <input
-                            placeholder="123"
-                            className="mt-2 w-full rounded-2xl border border-[var(--wood)]/10 bg-white/50 px-4 py-3 text-sm outline-none focus:border-[var(--ochre)]/45"
-                          />
-                        </label>
-                      </div>
-                    </div>
+                    <p className="mt-8 rounded-2xl border border-[var(--wood)]/10 bg-[color:rgba(139,58,42,.07)] p-4 text-sm text-[var(--wood)]/75">
+                      Vous serez redirigé vers la page de paiement sécurisée Stripe pour saisir votre carte. Aucune donnée de
+                      carte n’est enregistrée sur ce site.
+                    </p>
                   )}
 
                   {paymentMode === 'virement' && (
                     <p className="mt-8 rounded-2xl border border-[var(--wood)]/10 bg-[color:rgba(139,58,42,.07)] p-4 text-sm text-[var(--wood)]/75">
-                      Après confirmation, vous recevrez les coordonnées bancaires et la référence à indiquer sur le virement.
+                      Après confirmation, vous recevrez les coordonnées bancaires et la référence à indiquer sur le virement. Vous pourrez ensuite régler en ligne et envoyer votre justificatif depuis la page de votre commande.
                     </p>
                   )}
                   {paymentMode === 'mobile' && (
