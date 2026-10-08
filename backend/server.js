@@ -35,10 +35,6 @@ const corsOptions = {
       'https://afrofood.vercel.app',
       'https://frontend-nine-beta-45.vercel.app',
     ];
-    if (origin && origin.endsWith('.vercel.app')) {
-      callback(null, true);
-      return;
-    }
     if (process.env.NODE_ENV !== 'production') {
       try {
         const u = new URL(origin);
