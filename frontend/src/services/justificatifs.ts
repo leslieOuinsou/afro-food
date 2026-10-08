@@ -55,3 +55,13 @@ export async function telechargerRecu(commandeId: string, nomFichier: string): P
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
   return null;
 }
+
+/** Télécharge le fichier d'un justificatif (pour le scanner côté admin). */
+export async function telechargerJustificatifBlob(commandeId: string, justificatifId: string): Promise<Blob | null> {
+  const token = sessionStorage.getItem('afro_eats_token') || localStorage.getItem('afro_eats_token');
+  const res = await fetch(`${API_URL}/api/commandes/${commandeId}/justificatifs/${justificatifId}/fichier`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: 'include',
+  });
+  return res.ok ? res.blob() : null;
+}

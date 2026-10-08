@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { getDocuments, refuserDocument, validerDocument, type DocumentClient } from '@/services/adminDocuments';
-import { ouvrirJustificatif, tailleLisible } from '@/services/justificatifs';
+import { ouvrirJustificatif, tailleLisible, telechargerJustificatifBlob } from '@/services/justificatifs';
+import { lireQrDepuisFichier } from '@/lib/lireQrFichier';
 import QrScanner from '@/components/admin/QrScanner';
 import { lireQrJustificatif } from '@/lib/qrJustificatif';
 
@@ -26,6 +27,7 @@ export default function AdminDocumentsPage() {
   const [erreurValidation, setErreurValidation] = useState('');
   const [scannerOuvert, setScannerOuvert] = useState(false);
   const [qrLu, setQrLu] = useState(false);
+  const [scanEnCours, setScanEnCours] = useState(false);
   const [ouverts, setOuverts] = useState<Set<string>>(new Set());
 
   const charger = useCallback(async () => {
@@ -72,6 +74,27 @@ export default function AdminDocumentsPage() {
     setSaisie(qr.code);
     setQrLu(true);
     setScannerOuvert(false);
+  };
+
+  /** Scanne directement le document envoyé par le client : lit son QR code et remplit le code de vérification. */
+  const scannerDocumentClient = async () => {
+    if (!aValider) return;
+    setErreurValidation('');
+    setScanEnCours(true);
+    try {
+      const blob = await telechargerJustificatifBlob(aValider.commande._id, aValider.id);
+      if (!blob) {
+        setErreurValidation('Document introuvable.');
+        return;
+      }
+      const texte = await lireQrDepuisFichier(blob, aValider.nom);
+      if (!texte) setErreurValidation('Aucun QR code lisible dans ce document : il ne s’agit pas du justificatif émis par le site.');
+      else traiterQr(texte);
+    } catch {
+      setErreurValidation('Document illisible : il ne s’agit pas d’un justificatif valide.');
+    } finally {
+      setScanEnCours(false);
+    }
   };
 
   const confirmerValidation = async () => {
@@ -228,10 +251,18 @@ export default function AdminDocumentsPage() {
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     type="button"
+                    disabled={scanEnCours}
+                    onClick={() => void scannerDocumentClient()}
+                    className="rounded-lg bg-orange-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                  >
+                    {scanEnCours ? 'Analyse…' : 'Scanner le document du client'}
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setScannerOuvert((v) => !v)}
                     className="rounded-lg bg-gray-900 px-3 py-2 text-sm font-semibold text-white"
                   >
-                    {scannerOuvert ? 'Fermer le scanner' : 'Scanner le QR code'}
+                    {scannerOuvert ? 'Fermer le scanner' : 'Scanner avec la caméra / un fichier'}
                   </button>
                 </div>
                 {scannerOuvert && <QrScanner onResult={traiterQr} onClose={() => setScannerOuvert(false)} />}

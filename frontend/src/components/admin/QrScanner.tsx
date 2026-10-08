@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import jsQR from 'jsqr';
+import { lireQrDepuisFichier } from '@/lib/lireQrFichier';
 
 type Props = { onResult: (texte: string) => void; onClose: () => void };
 
@@ -53,7 +54,7 @@ export default function QrScanner({ onResult, onClose }: Props) {
         setMessage('Placez le QR code du justificatif devant la caméra.');
         raf = requestAnimationFrame(boucle);
       })
-      .catch(() => setMessage('Caméra indisponible ou refusée. Importez plutôt une image du QR code.'));
+      .catch(() => setMessage('Caméra indisponible ou refusée. Importez plutôt le justificatif (PDF) ou une image du QR code.'));
 
     return () => {
       fini = true;
@@ -63,24 +64,16 @@ export default function QrScanner({ onResult, onClose }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const depuisImage = (fichier?: File) => {
+  const depuisFichier = async (fichier?: File) => {
     if (!fichier) return;
-    const url = URL.createObjectURL(fichier);
-    const img = new Image();
-    img.onload = () => {
-      const c = document.createElement('canvas');
-      c.width = img.naturalWidth;
-      c.height = img.naturalHeight;
-      const ctx = c.getContext('2d');
-      ctx?.drawImage(img, 0, 0);
-      const data = ctx?.getImageData(0, 0, c.width, c.height);
-      const r = data ? jsQR(data.data, data.width, data.height) : null;
-      URL.revokeObjectURL(url);
-      if (r?.data) onResult(r.data);
-      else setMessage('Aucun QR code lisible sur cette image. Réessayez avec une image plus nette.');
-    };
-    img.onerror = () => setMessage('Image illisible.');
-    img.src = url;
+    setMessage('Analyse du fichier…');
+    try {
+      const texte = await lireQrDepuisFichier(fichier, fichier.name);
+      if (texte) onResult(texte);
+      else setMessage('Aucun QR code trouvé dans ce fichier. Utilisez le justificatif PDF téléchargé sur le site, ou une capture nette du QR code.');
+    } catch {
+      setMessage('Fichier illisible. Utilisez le justificatif PDF d’origine, ou une image (PNG, JPEG).');
+    }
   };
 
   return (
@@ -90,8 +83,16 @@ export default function QrScanner({ onResult, onClose }: Props) {
       <p className="mt-2 text-xs text-gray-700">{message}</p>
       <div className="mt-2 flex flex-wrap gap-2">
         <label className="cursor-pointer rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold">
-          Importer une image du QR code
-          <input type="file" accept="image/*" className="hidden" onChange={(e) => depuisImage(e.target.files?.[0])} />
+          Importer le justificatif (PDF) ou une image
+          <input
+            type="file"
+            accept="application/pdf,image/*"
+            className="hidden"
+            onChange={(e) => {
+              void depuisFichier(e.target.files?.[0]);
+              e.target.value = '';
+            }}
+          />
         </label>
         <button type="button" onClick={onClose} className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold">
           Fermer le scanner
