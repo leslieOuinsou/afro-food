@@ -154,7 +154,7 @@ export default function SuiviLivreurMap({ position, adresse }: Props) {
 
   return (
     <div className="relative">
-      <div ref={conteneur} className="h-80 w-full overflow-hidden rounded-2xl border border-[var(--wood)]/10" />
+      <div ref={conteneur} className="h-72 w-full overflow-hidden rounded-2xl border border-[var(--wood)]/10 sm:h-96" />
       <button
         type="button"
         onClick={() => {

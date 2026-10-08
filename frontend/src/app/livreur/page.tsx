@@ -9,6 +9,7 @@ import { apiGet, apiPatch, apiPost } from '@/lib/api';
 import { declarerRemise, getMonSolde, type LigneCaisse, type RemiseLivreur, type Synthese } from '@/services/caisse';
 import NotificationBell from '@/components/NotificationBell';
 import PointageLivreurCard from '@/components/PointageLivreurCard';
+import ItineraireLiens from '@/components/ItineraireLiens';
 import FichesPaieLivreur from '@/components/FichesPaieLivreur';
 import { trackDeliveryAction, trackDeliveryHistoryMore, trackPositionSharing } from '@/lib/analytics';
 import { NOTIFS_UPDATED_EVENT, ajouterNotif, jouerBip, lireNotifs, sonActif } from '@/lib/notifications';
@@ -252,6 +253,25 @@ export default function LivreurPage() {
     { aujourdhui: 0, ceMois: 0, montant: 0 }
   );
 
+  /** Demande l'autorisation GPS puis active le partage. À appeler directement depuis un clic (exigé par iPhone/Safari). */
+  const demarrerPartageGps = () => {
+    if (partage) return;
+    if (!('geolocation' in navigator)) {
+      setInfoGps("La géolocalisation n'est pas disponible sur cet appareil.");
+      return;
+    }
+    dernierEnvoi.current = 0;
+    setInfoGps('Autorise la localisation quand le téléphone te le demande…');
+    navigator.geolocation.getCurrentPosition(
+      () => {
+        setPartage(true);
+        trackPositionSharing(true);
+      },
+      (err) => setInfoGps(messageGps(err)),
+      { enableHighAccuracy: false, maximumAge: 60000, timeout: 20000 }
+    );
+  };
+
   // Partage de la position GPS : envoyée au plus toutes les 8 s pour chaque commande en livraison
   useEffect(() => {
     if (!partage) return;
@@ -281,6 +301,12 @@ export default function LivreurPage() {
     return () => navigator.geolocation.clearWatch(id);
   }, [partage]);
 
+  // Plus aucune livraison en cours : le partage s'arrête tout seul
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (partage && enCours.length === 0 && !chargement) setPartage(false);
+  }, [partage, enCours.length, chargement]);
+
   const carte = (c: CommandeLivreur) => (
     <article key={c._id} className="rounded-[24px] border border-[var(--wood)]/10 bg-white/60 p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
@@ -300,6 +326,11 @@ export default function LivreurPage() {
           {c.adresseLivraison.codePostal} {c.adresseLivraison.ville}
         </p>
       )}
+      {c.adresseLivraison?.adresse && (
+        <ItineraireLiens
+          adresse={[c.adresseLivraison.adresse, c.adresseLivraison.codePostal, c.adresseLivraison.ville].filter(Boolean).join(', ')}
+        />
+      )}
       {c.adresseLivraison?.instructions && (
         <p className="mt-1 text-xs italic text-[var(--wood)]/70">« {c.adresseLivraison.instructions} »</p>
       )}
@@ -315,7 +346,10 @@ export default function LivreurPage() {
             type="button"
             disabled={occupe === c._id || !enService}
             title={enService ? '' : 'Commencez votre service (pointage) pour prendre une commande'}
-            onClick={() => void changer(c, 'en_livraison')}
+            onClick={() => {
+              demarrerPartageGps(); // dans le clic : l'autorisation GPS est demandée tout de suite
+              void changer(c, 'en_livraison');
+            }}
             className="rounded-full bg-[var(--ochre)] px-5 py-2 text-sm font-semibold text-white hover:bg-[#a6500c] disabled:opacity-50"
           >
             {enService ? 'Prendre en charge' : 'Pointez pour prendre en charge'}
