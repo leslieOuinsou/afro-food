@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { trackAdminOrderStatus } from '@/lib/analytics';
+import { getJustificatifs, ouvrirJustificatif, tailleLisible, type Justificatif } from '@/services/justificatifs';
 import { confirmerVirement, getCommandes, updateStatut, type CommandeAdmin } from '@/services/adminCommandes';
 
 const statutsCommande = [
@@ -89,6 +90,18 @@ export default function CommandeAdminPage() {
 
   const getStatutInfo = (statut: string) => {
     return statutsCommande.find(s => s.value === statut) || statutsCommande[0];
+  };
+
+const [justifs, setJustifs] = useState<{ commande: CommandeAdmin; liste: Justificatif[] } | null>(null);
+
+  const voirJustificatifs = async (commande: CommandeAdmin) => {
+    const res = await getJustificatifs(commande.id);
+    if (!res.success) {
+      setError(res.message || 'Chargement des justificatifs impossible.');
+      return;
+    }
+    setError(null);
+    setJustifs({ commande, liste: res.data?.justificatifs ?? [] });
   };
 
 const virementRecu = async (commande: CommandeAdmin) => {
@@ -322,18 +335,25 @@ const changerStatut = async (commandeId: string, nouveauStatut: string) => {
                                   </option>
                                 ))}
                             </select>
-                            {commande.modePaiement === 'virement' && (
-                              commande.statutPaiement === 'valide' ? (
+                            {commande.modePaiement === 'virement' &&
+                              (commande.statutPaiement === 'valide' ? (
                                 <span className="text-xs font-semibold text-green-700">Virement reçu ✓</span>
                               ) : (
-                                <button
-                                  onClick={() => void virementRecu(commande)}
-                                  className="rounded bg-orange-600 px-2 py-1 text-xs font-semibold text-white hover:bg-orange-700"
-                                >
-                                  Virement reçu
-                                </button>
-                              )
-                            )}
+                                <>
+                                  <button
+                                    onClick={() => void voirJustificatifs(commande)}
+                                    className="text-xs font-semibold text-orange-700 underline"
+                                  >
+                                    Justificatifs
+                                  </button>
+                                  <button
+                                    onClick={() => void virementRecu(commande)}
+                                    className="rounded bg-orange-600 px-2 py-1 text-xs font-semibold text-white hover:bg-orange-700"
+                                  >
+                                    Virement reçu
+                                  </button>
+                                </>
+                              ))}
                             <button
                               onClick={() => setCommandeSelectionnee(commande)}
                               className="text-xs text-blue-600 hover:text-blue-900"
@@ -468,6 +488,41 @@ const changerStatut = async (commandeId: string, nouveauStatut: string) => {
           </div>
         </div>
       )}
-    </AdminLayout>
+          {justifs && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900">Justificatifs · {justifs.commande.numeroCommande}</h3>
+            <p className="text-sm text-gray-600">
+              Montant attendu : {justifs.commande.montantTotal.toFixed(2)} € · référence {justifs.commande.numeroCommande}
+            </p>
+            {justifs.liste.length === 0 ? (
+              <p className="mt-4 text-sm text-gray-500">Le client n’a envoyé aucun justificatif pour l’instant.</p>
+            ) : (
+              <ul className="mt-4 space-y-2 text-sm">
+                {justifs.liste.map((j) => (
+                  <li key={j.id} className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2">
+                    <span className="truncate">
+                      {j.nom} <span className="text-xs text-gray-500">({tailleLisible(j.taille)})</span>
+                    </span>
+                    <button
+                      className="text-xs font-semibold text-orange-700 underline"
+                      onClick={async () => {
+                        const err = await ouvrirJustificatif(justifs.commande.id, j.id);
+                        if (err) setError(err);
+                      }}
+                    >
+                      Ouvrir
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <button onClick={() => setJustifs(null)} className="mt-5 w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold">
+              Fermer
+            </button>
+          </div>
+        </div>
+      )}
+</AdminLayout>
   );
 }

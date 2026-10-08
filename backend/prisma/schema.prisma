@@ -249,14 +249,15 @@ model Commande {
   avis              Avis[]
 
   // Paiement en espèces : preuve de remise et suivi du reversement à l'admin
-  codeRemise         String?
-  especesEncaissees  Float?
-  especesEcartRaison String?
-  especesStatut      EspecesStatut?
-  especesEncaisseLe  DateTime?
-  reversementId      String?
-  reversement        ReversementEspeces? @relation(fields: [reversementId], references: [id], onDelete: SetNull)
-  journalCaisse      JournalCaisse[]
+  codeRemise           String?
+  especesEncaissees    Float?
+  especesEcartRaison   String?
+  especesStatut        EspecesStatut?
+  especesEncaisseLe    DateTime?
+  reversementId        String?
+  reversement          ReversementEspeces?    @relation(fields: [reversementId], references: [id], onDelete: SetNull)
+  journalCaisse        JournalCaisse[]
+  JustificatifVirement JustificatifVirement[]
 
   @@index([especesStatut, livreurId])
   @@index([clientId, createdAt])
@@ -516,4 +517,19 @@ model JournalCaisse {
   @@index([livreurId, createdAt])
   @@index([createdAt])
   @@map("journal_caisse")
+}
+
+/// Preuve de virement (capture, relevé PDF) envoyée par le client, consultable par l'admin.
+model JustificatifVirement {
+  id         String   @id @default(cuid())
+  commandeId String
+  commande   Commande @relation(fields: [commandeId], references: [id], onDelete: Cascade)
+  nom        String
+  mime       String
+  taille     Int
+  donnees    Bytes
+  createdAt  DateTime @default(now())
+
+  @@index([commandeId])
+  @@map("justificatifs_virement")
 }

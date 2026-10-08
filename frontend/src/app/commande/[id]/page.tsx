@@ -7,6 +7,13 @@ import SuiviLivreurMap from '@/components/SuiviLivreurMap';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useAuth } from '@/context/AuthContext';
+import {
+  envoyerJustificatif,
+  getJustificatifs,
+  ouvrirJustificatif,
+  tailleLisible,
+  type Justificatif,
+} from '@/services/justificatifs';
 import { trackPurchase, trackReviewEmailClick, trackReviewSubmitted } from '@/lib/analytics';
 import { annulerCommande, evaluerCommande, getCommande, type CommandeDetail } from '@/services/commandes';
 
@@ -133,6 +140,33 @@ function SuiviContent() {
     trackReviewEmailClick(noteUrl >= 1 && noteUrl <= 5 ? noteUrl : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [venuDeLEmail]);
+
+  const [justificatifs, setJustificatifs] = useState<Justificatif[]>([]);
+  const [envoiJustif, setEnvoiJustif] = useState(false);
+  const [messageJustif, setMessageJustif] = useState('');
+  const virementAttendu = commande?.methodePaiement === 'virement' && commande?.statutPaiement !== 'valide';
+
+  useEffect(() => {
+    if (!virementAttendu) return;
+    void getJustificatifs(id).then((r) => {
+      if (r.success) setJustificatifs(r.data?.justificatifs ?? []);
+    });
+  }, [virementAttendu, id]);
+
+  const choisirJustificatif = async (fichier?: File) => {
+    if (!fichier) return;
+    setEnvoiJustif(true);
+    setMessageJustif('');
+    const res = await envoyerJustificatif(id, fichier);
+    setEnvoiJustif(false);
+    if (!res.success) {
+      setMessageJustif(res.message || 'Envoi impossible.');
+      return;
+    }
+    setMessageJustif('Justificatif envoyé. Nous le vérifions et confirmons votre paiement.');
+    const liste = await getJustificatifs(id);
+    if (liste.success) setJustificatifs(liste.data?.justificatifs ?? []);
+  };
 
   const envoyerAvis = async () => {
     if (!commande || note < 1) return;
@@ -379,6 +413,45 @@ function SuiviContent() {
                   <p className="mt-3 text-xs text-[var(--wood)]/65">
                     Indiquez la référence dans le libellé du virement. Votre commande sera préparée dès réception.
                   </p>
+                  <div className="mt-5 border-t border-[var(--wood)]/10 pt-4">
+                    <p className="text-sm font-semibold">Envoyez votre preuve de virement</p>
+                    <p className="mt-1 text-xs text-[var(--wood)]/65">
+                      Capture d’écran ou relevé bancaire (PDF, PNG, JPEG, WebP — 4 Mo maximum, 3 fichiers). Votre commande
+                      est préparée dès que l’administration a vérifié le virement.
+                    </p>
+                    <label className="mt-3 inline-block cursor-pointer rounded-full bg-[var(--ochre)] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#a6500c]">
+                      {envoiJustif ? 'Envoi…' : 'Choisir un fichier'}
+                      <input
+                        type="file"
+                        accept="application/pdf,image/png,image/jpeg,image/webp"
+                        className="hidden"
+                        disabled={envoiJustif || justificatifs.length >= 3}
+                        onChange={(e) => {
+                          void choisirJustificatif(e.target.files?.[0]);
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
+                    {messageJustif && <p className="mt-2 text-sm text-[var(--wood)]/80">{messageJustif}</p>}
+                    {justificatifs.length > 0 && (
+                      <ul className="mt-3 space-y-1 text-sm">
+                        {justificatifs.map((j) => (
+                          <li key={j.id} className="flex items-center justify-between gap-3">
+                            <span className="truncate">
+                              {j.nom} <span className="text-xs text-[var(--wood)]/55">({tailleLisible(j.taille)})</span>
+                            </span>
+                            <button
+                              type="button"
+                              className="text-xs font-semibold text-[var(--ochre)] underline"
+                              onClick={() => void ouvrirJustificatif(id, j.id)}
+                            >
+                              Voir
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </>
               ) : (
                 <p className="mt-2 text-sm text-[var(--wood)]/75">

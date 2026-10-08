@@ -24,6 +24,13 @@ import {
   validerPagination
 } from '../middleware/validation.js';
 
+import {
+  ajouterJustificatif,
+  listerJustificatifs,
+  lireJustificatif,
+  televerserFichier,
+} from '../controllers/justificatifController.js';
+
 const router = express.Router();
 
 // Toutes les routes nécessitent une authentification
@@ -56,6 +63,22 @@ router.get('/statistiques/general',
 router.get('/avis',
   restreindreAcces('admin'),
   obtenirAvis
+);
+
+router.post('/:id/justificatifs',
+  validerId(),
+  televerserFichier,
+  ajouterJustificatif
+);
+
+router.get('/:id/justificatifs',
+  validerId(),
+  listerJustificatifs
+);
+
+router.get('/:id/justificatifs/:jid/fichier',
+  validerId(),
+  lireJustificatif
 );
 
 router.get('/:id',
