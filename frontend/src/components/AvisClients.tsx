@@ -56,8 +56,24 @@ export default function AvisClients() {
     return () => obs.disconnect();
   }, [data]);
 
-  // Rien à montrer tant qu'aucun client n'a noté
-  if (!data || data.total === 0 || data.moyenne == null) return null;
+  if (!data) return null;
+
+  // Aucun avis pour l'instant : la section reste visible pour inviter les clients à noter
+  if (data.total === 0 || data.moyenne == null) {
+    return (
+      <section aria-labelledby="avis-titre" className="mx-auto w-full max-w-6xl px-4 py-14">
+        <div className="text-center">
+          <p className="font-ui text-xs font-semibold uppercase tracking-[0.2em] text-[var(--ochre)]">Ils nous font confiance</p>
+          <h2 id="avis-titre" className="font-title mt-2 text-3xl text-[var(--wood)] sm:text-4xl">
+            L&apos;avis de nos clients
+          </h2>
+          <p className="mx-auto mt-4 max-w-md text-sm text-[var(--wood)]/65">
+            Pas encore d’avis. Commandez, puis notez votre commande après la livraison : votre commentaire apparaîtra ici.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section ref={section} aria-labelledby="avis-titre" className="mx-auto w-full max-w-6xl px-4 py-14">
