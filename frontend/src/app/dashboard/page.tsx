@@ -343,6 +343,13 @@ function DashboardContent() {
                   <span aria-hidden>↩</span>
                 </button>
               </nav>
+              <Link
+                href="/fidelite"
+                className="mt-1 flex w-full items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold text-[var(--wood)]/75 transition hover:bg-white/50"
+              >
+                Ma fidélité
+                <span aria-hidden="true">★</span>
+              </Link>
             </div>
           </aside>
 

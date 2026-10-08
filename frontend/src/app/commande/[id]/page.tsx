@@ -7,6 +7,8 @@ import SuiviLivreurMap from '@/components/SuiviLivreurMap';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useAuth } from '@/context/AuthContext';
+import { useCart } from '@/context/CartContext';
+import { preparerRecommande } from '@/lib/recommander';
 import {
   envoyerJustificatif,
   getJustificatifs,
@@ -156,6 +158,26 @@ function SuiviContent() {
 
   const [redirectionStripe, setRedirectionStripe] = useState(false);
   const [erreurFacture, setErreurFacture] = useState('');
+  const { addItem } = useCart();
+  const [recommande, setRecommande] = useState(false);
+  const [infoRecommande, setInfoRecommande] = useState('');
+
+  const recommander = async () => {
+    if (!commande) return;
+    setRecommande(true);
+    setInfoRecommande('');
+    const { articles, indisponibles } = await preparerRecommande(commande.articles);
+    articles.forEach((a) => addItem(a));
+    setRecommande(false);
+    if (articles.length === 0) {
+      setInfoRecommande('Aucun plat de cette commande n’est disponible pour le moment.');
+      return;
+    }
+    if (indisponibles.length) {
+      setInfoRecommande(`Ajouté au panier. Indisponible : ${indisponibles.join(', ')}.`);
+    }
+    router.push('/panier');
+  };
   const [mobileTest, setMobileTest] = useState(false);
   const [operateur, setOperateur] = useState('orange_money');
   const [telephoneMobile, setTelephoneMobile] = useState('');
@@ -352,6 +374,15 @@ function SuiviContent() {
               </button>
             )}
           </section>
+
+          {commande.statut === 'livree' && (commande.pointsGagnes ?? 0) > 0 && (
+            <section className="mt-6 rounded-[24px] border border-green-200 bg-green-50 p-5 text-sm text-green-900">
+              <strong>+{commande.pointsGagnes} points fidélité</strong> crédités.{' '}
+              <Link href="/fidelite" className="font-semibold underline">
+                Voir mes points
+              </Link>
+            </section>
+          )}
 
           {commande.creneauLivraison && !STATUTS_FINAUX.includes(commande.statut) && (
             <section className="mt-6 rounded-[24px] border border-[var(--ochre)]/30 bg-[color:rgba(233,162,59,.10)] p-5">
@@ -711,6 +742,24 @@ function SuiviContent() {
                   Nos coordonnées bancaires vous seront communiquées très prochainement par notre équipe.
                 </p>
               )}
+            </section>
+          )}
+
+          {['livree', 'annulee', 'remboursee'].includes(commande.statut) && (
+            <section className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-[var(--wood)]/10 bg-white/55 p-6">
+              <div>
+                <h2 className="font-title text-2xl">Envie de recommencer ?</h2>
+                <p className="mt-1 text-sm text-[var(--wood)]/70">Remettez les mêmes plats dans votre panier en un clic (prix du jour).</p>
+                {infoRecommande && <p className="mt-1 text-sm text-[var(--brick)]">{infoRecommande}</p>}
+              </div>
+              <button
+                type="button"
+                disabled={recommande}
+                onClick={() => void recommander()}
+                className="rounded-full bg-[var(--wood)] px-6 py-2.5 text-sm font-semibold text-[var(--ivory)] hover:bg-[var(--wood)]/90 disabled:opacity-50"
+              >
+                {recommande ? 'Préparation…' : 'Commander à nouveau'}
+              </button>
             </section>
           )}
 

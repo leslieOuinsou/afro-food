@@ -23,6 +23,7 @@ import {
 import { pushVersRole, pushVersUtilisateur } from '../utils/push.js';
 import { offrirRecompense } from '../utils/recompenses.js';
 import { viderPanier } from '../utils/panier.js';
+import { crediterPoints, retirerPoints } from '../utils/fidelite.js';
 import { evaluerLivraison, lireZones } from '../utils/zones.js';
 import { creneauxDisponibles } from './livraisonController.js';
 
@@ -286,6 +287,13 @@ async function changerStatutInterne(commande, nouveauStatut, commentaire, modifi
         ? envoyerEmailMerciLivraison(emailClient, miseAJour)
         : envoyerEmailStatutCommande(emailClient, miseAJour, commentaire);
     await envoi.catch((err) => console.warn('Email statut commande non envoyé:', err.message));
+  }
+
+  // Fidélité : points à la livraison (une seule fois), retirés en cas de remboursement
+  if (nouveauStatut === 'livree') {
+    await crediterPoints(prisma, miseAJour).catch((err) => console.warn('Points fidélité non crédités:', err.message));
+  } else if (nouveauStatut === 'remboursee') {
+    await retirerPoints(prisma, miseAJour).catch((err) => console.warn('Points fidélité non retirés:', err.message));
   }
 
   // Commande de plus de 30 € confirmée : code promo offert (−10 % + livraison offerte) + e-mail
