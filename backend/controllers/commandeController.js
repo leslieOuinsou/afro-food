@@ -23,6 +23,8 @@ import {
 import { pushVersRole, pushVersUtilisateur } from '../utils/push.js';
 import { offrirRecompense } from '../utils/recompenses.js';
 import { viderPanier } from '../utils/panier.js';
+import { evaluerLivraison, lireZones } from '../utils/zones.js';
+import { creneauxDisponibles } from './livraisonController.js';
 
 const TRANSITIONS_VALIDES = {
   en_attente: ['confirmee', 'annulee'],
@@ -123,7 +125,7 @@ async function appliquerPromo(codePromo, clientId, panier) {
  * Prix côté serveur : lit les plats en base, contrôle disponibilité / stock,
  * calcule sous-total et frais de livraison. Lève une erreur HTTP en cas de problème.
  */
-async function calculerPanier(articles, typeLivraison) {
+async function calculerPanier(articles, typeLivraison, adresseLivraison = null) {
   const httpError = (message, statusCode) => Object.assign(new Error(message), { statusCode });
   const articlesData = [];
   let sousTotal = 0;
@@ -190,7 +192,14 @@ async function calculerPanier(articles, typeLivraison) {
     /* garder les défauts */
   }
 
-  const fraisLivraison = typeLivraison === 'domicile' && sousTotal < seuilGratuit ? fraisStandard : 0;
+  let fraisLivraison = typeLivraison === 'domicile' && sousTotal < seuilGratuit ? fraisStandard : 0;
+  // Zones de livraison : tarif et minimum de commande propres à la zone, adresse hors zone refusée
+  if (typeLivraison === 'domicile' && adresseLivraison) {
+    const zones = await lireZones(prisma);
+    const eval_ = evaluerLivraison(zones, adresseLivraison, sousTotal, { fraisStandard, seuilGratuit });
+    if (!eval_.livrable) throw Object.assign(new Error(eval_.message), { statusCode: 400 });
+    fraisLivraison = eval_.frais;
+  }
   return { articlesData, sousTotal, fraisLivraison, taxesPourcentage };
 }
 
@@ -393,8 +402,21 @@ export const creerCommande = async (req, res, next) => {
       return next(error);
     }
 
-    const panier = await calculerPanier(articles, typeLivraison);
+    const panier = await calculerPanier(articles, typeLivraison, adresseLivraison);
     const { articlesData, sousTotal, fraisLivraison, taxesPourcentage } = panier;
+
+    // Commande programmée : le créneau doit exister et rester disponible
+    let creneau = null;
+    if (req.body.creneauLivraison) {
+      const demande = new Date(req.body.creneauLivraison);
+      const { creneaux } = await creneauxDisponibles();
+      creneau = creneaux.find((c) => c.debut.getTime() === demande.getTime())?.debut ?? null;
+      if (!creneau) {
+        const error = new Error("Ce créneau n'est plus disponible : choisissez-en un autre.");
+        error.statusCode = 409;
+        return next(error);
+      }
+    }
 
     // Un code promo fourni mais refusé bloque la commande (le client doit savoir qu'il ne l'a pas)
     const { remise, codeApplique, promoId } = await appliquerPromo(codePromo, client.id, panier);
@@ -416,6 +438,7 @@ export const creerCommande = async (req, res, next) => {
             telephone: client.telephone,
           },
           adresseLivraison,
+          creneauLivraison: creneau,
           montants: {
             sousTotal,
             fraisLivraison,

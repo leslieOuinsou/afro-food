@@ -341,6 +341,11 @@ const changerStatut = async (commandeId: string, nouveauStatut: string) => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <div>
                             <div>Commandé: {formatDate(commande.dateCommande)}</div>
+                            {commande.creneau && (
+                              <div className="mt-1 inline-block rounded bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-800">
+                                Programmée : {formatDate(commande.creneau)}
+                              </div>
+                            )}
                             <div className="text-xs text-gray-400">
                               Estimé: {formatDate(commande.dateEstimeeLivraison)}
                             </div>

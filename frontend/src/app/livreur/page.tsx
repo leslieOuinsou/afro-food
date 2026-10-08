@@ -24,6 +24,7 @@ type CommandeLivreur = {
   montants: { total: number };
   methodePaiement?: string;
   statutPaiement?: string;
+  creneauLivraison?: string | null;
   dates?: { livraison?: string };
   updatedAt?: string;
   evaluation?: { note: number } | null;
@@ -324,6 +325,11 @@ export default function LivreurPage() {
           {c.adresseLivraison.adresse}
           {c.adresseLivraison.complementAdresse ? `, ${c.adresseLivraison.complementAdresse}` : ''},{' '}
           {c.adresseLivraison.codePostal} {c.adresseLivraison.ville}
+        </p>
+      )}
+      {c.creneauLivraison && (
+        <p className="mt-2 inline-block rounded-full bg-[var(--ochre)]/10 px-3 py-1 text-xs font-semibold text-[var(--ochre)]">
+          Programmée : {new Date(c.creneauLivraison).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
         </p>
       )}
       {c.adresseLivraison?.adresse && (

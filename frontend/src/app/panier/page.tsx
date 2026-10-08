@@ -8,6 +8,7 @@ import Footer from '@/components/Footer';
 import { useCart } from '@/context/CartContext';
 import { isAuthenticated } from '@/services/auth';
 import { trackBeginCheckout, trackPromo, trackPurchase } from '@/lib/analytics';
+import { estimerLivraison, getCreneaux, type Creneau, type EstimationLivraison } from '@/services/livraison';
 import { createCommande, creerSessionPaiement, getConfigPaiement, validerCodePromo } from '@/services/commandes';
 
 const FRAIS_LIVRAISON_ESTIME = 3.9;
@@ -139,6 +140,9 @@ export default function PanierPage() {
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('carte');
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('domicile');
   const [deliverySlot, setDeliverySlot] = useState('Dès que possible');
+  const [creneaux, setCreneaux] = useState<Creneau[]>([]);
+  const [creneauChoisi, setCreneauChoisi] = useState(''); // '' = dès que possible
+  const [estimation, setEstimation] = useState<EstimationLivraison | null>(null);
   const [deliveryInstructions, setDeliveryInstructions] = useState('');
 
   const [orderSnapshot, setOrderSnapshot] = useState<OrderSnapshot | null>(null);
@@ -155,7 +159,8 @@ export default function PanierPage() {
   const [promoConditions, setPromoConditions] = useState<string[]>([]);
 
   const sousTotalApresRemise = Math.max(0, sousTotal - remise);
-  const total = sousTotalApresRemise + FRAIS_LIVRAISON_ESTIME;
+  const fraisLivraison = deliveryType === 'domicile' ? (estimation?.frais ?? FRAIS_LIVRAISON_ESTIME) : 0;
+  const total = sousTotalApresRemise + fraisLivraison;
 
   const articlesPayload = useMemo(
     () => items.map((item) => ({ platId: item.id, quantite: item.quantite })),
@@ -210,6 +215,30 @@ export default function PanierPage() {
     setStep('livraison');
   };
 
+  // Zone de livraison : tarif et disponibilité selon le code postal (après une courte pause de saisie)
+  useEffect(() => {
+    const cp = address.codePostal.replace(/\s/g, '');
+    if (cp.length < 5 || deliveryType !== 'domicile') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setEstimation(null);
+      return;
+    }
+    const t = window.setTimeout(() => {
+      void estimerLivraison(cp, address.ville, sousTotalApresRemise).then((r) => setEstimation(r.success ? (r.data ?? null) : null));
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [address.codePostal, address.ville, sousTotalApresRemise, deliveryType]);
+
+  // Créneaux de livraison disponibles
+  useEffect(() => {
+    void getCreneaux().then((r) => setCreneaux(r.success && r.data?.actif ? r.data.creneaux : []));
+  }, []);
+
+  const joursCreneaux = useMemo(() => [...new Set(creneaux.map((c) => c.jour))], [creneaux]);
+  const [jourChoisi, setJourChoisi] = useState('');
+  const horairesDuJour = useMemo(() => creneaux.filter((c) => c.jour === (jourChoisi || joursCreneaux[0])), [creneaux, jourChoisi, joursCreneaux]);
+  const libelleJour = (j: string) => new Date(`${j}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+
   const goPaiement = () => {
     const ok =
       address.prenom.trim() &&
@@ -219,6 +248,7 @@ export default function PanierPage() {
       address.ville.trim() &&
       address.telephone.trim();
     if (!ok) return;
+    if (estimation && !estimation.livrable) return;
     setStep('paiement');
   };
 
@@ -250,6 +280,7 @@ export default function PanierPage() {
         methodePaiement: paymentMode,
         codePromo: promoApplied || undefined,
         typeLivraison: deliveryType,
+        creneauLivraison: creneauChoisi || undefined,
         instructions: `${deliverySlot}${deliveryInstructions ? ` — ${deliveryInstructions}` : ''}`,
         preferences: {
           instructions: deliveryInstructions || undefined,
@@ -339,7 +370,7 @@ export default function PanierPage() {
         )}
         <div className="flex justify-between text-[var(--wood)]/80">
           <dt>Frais de livraison (estimés)</dt>
-          <dd className="font-medium text-[var(--wood)]">{formatMoney(FRAIS_LIVRAISON_ESTIME)}</dd>
+          <dd className="font-medium text-[var(--wood)]">{fraisLivraison > 0 ? formatMoney(fraisLivraison) : 'Offerte'}</dd>
         </div>
         <div className="border-t border-[var(--wood)]/10 pt-4">
           <div className="flex justify-between items-baseline">
@@ -593,19 +624,61 @@ export default function PanierPage() {
                         <option value="retrait_sur_place">Retrait sur place</option>
                       </select>
                     </label>
-                    <label className="sm:col-span-2 text-xs font-semibold text-[var(--wood)]/80">
-                      Créneau souhaité
-                      <select
-                        value={deliverySlot}
-                        onChange={(e) => setDeliverySlot(e.target.value)}
-                        className="mt-2 w-full rounded-2xl border border-[var(--wood)]/10 bg-white/50 px-4 py-3 text-sm outline-none focus:border-[var(--ochre)]/45"
-                      >
-                        <option>Dès que possible</option>
-                        <option>Midi (11h30 - 13h30)</option>
-                        <option>Après-midi (14h - 18h)</option>
-                        <option>Soir (19h - 22h)</option>
-                      </select>
-                    </label>
+                    <div className="sm:col-span-2 text-xs font-semibold text-[var(--wood)]/80">
+                      Quand souhaitez-vous être livré ?
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCreneauChoisi('');
+                            setDeliverySlot('Dès que possible');
+                          }}
+                          className={`rounded-2xl border px-4 py-2 text-sm ${!creneauChoisi ? 'border-[var(--ochre)] bg-[var(--ochre)]/10 text-[var(--ochre)]' : 'border-[var(--wood)]/15'}`}
+                        >
+                          Dès que possible
+                        </button>
+                        {creneaux.length > 0 && (
+                          <span className="self-center text-xs font-normal text-[var(--wood)]/60">ou programmez :</span>
+                        )}
+                      </div>
+                      {creneaux.length > 0 && (
+                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                          <select
+                            value={jourChoisi || joursCreneaux[0] || ''}
+                            onChange={(e) => {
+                              setJourChoisi(e.target.value);
+                              setCreneauChoisi('');
+                              setDeliverySlot('Dès que possible');
+                            }}
+                            className="rounded-2xl border border-[var(--wood)]/10 bg-white/50 px-4 py-3 text-sm font-normal outline-none focus:border-[var(--ochre)]/45"
+                            aria-label="Jour de livraison"
+                          >
+                            {joursCreneaux.map((j) => (
+                              <option key={j} value={j}>
+                                {libelleJour(j)}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            value={creneauChoisi}
+                            onChange={(e) => {
+                              setCreneauChoisi(e.target.value);
+                              const c = creneaux.find((x) => x.debut === e.target.value);
+                              setDeliverySlot(c ? `Programmée : ${libelleJour(c.jour)} à ${c.heure}` : 'Dès que possible');
+                            }}
+                            className="rounded-2xl border border-[var(--wood)]/10 bg-white/50 px-4 py-3 text-sm font-normal outline-none focus:border-[var(--ochre)]/45"
+                            aria-label="Heure de livraison"
+                          >
+                            <option value="">Choisir une heure…</option>
+                            {horairesDuJour.map((c) => (
+                              <option key={c.debut} value={c.debut}>
+                                {c.heure}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
                     <label className="sm:col-span-2 text-xs font-semibold text-[var(--wood)]/80">
                       Instructions de livraison (optionnel)
                       <textarea
@@ -627,7 +700,17 @@ export default function PanierPage() {
                 </div>
               </div>
               <div className="lg:col-span-5">
-                {summaryBlock(true, 'Continuer vers le paiement', goPaiement, false)}
+                {estimation && (
+                  <p
+                    className={`mb-4 rounded-2xl p-3 text-sm ${estimation.livrable ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-700'}`}
+                    role="status"
+                  >
+                    {estimation.livrable
+                      ? `Livraison ${estimation.zone ? `zone « ${estimation.zone.nom} » · ` : ''}${estimation.frais > 0 ? formatMoney(estimation.frais) : 'offerte'}`
+                      : estimation.message}
+                  </p>
+                )}
+                {summaryBlock(true, 'Continuer vers le paiement', goPaiement, Boolean(estimation && !estimation.livrable))}
               </div>
             </div>
           )}

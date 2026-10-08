@@ -281,6 +281,9 @@ export const orderConfirmationEmail = (commande, client) => {
     })
     .join('');
 
+  const lignesCreneau = commande.creneauLivraison
+    ? `<p style="margin:0 0 6px;"><strong>Livraison programmée :</strong> ${escapeHtml(new Date(commande.creneauLivraison).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' }))}</p>`
+    : '';
   const addr = commande.adresseLivraison || {};
   const ligneAdresse = [
     escapeHtml(addr.nom),
@@ -420,7 +423,7 @@ export const orderConfirmationEmail = (commande, client) => {
                         <td style="font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#C2610F;padding-bottom:8px;">Adresse de livraison</td>
                       </tr>
                       <tr>
-                        <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#2C1A0E;">${ligneAdresse}</td>
+                        <td style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#2C1A0E;">${ligneAdresse}${lignesCreneau ? `<br /><br />${lignesCreneau}` : ''}</td>
                       </tr>
                     </table>
                   </td>

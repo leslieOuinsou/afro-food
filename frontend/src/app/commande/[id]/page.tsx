@@ -353,6 +353,15 @@ function SuiviContent() {
             )}
           </section>
 
+          {commande.creneauLivraison && !STATUTS_FINAUX.includes(commande.statut) && (
+            <section className="mt-6 rounded-[24px] border border-[var(--ochre)]/30 bg-[color:rgba(233,162,59,.10)] p-5">
+              <p className="text-sm font-semibold">
+                Livraison programmée :{' '}
+                {new Date(commande.creneauLivraison).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+              </p>
+            </section>
+          )}
+
           {commande.statut === 'en_livraison' && (
             <section className="mt-6 rounded-[24px] border border-[var(--wood)]/10 bg-white/55 p-6">
               <h2 className="font-title text-2xl">Votre livreur est en route</h2>

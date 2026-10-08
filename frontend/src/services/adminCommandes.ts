@@ -33,6 +33,7 @@ export interface CommandeApi {
   paiement?: { methode: string };
   methodePaiement?: string;
   statutPaiement?: string;
+  creneauLivraison?: string | null;
   dates?: { commande?: string; livraison?: string };
   livraison?: { heureEstimee?: string };
   createdAt?: string;
@@ -56,6 +57,7 @@ export interface CommandeAdmin {
   dateEstimeeLivraison: string;
   modePaiement: string;
   statutPaiement: string;
+  creneau?: string | null;
   notes?: string;
 }
 
@@ -99,6 +101,7 @@ function mapApiToAdmin(c: CommandeApi): CommandeAdmin {
     dateEstimeeLivraison: dateEstimee,
     modePaiement: c.methodePaiement || c.paiement?.methode || 'especes',
     statutPaiement: c.statutPaiement || 'en_attente',
+    creneau: c.creneauLivraison ?? null,
     notes: c.preferences?.instructions
   };
 }

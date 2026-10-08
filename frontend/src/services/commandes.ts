@@ -18,6 +18,8 @@ export type CreateCommandePayload = {
   codePromo?: string;
   typeLivraison?: 'domicile' | 'point_relais' | 'retrait_sur_place';
   instructions?: string;
+  /** Commande programmée : début du créneau choisi (ISO). Absent = dès que possible. */
+  creneauLivraison?: string;
   preferences?: {
     instructions?: string;
   };
@@ -91,6 +93,7 @@ export type HistoriqueStatut = {
 export type CommandeDetail = CommandeClient & {
   client?: string | { _id?: string; id?: string };
   clientId?: string;
+  creneauLivraison?: string | null;
   codeRemise?: string;
   stripePaye?: boolean;
   virement?: { titulaire: string; iban: string; bic?: string; banque?: string; reference: string } | null;
