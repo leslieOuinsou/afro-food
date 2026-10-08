@@ -25,6 +25,7 @@ import { offrirRecompense } from '../utils/recompenses.js';
 import { viderPanier } from '../utils/panier.js';
 import { crediterPoints, retirerPoints } from '../utils/fidelite.js';
 import { evaluerLivraison, lireZones } from '../utils/zones.js';
+import { attribuerCommande, geocoder } from '../utils/attribution.js';
 import { creneauxDisponibles } from './livraisonController.js';
 
 const TRANSITIONS_VALIDES = {
@@ -317,16 +318,36 @@ async function changerStatutInterne(commande, nouveauStatut, commentaire, modifi
     }).catch((err) => console.warn('Push client non envoyé:', err.message));
   }
 
-  // Commande prête sans livreur : prévient uniquement les livreurs EN SERVICE (pointage ouvert)
+  // Commande prête sans livreur : attribution automatique au livreur en service le moins chargé (et le plus proche),
+  // sinon notification aux livreurs en service. Sur Vercel, le traitement s'arrête avec la réponse : on attend (await).
   if (nouveauStatut === 'prete' && !miseAJour.livreurId) {
-    // await : sur Vercel, le traitement s'arrête dès que la réponse HTTP part
-    await prisma.pointageLivreur
-      .findMany({
-        where: { fin: null, livreur: { estActif: true } },
-        select: { livreur: { select: { id: true, email: true } } },
-      })
-      .then((sessions) =>
-        Promise.all(
+    try {
+      const adresse = miseAJour.adresseLivraison;
+      if (adresse && !adresse.coords) {
+        const coords = await geocoder(adresse);
+        if (coords) {
+          miseAJour.adresseLivraison = { ...adresse, coords };
+          await prisma.commande.update({ where: { id: miseAJour.id }, data: { adresseLivraison: miseAJour.adresseLivraison } });
+        }
+      }
+      const choisi = await attribuerCommande(prisma, miseAJour);
+      if (choisi) {
+        miseAJour.livreurId = choisi;
+        const livreur = await prisma.user.findUnique({ where: { id: choisi }, select: { email: true } });
+        await Promise.all([
+          pushVersUtilisateur(choisi, {
+            titre: 'Commande à livrer pour vous',
+            corps: `${miseAJour.numeroCommande} · ${miseAJour.adresseLivraison?.ville ?? ''}`.trim(),
+            url: '/livreur',
+          }),
+          livreur?.email ? envoyerEmailCommandePrete(livreur.email, miseAJour) : Promise.resolve(),
+        ]);
+      } else {
+        const sessions = await prisma.pointageLivreur.findMany({
+          where: { fin: null, livreur: { estActif: true } },
+          select: { livreur: { select: { id: true, email: true } } },
+        });
+        await Promise.all(
           sessions.flatMap(({ livreur }) => [
             pushVersUtilisateur(livreur.id, {
               titre: 'Commande prête à livrer',
@@ -335,9 +356,11 @@ async function changerStatutInterne(commande, nouveauStatut, commentaire, modifi
             }),
             envoyerEmailCommandePrete(livreur.email, miseAJour),
           ])
-        )
-      )
-      .catch((err) => console.warn('Notification commande prête non envoyée:', err.message));
+        );
+      }
+    } catch (err) {
+      console.warn('Attribution / notification commande prête:', err.message);
+    }
   }
 
   return miseAJour;

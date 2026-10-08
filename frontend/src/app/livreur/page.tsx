@@ -291,6 +291,8 @@ export default function LivreurPage() {
         idsEnCours.current.forEach((cid) => {
           void apiPatch(`/api/commandes/${cid}/position`, { lat, lng });
         });
+        // Position du livreur en service : sert à lui attribuer la commande la plus proche
+        void apiPost('/api/paie/position', { lat, lng });
         setInfoGps(`Position envoyée à ${new Date().toLocaleTimeString('fr-FR')}`);
       },
       (err) => {
@@ -302,11 +304,11 @@ export default function LivreurPage() {
     return () => navigator.geolocation.clearWatch(id);
   }, [partage]);
 
-  // Plus aucune livraison en cours : le partage s'arrête tout seul
+  // Le partage de position dure tout le service et s'arrête quand le livreur termine
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (partage && enCours.length === 0 && !chargement) setPartage(false);
-  }, [partage, enCours.length, chargement]);
+    if (partage && !enService) setPartage(false);
+  }, [partage, enService]);
 
   const carte = (c: CommandeLivreur) => (
     <article key={c._id} className="rounded-[24px] border border-[var(--wood)]/10 bg-white/60 p-5 shadow-sm">
@@ -383,7 +385,13 @@ export default function LivreurPage() {
           <NotificationBell role="livreur" />
         </div>
         <p className="mt-1 text-sm text-[var(--wood)]/70">Actualisation automatique toutes les 8 secondes. La cloche t’avertit quand une commande est prête.</p>
-        <PointageLivreurCard onChangement={(actif) => { setEnService(actif); void charger(); }} />
+        <PointageLivreurCard
+          onChangement={(actif) => {
+            setEnService(actif);
+            void charger();
+          }}
+          onDebutClic={demarrerPartageGps}
+        />
         <FichesPaieLivreur />
         {erreur && <p className="mt-4 rounded-2xl bg-red-50 p-3 text-sm text-red-700">{erreur}</p>}
         {solde && (solde.solde > 0 || solde.nbCommandes > 0) && (

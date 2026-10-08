@@ -9,6 +9,8 @@ export type JourPaie = {
   nbLivraisons: number;
   sessions: number;
   minutesAuDelaPlafond?: number;
+  prime?: number;
+  primeDetail?: string | null;
   montantAPayer: number;
   montantPaye?: number;
   livreur?: { _id: string; nom: string; prenom: string; telephone?: string } | null;
@@ -29,7 +31,8 @@ export const debutPointage = (dureeHeures?: number) => apiPost('/api/paie/pointa
 export const prolongerPointage = (heures = 1) => apiPost('/api/paie/pointage/prolonger', { heures });
 export const finPointage = () => apiPost('/api/paie/pointage/fin', {});
 
-export type ResumePaie = { tauxHoraire: number; plafondHeures?: number; du: string; au: string; journees: JourPaie[]; totalAPayer: number };
+export type ConfigPrimes = { actif: boolean; paliersLivraisons: { min: number; prime: number }[]; noteMinimale: number; avisMinimum: number; primeAvis: number };
+export type ResumePaie = { tauxHoraire: number; plafondHeures?: number; attributionAuto?: boolean; primes?: ConfigPrimes; du: string; au: string; journees: JourPaie[]; totalAPayer: number };
 export const getResumePaie = (du?: string, au?: string) =>
   apiGet<ResumePaie>(`/api/paie/admin/resume${du && au ? `?du=${du}&au=${au}` : ''}`);
 
@@ -50,6 +53,7 @@ export type PaieFaite = {
   montant: number;
   nbLivraisons: number;
   mode: string;
+  prime?: number;
   note?: string | null;
   createdAt: string;
   livreur: { nom: string; prenom: string };
@@ -90,3 +94,6 @@ export async function ouvrirFichePdf(id: string): Promise<string | null> {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
   return null;
 }
+
+export const savePrimes = (c: ConfigPrimes) => apiPut('/api/paie/admin/primes', c);
+export const setAttribution = (actif: boolean) => apiPut('/api/paie/admin/attribution', { actif });

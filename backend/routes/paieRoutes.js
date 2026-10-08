@@ -5,12 +5,15 @@ import {
   cronCloture,
   debutPointage,
   definirPlafond,
+  definirPrimes,
   definirTaux,
   finPointage,
   listerPaies,
   monPointage,
   payerJournee,
+  positionLivreur,
   prolongerPointage,
+  reglerAttribution,
   resume,
   sessionsJournee,
 } from '../controllers/paieController.js';
@@ -27,6 +30,7 @@ router.use(protegerRoute);
 router.post('/pointage/debut', restreindreAcces('livreur'), debutPointage);
 router.post('/pointage/fin', restreindreAcces('livreur'), finPointage);
 router.post('/pointage/prolonger', restreindreAcces('livreur'), prolongerPointage);
+router.post('/position', restreindreAcces('livreur'), positionLivreur);
 router.get('/mon-pointage', restreindreAcces('livreur'), monPointage);
 
 router.get('/mes-fiches', restreindreAcces('livreur'), mesFiches);
@@ -41,6 +45,8 @@ router.post('/admin/payer', payerJournee);
 router.get('/admin/paiements', listerPaies);
 router.put('/admin/taux', definirTaux);
 router.put('/admin/plafond', definirPlafond);
+router.put('/admin/primes', definirPrimes);
+router.put('/admin/attribution', reglerAttribution);
 router.post('/admin/fiches', emettreFiches);
 router.get('/admin/fiches', listerFiches);
 

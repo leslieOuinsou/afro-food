@@ -87,6 +87,10 @@ export function genererFichePaiePdf(fiche, paies, livreur, signature = null) {
       doc.text(p.mode === 'virement' ? 'Virement' : p.mode === 'especes' ? 'Espèces' : 'Autre', L + 375, y + 2, { width: 55, align: 'center' });
       doc.fillColor(C.bois).font('Helvetica-Bold').text(eur(p.montant), L + 430, y + 2, { width: W - 442, align: 'right' });
       y += 24;
+      if (Number(p.prime) > 0) {
+        doc.fillColor(C.vert).font('Helvetica').fontSize(8).text(`dont prime ${eur(p.prime)}${p.primeDetail ? ` — ${p.primeDetail}` : ''}`, L + 24, y - 6, { width: W - 40, lineBreak: false, ellipsis: true });
+        y += 12;
+      }
     });
     doc.moveTo(L, y + 2).lineTo(R, y + 2).lineWidth(0.8).strokeColor(C.trait).stroke();
     y += 16;
@@ -104,6 +108,8 @@ export function genererFichePaiePdf(fiche, paies, livreur, signature = null) {
     total('Journées payées', String(paies.length));
     total('Heures totales', duree(fiche.totalMinutes));
     total('Livraisons effectuées', String(fiche.nbLivraisons));
+    const totalPrimes = paies.reduce((t, p) => t + Number(p.prime || 0), 0);
+    if (totalPrimes > 0) total('Dont primes', eur(totalPrimes));
     y += 4;
     doc.roundedRect(L + 270, y, W - 270, 40, 8).fill(C.ocre);
     doc.fillColor(C.ivoire).font('Helvetica-Bold').fontSize(10).text('TOTAL PERÇU', L + 286, y + 15, { characterSpacing: 1.5 });

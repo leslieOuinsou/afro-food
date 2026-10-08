@@ -12,7 +12,10 @@ import {
   getResumePaie,
   getSessions,
   payerJournee,
+  savePrimes,
+  setAttribution,
   setPlafond,
+  type ConfigPrimes,
   setTaux,
   type JourPaie,
   type PaieFaite,
@@ -35,6 +38,8 @@ export default function AdminPaiePage() {
   const [journees, setJournees] = useState<JourPaie[]>([]);
   const [taux, setTauxLocal] = useState(9);
   const [tauxSaisi, setTauxSaisi] = useState('9');
+  const [primes, setPrimes] = useState<ConfigPrimes | null>(null);
+  const [attributionAuto, setAttributionAuto] = useState(true);
   const [plafond, setPlafondLocal] = useState(14);
   const [plafondSaisi, setPlafondSaisi] = useState('14');
   const [totalAPayer, setTotalAPayer] = useState(0);
@@ -58,6 +63,8 @@ export default function AdminPaiePage() {
       setTauxLocal(r.data.tauxHoraire);
       setTauxSaisi(String(r.data.tauxHoraire));
       setTotalAPayer(r.data.totalAPayer);
+      if (r.data.primes) setPrimes(r.data.primes);
+      setAttributionAuto(r.data.attributionAuto !== false);
       if (r.data.plafondHeures) {
         setPlafondLocal(r.data.plafondHeures);
         setPlafondSaisi(String(r.data.plafondHeures));
@@ -121,6 +128,26 @@ export default function AdminPaiePage() {
       setInfo('Plafond enregistré : il s’applique aux prochains calculs et paiements.');
       await charger();
     }
+  };
+
+  const enregistrerPrimes = async () => {
+    if (!primes) return;
+    const res = await savePrimes(primes);
+    if (!res.success) setErreur(res.message || 'Primes invalides.');
+    else {
+      setErreur('');
+      setInfo('Règles de primes enregistrées.');
+      await charger();
+    }
+  };
+
+  const basculerAttribution = async (actif: boolean) => {
+    setAttributionAuto(actif);
+    const res = await setAttribution(actif);
+    if (!res.success) {
+      setErreur(res.message || 'Réglage impossible.');
+      setAttributionAuto(!actif);
+    } else setInfo(actif ? 'Attribution automatique activée.' : 'Attribution automatique désactivée : les livreurs en service choisissent eux-mêmes.');
   };
 
   const payer = async (j: JourPaie) => {
@@ -239,6 +266,67 @@ export default function AdminPaiePage() {
           </div>
         </div>
 
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          <div className={carte}>
+            <p className="text-sm font-semibold text-gray-900">Attribution automatique des commandes</p>
+            <p className="text-xs text-gray-600">
+              Une commande prête est confiée au livreur en service le moins chargé, puis le plus proche de l’adresse. Désactivée : tous les livreurs en service la voient.
+            </p>
+            <label className="mt-3 flex items-center gap-2 text-sm font-semibold">
+              <input type="checkbox" checked={attributionAuto} onChange={(e) => void basculerAttribution(e.target.checked)} />
+              Attribution automatique active
+            </label>
+          </div>
+          {primes && (
+            <div className={carte}>
+              <p className="text-sm font-semibold text-gray-900">Primes des livreurs</p>
+              <label className="mt-2 flex items-center gap-2 text-sm font-semibold">
+                <input type="checkbox" checked={primes.actif} onChange={(e) => setPrimes({ ...primes, actif: e.target.checked })} />
+                Primes actives
+              </label>
+              <p className="mt-2 text-xs font-semibold text-gray-700">Selon les livraisons du jour (le plus haut palier atteint)</p>
+              {primes.paliersLivraisons.map((p, i) => (
+                <div key={i} className="mt-1 flex items-center gap-2 text-sm">
+                  dès
+                  <input
+                    className="w-16 rounded-lg border border-gray-300 px-2 py-1"
+                    inputMode="numeric"
+                    value={p.min}
+                    onChange={(e) => setPrimes({ ...primes, paliersLivraisons: primes.paliersLivraisons.map((x, k) => (k === i ? { ...x, min: Number(e.target.value) || 0 } : x)) })}
+                  />
+                  livraisons : +
+                  <input
+                    className="w-16 rounded-lg border border-gray-300 px-2 py-1"
+                    inputMode="decimal"
+                    value={p.prime}
+                    onChange={(e) => setPrimes({ ...primes, paliersLivraisons: primes.paliersLivraisons.map((x, k) => (k === i ? { ...x, prime: Number(e.target.value.replace(',', '.')) || 0 } : x)) })}
+                  />
+                  €
+                  <button type="button" onClick={() => setPrimes({ ...primes, paliersLivraisons: primes.paliersLivraisons.filter((_, k) => k !== i) })} className="text-xs font-semibold text-red-700 underline">
+                    retirer
+                  </button>
+                </div>
+              ))}
+              <button type="button" onClick={() => setPrimes({ ...primes, paliersLivraisons: [...primes.paliersLivraisons, { min: 10, prime: 5 }] })} className="mt-1 text-xs font-semibold text-orange-700 underline">
+                + ajouter un palier
+              </button>
+              <p className="mt-3 text-xs font-semibold text-gray-700">Selon les avis clients du jour</p>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
+                note moyenne ≥
+                <input className="w-16 rounded-lg border border-gray-300 px-2 py-1" inputMode="decimal" value={primes.noteMinimale} onChange={(e) => setPrimes({ ...primes, noteMinimale: Number(e.target.value.replace(',', '.')) || 0 })} />
+                sur au moins
+                <input className="w-14 rounded-lg border border-gray-300 px-2 py-1" inputMode="numeric" value={primes.avisMinimum} onChange={(e) => setPrimes({ ...primes, avisMinimum: Number(e.target.value) || 1 })} />
+                avis : +
+                <input className="w-16 rounded-lg border border-gray-300 px-2 py-1" inputMode="decimal" value={primes.primeAvis} onChange={(e) => setPrimes({ ...primes, primeAvis: Number(e.target.value.replace(',', '.')) || 0 })} />
+                €
+              </div>
+              <button type="button" onClick={() => void enregistrerPrimes()} className="mt-3 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700">
+                Enregistrer les primes
+              </button>
+            </div>
+          )}
+        </div>
+
         <div className="mt-6 flex gap-2 border-b border-gray-200">
           {(
             [
@@ -287,6 +375,11 @@ export default function AdminPaiePage() {
                         <p className="text-sm font-semibold text-green-700">Payée</p>
                       )}
                       <p className="text-xs text-gray-500">{j.minutesAPayer > 0 ? `${duree(j.minutesAPayer)} à payer` : ''}</p>
+                      {(j.prime ?? 0) > 0 && (
+                        <p className="text-xs font-semibold text-green-700" title={j.primeDetail ?? ''}>
+                          dont prime {money(j.prime ?? 0)}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-3">

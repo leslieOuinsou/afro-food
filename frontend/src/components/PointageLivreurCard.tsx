@@ -9,7 +9,14 @@ const jourLisible = (j: string) =>
   new Date(`${j}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
 
 /** Pointage du livreur : début/fin de service, heures du jour, gain estimé et historique des paies. */
-export default function PointageLivreurCard({ onChangement }: { onChangement?: (enService: boolean) => void }) {
+export default function PointageLivreurCard({
+  onChangement,
+  onDebutClic,
+}: {
+  onChangement?: (enService: boolean) => void;
+  /** Appelé directement dans le clic « Je commence » : permet de demander l'autorisation GPS (exigé par iPhone/Safari). */
+  onDebutClic?: () => void;
+}) {
   const [data, setData] = useState<MonPointage | null>(null);
   const [occupe, setOccupe] = useState(false);
   const [erreur, setErreur] = useState('');
@@ -39,6 +46,7 @@ export default function PointageLivreurCard({ onChangement }: { onChangement?: (
 
   const basculer = async () => {
     if (!data) return;
+    if (!data.enService) onDebutClic?.();
     if (data.enService && !window.confirm('Terminer votre service ? Les heures seront comptées jusqu’à maintenant.')) return;
     setOccupe(true);
     setErreur('');

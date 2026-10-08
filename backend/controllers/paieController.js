@@ -1,6 +1,8 @@
 import prisma from '../lib/prisma.js';
 import { isValidId } from '../utils/serialize.js';
 import { pushVersUtilisateur } from '../utils/push.js';
+import { attribuerCommande, attributionActive, definirAttribution, enregistrerPosition } from '../utils/attribution.js';
+import { calculerPrime, enregistrerPrimes, lirePrimes } from '../utils/primes.js';
 import {
   DUREE_MAX_SESSION_MIN,
   DUREE_PREVUE_DEFAUT_H,
@@ -62,9 +64,13 @@ export async function cloturerSessionsExpirees(livreurId) {
 async function livraisonsDepuis(depuis, livreurId) {
   const commandes = await prisma.commande.findMany({
     where: { statut: 'livree', livreurId: livreurId ?? { not: null }, updatedAt: { gte: depuis } },
-    select: { livreurId: true, dates: true, updatedAt: true },
+    select: { livreurId: true, dates: true, updatedAt: true, evaluation: true },
   });
-  return commandes.map((c) => ({ livreurId: c.livreurId, jour: jourParis(c.dates?.livraison ?? c.updatedAt) }));
+  return commandes.map((c) => ({
+    livreurId: c.livreurId,
+    jour: jourParis(c.dates?.livraison ?? c.updatedAt),
+    note: typeof c.evaluation?.note === 'number' ? c.evaluation.note : null,
+  }));
 }
 
 const decalerJours = (n) => new Date(Date.now() - n * 24 * 3600 * 1000);
@@ -104,11 +110,19 @@ export const finPointage = async (req, res, next) => {
     // Pas de fin de service avec une livraison en cours : le livreur doit d'abord la terminer
     const enCours = await prisma.commande.count({ where: { livreurId: req.utilisateur.id, statut: 'en_livraison' } });
     if (enCours > 0) throw erreur(`Terminez d'abord vos ${enCours} livraison(s) en cours avant de finir votre service`, 409);
+    // Les commandes qui lui étaient attribuées mais pas démarrées retournent dans le pool, puis sont réattribuées
+    const libres = await prisma.commande.findMany({ where: { livreurId: req.utilisateur.id, statut: 'prete' } });
+    if (libres.length) {
+      await prisma.commande.updateMany({ where: { id: { in: libres.map((c) => c.id) }, statut: 'prete' }, data: { livreurId: null } });
+    }
     const maj = await prisma.pointageLivreur.updateMany({
       where: { id: ouvert.id, fin: null },
       data: { fin: new Date() },
     });
     if (maj.count !== 1) throw erreur('Session déjà terminée', 409);
+    for (const c of libres) {
+      await attribuerCommande(prisma, { ...c, livreurId: null }).catch(() => null);
+    }
     res.json({ success: true, message: 'Session terminée' });
   } catch (e) {
     next(e);
@@ -198,8 +212,21 @@ export const resume = async (req, res, next) => {
       ...j,
       livreur: parId.get(j.livreurId) ? { _id: j.livreurId, ...parId.get(j.livreurId), id: undefined } : null,
     }));
+    // Estimation des primes (livraisons du jour et avis) pour les journées encore à payer
+    const primes = await lirePrimes(prisma);
+    for (const j of journees) {
+      const duJour = livraisons.filter((l) => l.livreurId === j.livreurId && l.jour === j.jour);
+      const payee = await prisma.paieLivreur.count({ where: { livreurId: j.livreurId, jour: j.jour, prime: { gt: 0 } } });
+      const { prime, detail } =
+        j.minutesAPayer > 0 && !payee
+          ? calculerPrime(primes, { nbLivraisons: duJour.length, notes: duJour.map((l) => l.note).filter((n) => n != null) })
+          : { prime: 0, detail: null };
+      j.prime = prime;
+      j.primeDetail = detail;
+      j.montantAPayer = arrondir(j.montantAPayer + prime);
+    }
     const totalAPayer = arrondir(journees.reduce((t, j) => t + j.montantAPayer, 0));
-    res.json({ success: true, data: { tauxHoraire: taux, plafondHeures: plafond, du, au, journees, totalAPayer } });
+    res.json({ success: true, data: { tauxHoraire: taux, plafondHeures: plafond, attributionAuto: await attributionActive(prisma), primes, du, au, journees, totalAPayer } });
   } catch (e) {
     next(e);
   }
@@ -263,8 +290,15 @@ export const payerJournee = async (req, res, next) => {
       ).reduce((t, s) => t + minutesEntre(s.debut, s.fin), 0);
       const minutes = Math.max(0, Math.min(brut + dejaPayees, Math.round(plafond * 60)) - dejaPayees);
       if (minutes === 0) throw erreur(`Plafond de ${plafond} h par jour déjà atteint : rien à payer pour ce jour`, 409);
-      const montant = montantPourMinutes(minutes, taux);
-      const livraisons = (await livraisonsDepuis(decalerJours(60), livreurId)).filter((l) => l.jour === jour).length;
+      const salaire = montantPourMinutes(minutes, taux);
+      const duJour = (await livraisonsDepuis(decalerJours(60), livreurId)).filter((l) => l.jour === jour);
+      const livraisons = duJour.length;
+      // Prime : une seule fois par journée, même si la journée est payée en plusieurs fois
+      const primeDejaPayee = (await tx.paieLivreur.count({ where: { livreurId, jour, prime: { gt: 0 } } })) > 0;
+      const { prime, detail } = primeDejaPayee
+        ? { prime: 0, detail: null }
+        : calculerPrime(await lirePrimes(prisma), { nbLivraisons: livraisons, notes: duJour.map((l) => l.note).filter((n) => n != null) });
+      const montant = arrondir(salaire + prime);
       const creee = await tx.paieLivreur.create({
         data: {
           livreurId,
@@ -273,6 +307,8 @@ export const payerJournee = async (req, res, next) => {
           minutes,
           tauxHoraire: taux,
           montant,
+          prime,
+          primeDetail: detail,
           nbLivraisons: livraisons,
           mode: mode ?? 'especes',
           note: note ? String(note).slice(0, 200) : null,
@@ -347,6 +383,39 @@ export const cronCloture = async (req, res, next) => {
     if (!secret || req.headers.authorization !== `Bearer ${secret}`) throw erreur('Non autorisé', 401);
     const nb = await cloturerSessionsExpirees();
     res.json({ success: true, data: { sessionsCloturees: nb } });
+  } catch (e) {
+    next(e);
+  }
+};
+
+/** POST /api/paie/position { lat, lng } — position du livreur en service (attribution au plus proche) */
+export const positionLivreur = async (req, res, next) => {
+  try {
+    const lat = Number(req.body?.lat);
+    const lng = Number(req.body?.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) throw erreur('Position invalide', 400);
+    const ouvert = await prisma.pointageLivreur.findFirst({ where: { livreurId: req.utilisateur.id, fin: null }, select: { id: true } });
+    if (!ouvert) return res.json({ success: true, data: { enregistree: false } });
+    await enregistrerPosition(prisma, req.utilisateur.id, lat, lng);
+    res.json({ success: true, data: { enregistree: true } });
+  } catch (e) {
+    next(e);
+  }
+};
+
+/** PUT /api/paie/admin/primes — règles des primes */
+export const definirPrimes = async (req, res, next) => {
+  try {
+    res.json({ success: true, message: 'Primes enregistrées', data: await enregistrerPrimes(prisma, req.body) });
+  } catch (e) {
+    next(e);
+  }
+};
+
+/** PUT /api/paie/admin/attribution { actif } — active ou coupe l'attribution automatique */
+export const reglerAttribution = async (req, res, next) => {
+  try {
+    res.json({ success: true, message: 'Attribution enregistrée', data: await definirAttribution(prisma, req.body?.actif) });
   } catch (e) {
     next(e);
   }
