@@ -6,7 +6,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useAuth } from '@/context/AuthContext';
 import { apiGet, apiPatch } from '@/lib/api';
-import { getMonSolde, type Synthese } from '@/services/caisse';
+import { declarerRemise, getMonSolde, type LigneCaisse, type Synthese } from '@/services/caisse';
 import NotificationBell from '@/components/NotificationBell';
 import { trackDeliveryAction, trackDeliveryHistoryMore, trackPositionSharing } from '@/lib/analytics';
 import { NOTIFS_UPDATED_EVENT, ajouterNotif, jouerBip, lireNotifs, sonActif } from '@/lib/notifications';
@@ -53,7 +53,10 @@ export default function LivreurPage() {
   const [nbVisibles, setNbVisibles] = useState(10);
   const [partage, setPartage] = useState(false);
   const [infoGps, setInfoGps] = useState('');
-  const [solde, setSolde] = useState<(Synthese & { plafond: number }) | null>(null);
+  const [solde, setSolde] = useState<(Synthese & { plafond: number; commandes?: LigneCaisse[] }) | null>(null);
+  const [aRemettre, setARemettre] = useState<Set<string>>(new Set());
+  const [remiseEnCours, setRemiseEnCours] = useState(false);
+  const [messageRemise, setMessageRemise] = useState('');
   const [encaissement, setEncaissement] = useState<CommandeLivreur | null>(null);
   const [codeSaisi, setCodeSaisi] = useState('');
   const [montantSaisi, setMontantSaisi] = useState('');
@@ -143,6 +146,21 @@ export default function LivreurPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void chargerSolde();
   }, [authLoading, user, chargerSolde]);
+
+  const remettreEspeces = async () => {
+    if (aRemettre.size === 0) return;
+    setRemiseEnCours(true);
+    setMessageRemise('');
+    const res = await declarerRemise([...aRemettre]);
+    setRemiseEnCours(false);
+    if (!res.success) {
+      setMessageRemise(res.message || 'Déclaration impossible.');
+      return;
+    }
+    setARemettre(new Set());
+    setMessageRemise('Remise déclarée. L’administrateur doit confirmer qu’il a bien reçu l’argent.');
+    await chargerSolde();
+  };
 
   const ouvrirEncaissement = (c: CommandeLivreur) => {
     setEncaissement(c);
@@ -290,7 +308,7 @@ export default function LivreurPage() {
             onClick={() => void changer(c, 'livree')}
             className="rounded-full bg-green-700 px-5 py-2 text-sm font-semibold text-white hover:bg-green-800 disabled:opacity-50"
           >
-            Marquer comme livrée
+            {c.methodePaiement === 'especes' && c.statutPaiement !== 'valide' ? 'Encaisser le client' : 'Marquer comme livrée'}
           </button>
         )}
       </div>
@@ -315,12 +333,53 @@ export default function LivreurPage() {
                 : 'border-[var(--ochre)]/30 bg-[color:rgba(233,162,59,.10)]'
             }`}
           >
-            <p className="font-semibold">Espèces à remettre à l’admin : {money(solde.solde)}</p>
+            <p className="font-semibold">Espèces encaissées à remettre à l’admin : {money(solde.solde)}</p>
             <p className="mt-1 text-xs opacity-80">
               {solde.nbCommandes} commande(s) · plafond {money(solde.plafond)}
-              {solde.alerte ? ' · remise en retard, contacte l’administrateur' : ''}
+              {solde.alerte ? ' · remise en retard, remets l’argent à l’administrateur' : ''}
               {solde.plafondAtteint ? ' · plafond atteint : tu ne peux plus prendre de commande en espèces' : ''}
             </p>
+            {(solde.commandes?.length ?? 0) > 0 && (
+              <>
+                <ul className="mt-3 space-y-2">
+                  {solde.commandes!.map((c) => (
+                    <li key={c._id} className="flex items-center justify-between gap-3 rounded-xl bg-white/70 px-3 py-2">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          disabled={c.enAttenteValidation}
+                          checked={aRemettre.has(c._id)}
+                          onChange={() =>
+                            setARemettre((prev) => {
+                              const n = new Set(prev);
+                              if (n.has(c._id)) n.delete(c._id);
+                              else n.add(c._id);
+                              return n;
+                            })
+                          }
+                        />
+                        <span className="font-mono text-xs">{c.numeroCommande}</span>
+                      </label>
+                      <span className="text-right text-xs">
+                        <strong>{money(c.encaisse)}</strong>
+                        {c.enAttenteValidation && (
+                          <span className="block text-[var(--wood)]/60">En attente de validation par l’admin</span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  disabled={aRemettre.size === 0 || remiseEnCours}
+                  onClick={() => void remettreEspeces()}
+                  className="mt-3 rounded-full bg-[var(--ochre)] px-5 py-2 text-sm font-semibold text-white hover:bg-[#a6500c] disabled:opacity-50"
+                >
+                  {remiseEnCours ? 'Envoi…' : 'Je remets cet argent à l’admin'}
+                </button>
+              </>
+            )}
+            {messageRemise && <p className="mt-2 text-xs">{messageRemise}</p>}
           </div>
         )}
         {chargement ? (

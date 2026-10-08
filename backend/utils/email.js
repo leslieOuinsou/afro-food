@@ -11,6 +11,7 @@ import {
   cashCodeEmail,
   cashReceiptEmail,
   stripeVirementEmail,
+  orderReadyCourierEmail,
 } from './emailTemplates.js';
 
 let transporter = null;
@@ -128,7 +129,7 @@ export async function envoyerEmailCommandePrete(email, commande) {
     to: email,
     subject: `Commande ${numero} prête à livrer — Afro-food`,
     text: `La commande ${numero}${ville ? ` (${ville})` : ''} est prête. Prenez-la en charge : ${lien}`,
-    html: `<p>La commande <strong>${numero}</strong>${ville ? ` (${ville})` : ''} est <strong>prête</strong>.</p><p><a href="${lien}">Ouvrir mon espace livreur</a></p>`,
+    html: orderReadyCourierEmail(commande, lien),
   });
 }
 

@@ -481,15 +481,18 @@ enum EspecesStatut {
 
 /// Remise d'espèces d'un livreur à l'admin (confirmée par l'admin).
 model ReversementEspeces {
-  id        String    @id @default(cuid())
-  livreurId String
-  livreur   User      @relation("ReversementsLivreur", fields: [livreurId], references: [id])
-  adminId   String
-  admin     User      @relation("ReversementsAdmin", fields: [adminId], references: [id])
-  montant   Float
-  note      String?
-  annuleLe  DateTime?
-  createdAt DateTime  @default(now())
+  id         String    @id @default(cuid())
+  livreurId  String
+  livreur    User      @relation("ReversementsLivreur", fields: [livreurId], references: [id])
+  adminId    String?
+  admin      User?     @relation("ReversementsAdmin", fields: [adminId], references: [id])
+  montant    Float
+  note       String?
+  /// en_attente (déclarée par le livreur) | valide (reçue par l'admin) | refuse
+  statut     String    @default("valide")
+  motifRefus String?
+  annuleLe   DateTime?
+  createdAt  DateTime  @default(now())
 
   commandes Commande[]
   journal   JournalCaisse[]

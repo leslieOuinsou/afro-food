@@ -9,6 +9,8 @@ import {
   getRapprochement,
   getReversements,
   getSoldes,
+  refuserRemise,
+  validerRemise,
   type LigneJournal,
   type Rapprochement,
   type Reversement,
@@ -21,6 +23,8 @@ const LIBELLE_TYPE: Record<LigneJournal['type'], string> = {
   encaissement: 'Encaissement',
   reversement: 'Reversement',
   annulation_reversement: 'Annulation de reversement',
+  remise_declaree: 'Remise déclarée par le livreur',
+  remise_refusee: 'Remise refusée',
 };
 
 export default function AdminCaissePage() {
@@ -90,6 +94,23 @@ export default function AdminCaissePage() {
       setSelection((prev) => ({ ...prev, [l.livreur._id]: new Set() }));
       await charger();
     }
+  };
+
+  const valider = async (r: Reversement) => {
+    if (!window.confirm(`Confirmer que ${r.livreur.prenom} ${r.livreur.nom} vous a bien remis ${money(r.montant)} en espèces ?`)) return;
+    setOccupe(true);
+    const res = await validerRemise(r.id);
+    setOccupe(false);
+    if (!res.success) setErreur(res.message || 'Validation impossible.');
+    else await charger();
+  };
+
+  const refuser = async (r: Reversement) => {
+    const motif = window.prompt(`Motif du refus de la remise de ${money(r.montant)} :`);
+    if (!motif) return;
+    const res = await refuserRemise(r.id, motif);
+    if (!res.success) setErreur(res.message || 'Refus impossible.');
+    else await charger();
   };
 
   const annuler = async (r: Reversement) => {
@@ -162,6 +183,45 @@ export default function AdminCaissePage() {
 
         {onglet === 'soldes' && (
           <div className="mt-4 space-y-4">
+            {reversements.filter((r) => r.statut === 'en_attente').length > 0 && (
+              <div className="rounded-xl border-2 border-orange-500 bg-orange-50 p-4">
+                <p className="font-semibold text-orange-900">Remises d’espèces à valider</p>
+                <p className="text-xs text-orange-800">Le livreur déclare vous avoir remis cet argent. Validez uniquement si vous l’avez bien reçu.</p>
+                <ul className="mt-3 space-y-2">
+                  {reversements
+                    .filter((r) => r.statut === 'en_attente')
+                    .map((r) => (
+                      <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white px-3 py-2">
+                        <div>
+                          <p className="text-sm font-semibold">
+                            {r.livreur.prenom} {r.livreur.nom} · {money(r.montant)}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {r.commandes.map((c) => c.numeroCommande).join(', ')} · déclarée le {dateHeure(r.createdAt)}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            disabled={occupe}
+                            onClick={() => void valider(r)}
+                            className="rounded-lg bg-green-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-green-800 disabled:opacity-50"
+                          >
+                            J’ai bien reçu
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void refuser(r)}
+                            className="rounded-lg border border-red-300 px-3 py-1.5 text-sm font-semibold text-red-700"
+                          >
+                            Refuser
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            )}
             {livreurs.length === 0 && <p className="text-sm text-gray-500">Aucun livreur.</p>}
             {livreurs.map((l) => {
               const sel = selection[l.livreur._id] ?? new Set<string>();
@@ -216,12 +276,16 @@ export default function AdminCaissePage() {
                               <td className="py-2">
                                 <input
                                   type="checkbox"
+                                  disabled={c.enAttenteValidation}
                                   checked={sel.has(c._id)}
                                   onChange={() => basculer(l.livreur._id, c._id)}
                                   aria-label={`Sélectionner ${c.numeroCommande}`}
                                 />
                               </td>
-                              <td className="font-mono">{c.numeroCommande}</td>
+                              <td className="font-mono">
+                                {c.numeroCommande}
+                                {c.enAttenteValidation && <span className="ml-2 text-xs text-orange-700">remise déclarée</span>}
+                              </td>
                               <td className="font-semibold">{money(c.encaisse)}</td>
                               <td className="hidden sm:table-cell">
                                 {c.ecart !== 0 ? (
@@ -266,7 +330,7 @@ export default function AdminCaissePage() {
                   <th className="px-4 py-2">Livreur</th>
                   <th className="px-4 py-2">Montant</th>
                   <th className="px-4 py-2">Commandes</th>
-                  <th className="px-4 py-2">Reçu par</th>
+                  <th className="px-4 py-2">Statut / reçu par</th>
                   <th className="px-4 py-2" />
                 </tr>
               </thead>
@@ -280,10 +344,12 @@ export default function AdminCaissePage() {
                     <td className="px-4 py-2 font-semibold">{money(r.montant)}</td>
                     <td className="px-4 py-2 text-xs">{r.commandes.map((c) => c.numeroCommande).join(', ')}</td>
                     <td className="px-4 py-2">
-                      {r.admin.prenom} {r.admin.nom}
+                      {r.statut === 'en_attente' && <span className="text-orange-700">En attente de validation</span>}
+                      {r.statut === 'refuse' && <span className="text-red-700">Refusée : {r.motifRefus}</span>}
+                      {r.statut === 'valide' && (r.admin ? `${r.admin.prenom} ${r.admin.nom}` : '—')}
                     </td>
                     <td className="px-4 py-2 text-right">
-                      {!r.annuleLe && (
+                      {!r.annuleLe && r.statut === 'valide' && (
                         <button type="button" onClick={() => void annuler(r)} className="text-xs font-semibold text-red-700">
                           Annuler
                         </button>

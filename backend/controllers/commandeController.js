@@ -264,7 +264,7 @@ async function changerStatutInterne(commande, nouveauStatut, commentaire, modifi
       nouveauStatut === 'livree'
         ? envoyerEmailMerciLivraison(emailClient, miseAJour)
         : envoyerEmailStatutCommande(emailClient, miseAJour, commentaire);
-    envoi.catch((err) => console.warn('Email statut commande non envoyé:', err.message));
+    await envoi.catch((err) => console.warn('Email statut commande non envoyé:', err.message));
   }
 
   // Commande de plus de 30 € confirmée : code promo offert (−10 % + livraison offerte) + e-mail
@@ -297,7 +297,8 @@ async function changerStatutInterne(commande, nouveauStatut, commentaire, modifi
 
   // Commande prête sans livreur : prévient les livreurs actifs
   if (nouveauStatut === 'prete' && !miseAJour.livreurId) {
-    prisma.user
+    // await : sur Vercel, le traitement s'arrête dès que la réponse HTTP part
+    await prisma.user
       .findMany({ where: { role: 'livreur', estActif: true }, select: { email: true } })
       .then((livreurs) =>
         Promise.all(livreurs.map((l) => envoyerEmailCommandePrete(l.email, miseAJour)))

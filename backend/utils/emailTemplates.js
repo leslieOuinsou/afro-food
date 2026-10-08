@@ -1424,7 +1424,52 @@ export const stripeVirementEmail = (commande) => {
   return baseTemplate(content, `Paiement enregistré ${commande.numeroCommande || ''} - Afro-food`);
 };
 
+/** E-mail livreur : une commande est prête à être récupérée. */
+export const orderReadyCourierEmail = (commande, lienLivreur) => {
+  const info = commande.informationsClient || {};
+  const client = escapeHtml([info.prenom, info.nom].filter(Boolean).join(' ') || 'Client');
+  const numero = escapeHtml(commande.numeroCommande || '');
+  const addr = commande.adresseLivraison || {};
+  const adresse = [
+    escapeHtml(addr.adresse),
+    escapeHtml(addr.complementAdresse),
+    `${escapeHtml(addr.codePostal || '')} ${escapeHtml(addr.ville || '')}`.trim(),
+  ]
+    .filter(Boolean)
+    .join('<br />');
+  const total = formatMoneyEUR(commande.total ?? commande.montants?.total);
+  const articles = (commande.articles || [])
+    .map(
+      (a) =>
+        `<tr><td style="padding:6px 0;font-size:14px;color:#2C1A0E;">${Number(a.quantite) || 0}&nbsp;×&nbsp;${escapeHtml(a.informationsPlat?.nom || 'Produit')}</td></tr>`
+    )
+    .join('');
+  const aEncaisser =
+    commande.methodePaiement === 'especes' && commande.statutPaiement !== 'valide'
+      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0;"><tr><td style="background-color:#FDECEC;border-left:5px solid #B3261E;border-radius:12px;padding:14px 18px;">
+          <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#B3261E;font-weight:700;">À encaisser en espèces</div>
+          <div style="font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:700;color:#B3261E;">${total}</div>
+          <div style="font-size:13px;color:#4A3426;">Demandez au client son code à 4 chiffres avant de valider la livraison.</div>
+        </td></tr></table>`
+      : '';
+  const content = `
+    <p style="margin:0 0 8px;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#C2610F;font-weight:700;">Commande prête</p>
+    <h2>À récupérer : ${numero}</h2>
+    <p style="margin:0 0 18px;">Une commande vient d'être préparée. Prenez-la en charge depuis votre espace livreur.</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F4EBDD;border-radius:14px;margin:0 0 18px;">
+      <tr><td style="padding:16px 18px;font-size:14px;line-height:1.6;color:#4A3426;">
+        <strong>${client}</strong>${info.telephone ? ` · ${escapeHtml(info.telephone)}` : ''}${adresse ? `<br />${adresse}` : ''}
+      </td></tr>
+    </table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${articles}</table>
+    ${aEncaisser}
+    <p style="text-align:center;margin:24px 0 8px;"><a href="${escapeHtml(lienLivreur)}" class="button" style="display:inline-block;background:#C2610F;color:#FFFFFF;padding:14px 32px;text-decoration:none;border-radius:999px;font-weight:700;font-size:15px;">Prendre en charge</a></p>
+  `;
+  return baseTemplate(content, `Commande prête ${commande.numeroCommande || ''} - Afro-food`);
+};
+
 export default {
+  orderReadyCourierEmail,
   stripeVirementEmail,
   cashCodeEmail,
   cashReceiptEmail,

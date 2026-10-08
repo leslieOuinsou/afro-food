@@ -1,7 +1,7 @@
 import prisma from '../lib/prisma.js';
 import { isValidId } from '../utils/serialize.js';
 import { arrondir, delaiAlerteHeures, plafondEspeces, syntheseLivreur } from '../utils/caisse.js';
-import { pushVersRole } from '../utils/push.js';
+import { pushVersRole, pushVersUtilisateur } from '../utils/push.js';
 import { envoyerEmail } from '../utils/email.js';
 
 const erreur = (message, statusCode) => Object.assign(new Error(message), { statusCode });
@@ -11,6 +11,7 @@ const selectCommandeCaisse = {
   numeroCommande: true,
   total: true,
   livreurId: true,
+  reversementId: true,
   especesEncaissees: true,
   especesEncaisseLe: true,
   especesEcartRaison: true,
@@ -25,6 +26,8 @@ const versLigne = (c) => ({
   ecart: arrondir((c.especesEncaissees ?? 0) - c.total),
   raisonEcart: c.especesEcartRaison,
   encaisseLe: c.especesEncaisseLe,
+  // true : le livreur a déclaré la remise, l'admin ne l'a pas encore validée
+  enAttenteValidation: Boolean(c.reversementId),
 });
 
 /** Espèces non reversées, groupées par livreur. */
@@ -99,7 +102,7 @@ export const creerReversement = async (req, res, next) => {
 
     const reversement = await prisma.$transaction(async (tx) => {
       const commandes = await tx.commande.findMany({
-        where: { id: { in: ids }, livreurId, especesStatut: 'a_reverser' },
+        where: { id: { in: ids }, livreurId, especesStatut: 'a_reverser', reversementId: null },
         select: { id: true, especesEncaissees: true },
       });
       if (commandes.length !== ids.length) {
@@ -111,7 +114,7 @@ export const creerReversement = async (req, res, next) => {
       });
       // Garde anti-concurrence : seules les commandes encore « à reverser » passent à « reversé »
       const { count } = await tx.commande.updateMany({
-        where: { id: { in: ids }, especesStatut: 'a_reverser' },
+        where: { id: { in: ids }, especesStatut: 'a_reverser', reversementId: null },
         data: { especesStatut: 'reverse', reversementId: cree.id },
       });
       if (count !== ids.length) throw erreur('Reversement simultané détecté, réessayez', 409);
@@ -146,6 +149,7 @@ export const annulerReversement = async (req, res, next) => {
       const rev = await tx.reversementEspeces.findUnique({ where: { id } });
       if (!rev) throw erreur('Reversement introuvable', 404);
       if (rev.annuleLe) throw erreur('Reversement déjà annulé', 409);
+      if (rev.statut !== 'valide') throw erreur('Seul un reversement validé peut être annulé', 409);
       await tx.reversementEspeces.update({ where: { id }, data: { annuleLe: new Date() } });
       await tx.commande.updateMany({
         where: { reversementId: id },
@@ -163,6 +167,142 @@ export const annulerReversement = async (req, res, next) => {
       });
     });
     res.json({ success: true, message: 'Reversement annulé' });
+  } catch (e) {
+    next(e);
+  }
+};
+
+/** POST /api/caisse/remises — le livreur déclare qu'il remet des espèces ; l'admin doit valider la réception */
+export const declarerRemise = async (req, res, next) => {
+  try {
+    const { commandeIds, note } = req.body;
+    if (!Array.isArray(commandeIds) || commandeIds.length === 0) throw erreur('Sélectionnez les commandes à remettre', 400);
+    const ids = [...new Set(commandeIds)];
+    if (!ids.every(isValidId)) throw erreur('Identifiant de commande invalide', 400);
+
+    const remise = await prisma.$transaction(async (tx) => {
+      const commandes = await tx.commande.findMany({
+        where: { id: { in: ids }, livreurId: req.utilisateur.id, especesStatut: 'a_reverser', reversementId: null },
+        select: { id: true, especesEncaissees: true },
+      });
+      if (commandes.length !== ids.length) {
+        throw erreur('Certaines commandes sont déjà remises ou en attente de validation', 409);
+      }
+      const montant = arrondir(commandes.reduce((t, c) => t + (c.especesEncaissees || 0), 0));
+      const cree = await tx.reversementEspeces.create({
+        data: {
+          livreurId: req.utilisateur.id,
+          montant,
+          statut: 'en_attente',
+          note: note ? String(note).slice(0, 300) : null,
+        },
+      });
+      const { count } = await tx.commande.updateMany({
+        where: { id: { in: ids }, especesStatut: 'a_reverser', reversementId: null },
+        data: { reversementId: cree.id },
+      });
+      if (count !== ids.length) throw erreur('Remise simultanée détectée, réessayez', 409);
+      await tx.journalCaisse.create({
+        data: {
+          type: 'remise_declaree',
+          montant: 0,
+          livreurId: req.utilisateur.id,
+          auteurId: req.utilisateur.id,
+          reversementId: cree.id,
+          note: `${montant} € déclarés remis (${ids.length} commande(s)), en attente de validation`,
+        },
+      });
+      return cree;
+    });
+
+    await pushVersRole('admin', {
+      titre: 'Remise d’espèces à valider',
+      corps: `${req.utilisateur.prenom} ${req.utilisateur.nom} déclare vous remettre ${remise.montant} €.`,
+      url: '/admin-caisse',
+    }).catch(() => undefined);
+
+    res.status(201).json({ success: true, message: 'Remise déclarée, en attente de validation par l’admin', data: { remise } });
+  } catch (e) {
+    next(e);
+  }
+};
+
+/** POST /api/caisse/reversements/:id/valider — l'admin confirme avoir reçu l'argent */
+export const validerRemise = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!isValidId(id)) throw erreur('Identifiant invalide', 400);
+    const rev = await prisma.$transaction(async (tx) => {
+      const r = await tx.reversementEspeces.findUnique({ where: { id }, include: { commandes: { select: { id: true } } } });
+      if (!r) throw erreur('Remise introuvable', 404);
+      if (r.statut !== 'en_attente') throw erreur('Cette remise a déjà été traitée', 409);
+      const pris = await tx.reversementEspeces.updateMany({
+        where: { id, statut: 'en_attente' },
+        data: { statut: 'valide', adminId: req.utilisateur.id },
+      });
+      if (pris.count !== 1) throw erreur('Cette remise a déjà été traitée', 409);
+      await tx.commande.updateMany({
+        where: { reversementId: id, especesStatut: 'a_reverser' },
+        data: { especesStatut: 'reverse' },
+      });
+      await tx.journalCaisse.create({
+        data: {
+          type: 'reversement',
+          montant: -r.montant,
+          livreurId: r.livreurId,
+          auteurId: req.utilisateur.id,
+          reversementId: id,
+          note: `${r.commandes.length} commande(s) — réception validée par l’admin`,
+        },
+      });
+      return r;
+    });
+    await pushVersUtilisateur(rev.livreurId, {
+      titre: 'Remise validée',
+      corps: `L’administration a bien reçu vos ${rev.montant} €. Merci !`,
+      url: '/livreur',
+    }).catch(() => undefined);
+    res.json({ success: true, message: 'Réception validée' });
+  } catch (e) {
+    next(e);
+  }
+};
+
+/** POST /api/caisse/reversements/:id/refuser { motif } — l'admin conteste la remise */
+export const refuserRemise = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!isValidId(id)) throw erreur('Identifiant invalide', 400);
+    const motif = String(req.body?.motif ?? '').trim();
+    if (motif.length < 5) throw erreur('Indiquez le motif (5 caractères minimum)', 400);
+    const rev = await prisma.$transaction(async (tx) => {
+      const r = await tx.reversementEspeces.findUnique({ where: { id } });
+      if (!r) throw erreur('Remise introuvable', 404);
+      const pris = await tx.reversementEspeces.updateMany({
+        where: { id, statut: 'en_attente' },
+        data: { statut: 'refuse', motifRefus: motif.slice(0, 300), adminId: req.utilisateur.id },
+      });
+      if (pris.count !== 1) throw erreur('Cette remise a déjà été traitée', 409);
+      // Les commandes redeviennent disponibles : le solde du livreur reste inchangé
+      await tx.commande.updateMany({ where: { reversementId: id }, data: { reversementId: null } });
+      await tx.journalCaisse.create({
+        data: {
+          type: 'remise_refusee',
+          montant: 0,
+          livreurId: r.livreurId,
+          auteurId: req.utilisateur.id,
+          reversementId: id,
+          note: motif.slice(0, 300),
+        },
+      });
+      return r;
+    });
+    await pushVersUtilisateur(rev.livreurId, {
+      titre: 'Remise refusée',
+      corps: `${rev.montant} € : ${motif.slice(0, 100)}`,
+      url: '/livreur',
+    }).catch(() => undefined);
+    res.json({ success: true, message: 'Remise refusée' });
   } catch (e) {
     next(e);
   }

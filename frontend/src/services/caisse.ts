@@ -8,6 +8,7 @@ export type LigneCaisse = {
   ecart: number;
   raisonEcart?: string | null;
   encaisseLe: string;
+  enAttenteValidation?: boolean;
 };
 
 export type Synthese = {
@@ -45,14 +46,16 @@ export type Reversement = {
   annuleLe?: string | null;
   createdAt: string;
   livreur: { nom: string; prenom: string };
-  admin: { nom: string; prenom: string };
+  admin?: { nom: string; prenom: string } | null;
+  statut: 'en_attente' | 'valide' | 'refuse';
+  motifRefus?: string | null;
   commandes: { numeroCommande: string }[];
 };
 export const getReversements = () => apiGet<{ reversements: Reversement[] }>('/api/caisse/reversements');
 
 export type LigneJournal = {
   id: string;
-  type: 'encaissement' | 'reversement' | 'annulation_reversement';
+  type: 'encaissement' | 'reversement' | 'annulation_reversement' | 'remise_declaree' | 'remise_refusee';
   montant: number;
   note?: string | null;
   createdAt: string;
@@ -72,3 +75,10 @@ export type Rapprochement = {
 };
 export const getRapprochement = (date?: string) =>
   apiGet<Rapprochement>(`/api/caisse/rapprochement${date ? `?date=${date}` : ''}`);
+
+/** Livreur : déclare qu'il remet ces espèces à l'admin (en attente de validation). */
+export const declarerRemise = (commandeIds: string[], note?: string) =>
+  apiPost('/api/caisse/remises', { commandeIds, note });
+/** Admin : confirme avoir reçu l'argent déclaré par le livreur. */
+export const validerRemise = (id: string) => apiPost(`/api/caisse/reversements/${id}/valider`, {});
+export const refuserRemise = (id: string, motif: string) => apiPost(`/api/caisse/reversements/${id}/refuser`, { motif });
