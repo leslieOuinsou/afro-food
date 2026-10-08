@@ -3,8 +3,9 @@ import prisma from '../lib/prisma.js';
 import { isValidId } from '../utils/serialize.js';
 import { envoyerEmailStatutCommande } from '../utils/email.js';
 import { offrirRecompense } from '../utils/recompenses.js';
-import { chargerCommandePourRecu, genererRecuPdf } from '../utils/recuPaiement.js';
+import { chargerCommandePourRecu, genererRecuPdf, signaturePourRecu } from '../utils/recuPaiement.js';
 import { envoyerEmailPaiementStripeVirement } from '../utils/email.js';
+import { idSignatureActive } from '../utils/signature.js';
 
 let stripe = null;
 function getStripe() {
@@ -143,7 +144,11 @@ async function enregistrerPaiementVirement(commandeId, session) {
     where: { id: commandeId },
     data: {
       paiementReference: session.id,
-      paiement: { ...(commande.paiement || {}), stripe: { reference: session.id, payeLe } },
+      paiement: {
+        ...(commande.paiement || {}),
+        // signatureId : version de la signature en vigueur au paiement (null = signature par défaut)
+        stripe: { reference: session.id, payeLe, signatureId: await idSignatureActive(prisma) },
+      },
     },
   });
   const email = maj.informationsClient?.email;
@@ -164,7 +169,7 @@ export const telechargerRecu = async (req, res, next) => {
     if (req.utilisateur.role !== 'admin' && commande.clientId !== req.utilisateur.id) throw erreur('Non autorisé', 403);
     const stripe = commande.paiement?.stripe;
     if (!stripe) throw erreur("Aucun paiement en ligne enregistré pour cette commande", 404);
-    const pdf = await genererRecuPdf(commande, stripe);
+    const pdf = await genererRecuPdf(commande, stripe, await signaturePourRecu(prisma, stripe));
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="justificatif-${commande.numeroCommande}.pdf"`);
     res.setHeader('Cache-Control', 'private, no-store');

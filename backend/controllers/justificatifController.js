@@ -3,7 +3,7 @@ import prisma from '../lib/prisma.js';
 import { isValidId } from '../utils/serialize.js';
 import { detecterTypeFichier } from '../utils/fichiers.js';
 import { pushVersRole } from '../utils/push.js';
-import { chargerCommandePourRecu, genererRecuPdf } from '../utils/recuPaiement.js';
+import { chargerCommandePourRecu, genererRecuPdf, signaturePourRecu } from '../utils/recuPaiement.js';
 import crypto from 'crypto';
 
 const TAILLE_MAX = 4 * 1024 * 1024; // limite de corps des fonctions Vercel : 4,5 Mo
@@ -50,7 +50,11 @@ export const ajouterJustificatif = async (req, res, next) => {
     // pour ce paiement Stripe (un autre document, une capture ou un PDF modifié est refusé).
     const stripe = commande.paiement?.stripe;
     if (!stripe) throw erreur("Réglez d'abord votre commande en ligne pour obtenir votre justificatif", 400);
-    const attendu = await genererRecuPdf((await chargerCommandePourRecu(prisma, commande.id)) ?? commande, stripe);
+    const attendu = await genererRecuPdf(
+      (await chargerCommandePourRecu(prisma, commande.id)) ?? commande,
+      stripe,
+      await signaturePourRecu(prisma, stripe)
+    );
     const empreinte = (buf) => crypto.createHash('sha256').update(buf).digest();
     if (type.mime !== 'application/pdf' || !crypto.timingSafeEqual(empreinte(req.file.buffer), empreinte(attendu))) {
       throw erreur(

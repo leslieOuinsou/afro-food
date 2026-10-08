@@ -30,6 +30,12 @@ export const chargerCommandePourRecu = (prisma, id) =>
     include: { articles: { orderBy: { id: 'asc' } } },
   });
 
+/** Signature figée au moment du paiement : un justificatif reste identique même si la signature est changée plus tard. */
+export const signaturePourRecu = async (prisma, stripe) => {
+  const { chargerSignature } = await import('./signature.js');
+  return chargerSignature(prisma, stripe?.signatureId);
+};
+
 /** Code court qui lie le reçu à la commande, au montant et à la session Stripe (vérifiable par l'admin). */
 export function codeVerification(commande, referenceStripe) {
   const secret = process.env.JWT_SECRET || 'afro-food';
@@ -74,7 +80,7 @@ function dessinerCachet(doc, cx, cy) {
 }
 
 /** Justificatif de paiement PDF remis au client après son paiement Stripe. Sortie identique à chaque appel. */
-export async function genererRecuPdf(commande, stripe) {
+export async function genererRecuPdf(commande, stripe, signature = null) {
   const code = codeVerification(commande, stripe.reference);
   const qr = await QRCode.toBuffer(`AFRO-FOOD|${commande.numeroCommande}|${Number(commande.total).toFixed(2)}|${code}`, {
     margin: 1,
@@ -223,10 +229,19 @@ export async function genererRecuPdf(commande, stripe) {
       doc.addPage({ size: 'A4', margin: 0 });
       y = 48;
     }
-    doc.fillColor(COULEURS.gris).font('Helvetica').fontSize(8.5).text('Pour Afro-food, le service paiements', L, y);
-    dessinerSignature(doc, L + 4, y + 16);
+    doc.fillColor(COULEURS.gris).font('Helvetica').fontSize(8.5).text('Pour Afro-food', L, y);
+    let imageOk = false;
+    if (signature?.image) {
+      try {
+        doc.image(signature.image, L + 4, y + 14, { fit: [170, 46], align: 'left', valign: 'bottom' });
+        imageOk = true;
+      } catch {
+        /* image illisible : signature par défaut */
+      }
+    }
+    if (!imageOk) dessinerSignature(doc, L + 4, y + 16);
     doc.moveTo(L, y + 62).lineTo(L + 190, y + 62).lineWidth(0.7).strokeColor(COULEURS.gris).stroke();
-    doc.fillColor(COULEURS.bois).font('Helvetica-Bold').fontSize(9).text('Service Paiements — Afro-food', L, y + 68);
+    doc.fillColor(COULEURS.bois).font('Helvetica-Bold').fontSize(9).text(signature?.nom ? `${signature.nom}${signature.fonction ? `, ${signature.fonction}` : ''}` : 'Service Paiements — Afro-food', L, y + 68, { width: 260 });
     doc.fillColor(COULEURS.gris).font('Helvetica').fontSize(7.5).text(`Signé électroniquement le ${dateLongue(stripe.payeLe)}`, L, y + 81);
     dessinerCachet(doc, R - 70, y + 42);
 
