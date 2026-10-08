@@ -789,6 +789,12 @@ export const obtenirToutesCommandes = async (req, res, next) => {
     // Livreur : ses commandes + celles sans livreur (prêtes à prendre, ou déjà passées
     // « en livraison » par l'admin sans livreur assigné)
     if (req.utilisateur.role === 'livreur') {
+      // Jamais de course à prendre tant qu'un virement ou un paiement par carte n'est pas confirmé
+      where.NOT = {
+        methodePaiement: { in: ['virement', 'carte'] },
+        statutPaiement: { not: 'valide' },
+        statut: { in: ['prete', 'en_livraison'] },
+      };
       where.OR = [
         { livreurId: req.utilisateur.id },
         { livreurId: null, statut: { in: ['prete', 'en_livraison'] } },
@@ -852,6 +858,21 @@ export const changerStatutCommande = async (req, res, next) => {
         error.statusCode = 403;
         return next(error);
       }
+    }
+
+    // Virement et carte : payer avant la livraison (le paiement doit être confirmé)
+    if (
+      ['virement', 'carte'].includes(commande.methodePaiement) &&
+      commande.statutPaiement !== 'valide' &&
+      ['en_livraison', 'livree'].includes(statut)
+    ) {
+      const error = new Error(
+        commande.methodePaiement === 'virement'
+          ? "Virement non reçu : confirmez le virement (« Virement reçu ») avant de lancer la livraison."
+          : 'Paiement par carte non confirmé : la livraison ne peut pas démarrer.'
+      );
+      error.statusCode = 400;
+      return next(error);
     }
 
     // Paiement en espèces : plafond avant la prise en charge, preuve de remise avant la livraison
