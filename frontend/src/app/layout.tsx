@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Lato, Syne } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/Providers";
+import { SITE_URL, jsonLdRestaurant } from "@/lib/seo";
 
 const fontTitle = Cormorant_Garamond({
   variable: "--font-title",
@@ -23,8 +24,23 @@ const fontBody = Lato({
 });
 
 export const metadata: Metadata = {
-  title: "Afro-food - Cuisine Camerounaise et Béninoise",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Afro-food - Cuisine Camerounaise et Béninoise",
+    template: "%s | Afro-food",
+  },
   description: "Découvrez les saveurs authentiques du Cameroun et du Bénin avec Afro-food. Livraison de plats traditionnels à domicile.",
+  applicationName: "Afro-food",
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: "Afro-food",
+    locale: "fr_FR",
+    title: "Afro-food - Cuisine Camerounaise et Béninoise",
+    description: "Plats traditionnels camerounais et béninois livrés à domicile.",
+    images: [{ url: "/icon-512.png", width: 512, height: 512, alt: "Afro-food" }],
+  },
+  twitter: { card: "summary", title: "Afro-food", description: "Cuisine camerounaise et béninoise livrée à domicile." },
   appleWebApp: { capable: true, title: "Afro-food", statusBarStyle: "default" },
   icons: {
     icon: "/logo-afro-eats.png",
@@ -53,6 +69,7 @@ export default function RootLayout({
       <body
         className={`${fontTitle.variable} ${fontUI.variable} ${fontBody.variable} antialiased`}
       >
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdRestaurant) }} />
         <Providers>{children}</Providers>
       </body>
     </html>

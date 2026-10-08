@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { trackViewItem } from '@/lib/analytics';
 import Link from 'next/link';
+import PartagerPlat from '@/components/PartagerPlat';
+import { SITE_URL } from '@/lib/seo';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useCart } from '@/context/CartContext';
@@ -352,6 +354,7 @@ export default function ProduitPage({ params }: { params: { id: string } }) {
                 <h1 className="font-title mt-5 text-5xl leading-[0.95] tracking-tight">
                   {product.nom}
                 </h1>
+                <PartagerPlat titre={product.nom} url={`${SITE_URL}/produit/${product.id}`} />
 
                 {product.indisponible ? (
                   <p className="mt-3 inline-flex rounded-full border border-red-200 bg-red-50 px-4 py-2 text-xs font-semibold text-red-800">
