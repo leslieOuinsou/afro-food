@@ -3,6 +3,8 @@ import prisma from '../lib/prisma.js';
 import { isValidId } from '../utils/serialize.js';
 import { detecterTypeFichier } from '../utils/fichiers.js';
 import { pushVersRole } from '../utils/push.js';
+import { genererRecuPdf } from '../utils/recuPaiement.js';
+import crypto from 'crypto';
 
 const TAILLE_MAX = 4 * 1024 * 1024; // limite de corps des fonctions Vercel : 4,5 Mo
 const MAX_PAR_COMMANDE = 3;
@@ -42,7 +44,20 @@ export const ajouterJustificatif = async (req, res, next) => {
     if (!req.file) throw erreur('Aucun fichier reçu', 400);
 
     const type = detecterTypeFichier(req.file.buffer);
-    if (!type) throw erreur('Format non accepté : PDF, PNG, JPEG ou WebP uniquement', 400);
+    if (!type) throw erreur('Format non accepté : seul le justificatif PDF téléchargé sur votre page de commande est accepté', 400);
+
+    // Seul le justificatif émis par le site est accepté : le fichier doit être strictement identique à celui généré
+    // pour ce paiement Stripe (un autre document, une capture ou un PDF modifié est refusé).
+    const stripe = commande.paiement?.stripe;
+    if (!stripe) throw erreur("Réglez d'abord votre commande en ligne pour obtenir votre justificatif", 400);
+    const attendu = await genererRecuPdf(commande, stripe);
+    const empreinte = (buf) => crypto.createHash('sha256').update(buf).digest();
+    if (type.mime !== 'application/pdf' || !crypto.timingSafeEqual(empreinte(req.file.buffer), empreinte(attendu))) {
+      throw erreur(
+        "Ce fichier n'est pas le justificatif de cette commande. Envoyez uniquement le PDF téléchargé avec le bouton « Télécharger mon justificatif », sans le modifier.",
+        400
+      );
+    }
 
     const deja = await prisma.justificatifVirement.count({
       where: { commandeId: commande.id, statut: { not: 'refuse' } },

@@ -24,7 +24,14 @@ export async function genererRecuPdf(commande, stripe) {
     width: 220,
   });
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: 'A4', margin: 56, info: { Title: `Justificatif ${commande.numeroCommande}` } });
+    const doc = new PDFDocument({ size: 'A4', margin: 56, info: {
+        Title: `Justificatif ${commande.numeroCommande}`,
+        Author: 'Afro-food',
+        // Dates figées : le même paiement produit toujours exactement le même fichier (empreinte vérifiable)
+        CreationDate: new Date(stripe.payeLe),
+        ModDate: new Date(stripe.payeLe),
+      },
+    });
     const morceaux = [];
     doc.on('data', (c) => morceaux.push(c));
     doc.on('end', () => resolve(Buffer.concat(morceaux)));

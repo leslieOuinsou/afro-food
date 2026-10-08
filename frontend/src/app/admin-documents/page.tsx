@@ -163,6 +163,7 @@ export default function AdminDocumentsPage() {
                 {d.verification.paiementStripe ? (
                   <>
                     <p className="font-semibold">Paiement Stripe confirmé par le serveur</p>
+                    <p className="text-xs">Fichier authentique : identique au justificatif émis par le site (contrôlé à l’envoi).</p>
                     <p className="text-xs">
                       Montant attendu {money(d.commande.total)} · payé le {d.verification.payeLe ? dateHeure(d.verification.payeLe) : '—'}
                       {' · '}réf. {d.verification.referenceStripe}

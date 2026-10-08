@@ -492,8 +492,8 @@ function SuiviContent() {
                       <>
                         <p className="text-sm font-semibold text-green-800">Paiement enregistré ✓</p>
                         <p className="mt-1 text-xs text-[var(--wood)]/65">
-                          1. Téléchargez votre justificatif de paiement. 2. Envoyez-le ci-dessous (PDF, PNG, JPEG ou WebP — 4 Mo
-                          maximum). L’administration le vérifie, puis votre commande est préparée et livrée.
+                          1. Téléchargez votre justificatif de paiement. 2. Envoyez-le ci-dessous tel quel : seul ce PDF, non modifié,
+                          est accepté. L’administration le vérifie, puis votre commande est préparée et livrée.
                         </p>
                         <button
                           type="button"
@@ -510,7 +510,7 @@ function SuiviContent() {
                             {envoiJustif ? 'Envoi…' : 'Envoyer mon justificatif'}
                             <input
                               type="file"
-                              accept="application/pdf,image/png,image/jpeg,image/webp"
+                              accept="application/pdf"
                               className="hidden"
                               disabled={envoiJustif || justificatifs.filter((j) => j.statut !== 'refuse').length >= 3}
                               onChange={(e) => {
