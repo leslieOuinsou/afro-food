@@ -3,7 +3,7 @@ import prisma from '../lib/prisma.js';
 import { isValidId } from '../utils/serialize.js';
 import { envoyerEmailStatutCommande } from '../utils/email.js';
 import { offrirRecompense } from '../utils/recompenses.js';
-import { genererRecuPdf } from '../utils/recuPaiement.js';
+import { chargerCommandePourRecu, genererRecuPdf } from '../utils/recuPaiement.js';
 import { envoyerEmailPaiementStripeVirement } from '../utils/email.js';
 
 let stripe = null;
@@ -159,7 +159,7 @@ export const telechargerRecu = async (req, res, next) => {
   try {
     const { commandeId } = req.params;
     if (!isValidId(commandeId)) throw erreur('ID de commande invalide', 400);
-    const commande = await prisma.commande.findUnique({ where: { id: commandeId } });
+    const commande = await chargerCommandePourRecu(prisma, commandeId);
     if (!commande) throw erreur('Commande non trouvée', 404);
     if (req.utilisateur.role !== 'admin' && commande.clientId !== req.utilisateur.id) throw erreur('Non autorisé', 403);
     const stripe = commande.paiement?.stripe;
