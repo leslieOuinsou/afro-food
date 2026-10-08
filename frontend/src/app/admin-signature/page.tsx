@@ -29,8 +29,8 @@ export default function AdminSignaturePage() {
     if (res.success) {
       setActive(res.data ?? null);
       if (res.data) {
-        setNom(res.data.nom);
-        setFonction(res.data.fonction);
+        setNom(res.data.nom ?? '');
+        setFonction(res.data.fonction ?? '');
       }
     }
   }, []);
