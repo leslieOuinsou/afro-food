@@ -1410,7 +1410,22 @@ export const cashReceiptEmail = (commande, montant, livreurPrenom) => {
   return baseTemplate(content, `Reçu commande ${commande?.numeroCommande || ''} - Afro-food`);
 };
 
+/** E-mail client : paiement Stripe d'un virement reçu, justificatif à envoyer. */
+export const stripeVirementEmail = (commande) => {
+  const idCmd = String(commande._id || commande.id || '');
+  const lien = `${FRONTEND}/commande/${encodeURIComponent(idCmd)}`;
+  const content = `
+    <p style="margin:0 0 8px;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#C2610F;font-weight:700;">Paiement enregistré</p>
+    <h2>Merci, votre paiement est enregistré</h2>
+    <p>Nous avons bien reçu votre paiement de <strong>${formatMoneyEUR(commande.total)}</strong> pour la commande <strong>${escapeHtml(commande.numeroCommande)}</strong>.</p>
+    <p>Dernière étape : <strong>téléchargez votre justificatif de paiement</strong> depuis la page de votre commande, puis envoyez-le-nous. Dès que l'administration l'aura vérifié, votre commande sera préparée puis livrée.</p>
+    <p style="text-align:center;margin:26px 0 8px;"><a href="${escapeHtml(lien)}" class="button" style="display:inline-block;background:#C2610F;color:#FFFFFF;padding:14px 32px;text-decoration:none;border-radius:999px;font-weight:700;font-size:15px;">Envoyer mon justificatif</a></p>
+  `;
+  return baseTemplate(content, `Paiement enregistré ${commande.numeroCommande || ''} - Afro-food`);
+};
+
 export default {
+  stripeVirementEmail,
   cashCodeEmail,
   cashReceiptEmail,
   newOrderAdminEmail,

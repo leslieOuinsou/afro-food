@@ -521,15 +521,21 @@ model JournalCaisse {
 
 /// Preuve de virement (capture, relevé PDF) envoyée par le client, consultable par l'admin.
 model JustificatifVirement {
-  id         String   @id @default(cuid())
-  commandeId String
-  commande   Commande @relation(fields: [commandeId], references: [id], onDelete: Cascade)
-  nom        String
-  mime       String
-  taille     Int
-  donnees    Bytes
-  createdAt  DateTime @default(now())
+  id          String    @id @default(cuid())
+  commandeId  String
+  commande    Commande  @relation(fields: [commandeId], references: [id], onDelete: Cascade)
+  nom         String
+  mime        String
+  taille      Int
+  donnees     Bytes
+  /// en_attente | valide | refuse (décision de l'admin)
+  statut      String    @default("en_attente")
+  motifRefus  String?
+  traiteLe    DateTime?
+  traiteParId String?
+  createdAt   DateTime  @default(now())
 
   @@index([commandeId])
+  @@index([statut, createdAt])
   @@map("justificatifs_virement")
 }

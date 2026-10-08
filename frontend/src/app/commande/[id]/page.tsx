@@ -12,10 +12,11 @@ import {
   getJustificatifs,
   ouvrirJustificatif,
   tailleLisible,
+  telechargerRecu,
   type Justificatif,
 } from '@/services/justificatifs';
 import { trackPurchase, trackReviewEmailClick, trackReviewSubmitted } from '@/lib/analytics';
-import { annulerCommande, evaluerCommande, getCommande, type CommandeDetail } from '@/services/commandes';
+import { annulerCommande, creerSessionPaiement, evaluerCommande, getCommande, type CommandeDetail } from '@/services/commandes';
 
 const ETAPES = [
   { statut: 'en_attente', label: 'Commande reçue' },
@@ -152,6 +153,21 @@ function SuiviContent() {
       if (r.success) setJustificatifs(r.data?.justificatifs ?? []);
     });
   }, [virementAttendu, id]);
+
+  const [redirectionStripe, setRedirectionStripe] = useState(false);
+  const paiementAnnule = searchParams.get('paiement') === 'annule';
+
+  const payerEnLigne = async () => {
+    setRedirectionStripe(true);
+    setMessageJustif('');
+    const res = await creerSessionPaiement(id);
+    if (res.success && res.data?.url) {
+      window.location.href = res.data.url;
+      return;
+    }
+    setRedirectionStripe(false);
+    setMessageJustif(res.message || 'Paiement en ligne indisponible pour le moment.');
+  };
 
   const choisirJustificatif = async (fichier?: File) => {
     if (!fichier) return;
@@ -414,42 +430,95 @@ function SuiviContent() {
                     Indiquez la référence dans le libellé du virement. Votre commande sera préparée dès réception.
                   </p>
                   <div className="mt-5 border-t border-[var(--wood)]/10 pt-4">
-                    <p className="text-sm font-semibold">Envoyez votre preuve de virement</p>
-                    <p className="mt-1 text-xs text-[var(--wood)]/65">
-                      Capture d’écran ou relevé bancaire (PDF, PNG, JPEG, WebP — 4 Mo maximum, 3 fichiers). Votre commande
-                      est préparée dès que l’administration a vérifié le virement.
-                    </p>
-                    <label className="mt-3 inline-block cursor-pointer rounded-full bg-[var(--ochre)] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#a6500c]">
-                      {envoiJustif ? 'Envoi…' : 'Choisir un fichier'}
-                      <input
-                        type="file"
-                        accept="application/pdf,image/png,image/jpeg,image/webp"
-                        className="hidden"
-                        disabled={envoiJustif || justificatifs.length >= 3}
-                        onChange={(e) => {
-                          void choisirJustificatif(e.target.files?.[0]);
-                          e.target.value = '';
-                        }}
-                      />
-                    </label>
-                    {messageJustif && <p className="mt-2 text-sm text-[var(--wood)]/80">{messageJustif}</p>}
-                    {justificatifs.length > 0 && (
-                      <ul className="mt-3 space-y-1 text-sm">
-                        {justificatifs.map((j) => (
-                          <li key={j.id} className="flex items-center justify-between gap-3">
-                            <span className="truncate">
-                              {j.nom} <span className="text-xs text-[var(--wood)]/55">({tailleLisible(j.taille)})</span>
-                            </span>
-                            <button
-                              type="button"
-                              className="text-xs font-semibold text-[var(--ochre)] underline"
-                              onClick={() => void ouvrirJustificatif(id, j.id)}
-                            >
-                              Voir
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
+                    {!commande.stripePaye ? (
+                      <>
+                        <p className="text-sm font-semibold">Réglez votre commande en ligne</p>
+                        <p className="mt-1 text-xs text-[var(--wood)]/65">
+                          Vous serez redirigé vers la page de paiement sécurisée Stripe. Vous recevrez ensuite un justificatif à
+                          nous envoyer.
+                        </p>
+                        {paiementAnnule && (
+                          <p className="mt-2 text-sm text-red-700">Paiement annulé. Vous pouvez réessayer.</p>
+                        )}
+                        {messageJustif && <p className="mt-2 text-sm text-red-700">{messageJustif}</p>}
+                        <button
+                          type="button"
+                          disabled={redirectionStripe}
+                          onClick={() => void payerEnLigne()}
+                          className="mt-3 rounded-full bg-[var(--ochre)] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#a6500c] disabled:opacity-50"
+                        >
+                          {redirectionStripe ? 'Redirection…' : `Payer ${money(commande.montants.total)}`}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm font-semibold text-green-800">Paiement enregistré ✓</p>
+                        <p className="mt-1 text-xs text-[var(--wood)]/65">
+                          1. Téléchargez votre justificatif de paiement. 2. Envoyez-le ci-dessous (PDF, PNG, JPEG ou WebP — 4 Mo
+                          maximum). L’administration le vérifie, puis votre commande est préparée et livrée.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const err = await telechargerRecu(id, `justificatif-${commande.numeroCommande}.pdf`);
+                            if (err) setMessageJustif(err);
+                          }}
+                          className="mt-3 rounded-full border border-[var(--ochre)] px-5 py-2.5 text-sm font-semibold text-[var(--ochre)] hover:bg-[var(--ochre)]/10"
+                        >
+                          Télécharger mon justificatif (PDF)
+                        </button>
+                        <div className="mt-3">
+                          <label className="inline-block cursor-pointer rounded-full bg-[var(--ochre)] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#a6500c]">
+                            {envoiJustif ? 'Envoi…' : 'Envoyer mon justificatif'}
+                            <input
+                              type="file"
+                              accept="application/pdf,image/png,image/jpeg,image/webp"
+                              className="hidden"
+                              disabled={envoiJustif || justificatifs.filter((j) => j.statut !== 'refuse').length >= 3}
+                              onChange={(e) => {
+                                void choisirJustificatif(e.target.files?.[0]);
+                                e.target.value = '';
+                              }}
+                            />
+                          </label>
+                        </div>
+                        {messageJustif && <p className="mt-2 text-sm text-[var(--wood)]/80">{messageJustif}</p>}
+                        {justificatifs.length > 0 && (
+                          <ul className="mt-3 space-y-2 text-sm">
+                            {justificatifs.map((j) => (
+                              <li key={j.id} className="rounded-xl border border-[var(--wood)]/10 px-3 py-2">
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="truncate">
+                                    {j.nom} <span className="text-xs text-[var(--wood)]/55">({tailleLisible(j.taille)})</span>
+                                  </span>
+                                  <button
+                                    type="button"
+                                    className="text-xs font-semibold text-[var(--ochre)] underline"
+                                    onClick={() => void ouvrirJustificatif(id, j.id)}
+                                  >
+                                    Voir
+                                  </button>
+                                </div>
+                                <p
+                                  className={`mt-1 text-xs font-semibold ${
+                                    j.statut === 'refuse'
+                                      ? 'text-red-700'
+                                      : j.statut === 'valide'
+                                        ? 'text-green-700'
+                                        : 'text-[var(--wood)]/60'
+                                  }`}
+                                >
+                                  {j.statut === 'refuse'
+                                    ? `Refusé : ${j.motifRefus ?? 'document non conforme'}. Renvoyez un document.`
+                                    : j.statut === 'valide'
+                                      ? 'Validé'
+                                      : 'En attente de vérification'}
+                                </p>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </>
                     )}
                   </div>
                 </>

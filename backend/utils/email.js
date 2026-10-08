@@ -10,6 +10,7 @@ import {
   newOrderAdminEmail,
   cashCodeEmail,
   cashReceiptEmail,
+  stripeVirementEmail,
 } from './emailTemplates.js';
 
 let transporter = null;
@@ -199,5 +200,16 @@ export async function envoyerEmailRecuEspeces(email, commande, montant, livreurP
     subject: `Reçu de paiement — commande ${commande.numeroCommande}`,
     text: `Vous avez payé ${montant} € en espèces${livreurPrenom ? ` à ${livreurPrenom}` : ''} pour la commande ${commande.numeroCommande}.`,
     html: cashReceiptEmail(commande, montant, livreurPrenom),
+  });
+}
+
+/** Paiement Stripe d'un virement enregistré : le client doit envoyer son justificatif. */
+export async function envoyerEmailPaiementStripeVirement(email, commande) {
+  const front = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+  return envoyerEmail({
+    to: email,
+    subject: `Paiement enregistré — envoyez votre justificatif (${commande.numeroCommande})`,
+    text: `Votre paiement de ${commande.total} € est enregistré. Téléchargez puis envoyez votre justificatif : ${front}/commande/${commande.id}`,
+    html: stripeVirementEmail(commande),
   });
 }

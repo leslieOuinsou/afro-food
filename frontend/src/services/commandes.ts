@@ -92,6 +92,7 @@ export type CommandeDetail = CommandeClient & {
   client?: string | { _id?: string; id?: string };
   clientId?: string;
   codeRemise?: string;
+  stripePaye?: boolean;
   virement?: { titulaire: string; iban: string; bic?: string; banque?: string; reference: string } | null;
   statutAffichage?: string;
   peutEtreAnnulee?: boolean;

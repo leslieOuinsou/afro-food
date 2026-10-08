@@ -3,6 +3,8 @@ import prisma from '../lib/prisma.js';
 import { isValidId } from '../utils/serialize.js';
 import { envoyerEmailStatutCommande } from '../utils/email.js';
 import { offrirRecompense } from '../utils/recompenses.js';
+import { genererRecuPdf } from '../utils/recuPaiement.js';
+import { envoyerEmailPaiementStripeVirement } from '../utils/email.js';
 
 let stripe = null;
 function getStripe() {
@@ -32,8 +34,13 @@ export const creerSessionPaiement = async (req, res, next) => {
     if (!commande || commande.clientId !== req.utilisateur.id) {
       throw erreur('Commande non trouvée', 404);
     }
-    if (commande.methodePaiement !== 'carte') throw erreur('Cette commande ne se paie pas par carte', 400);
+    if (!['carte', 'virement'].includes(commande.methodePaiement)) {
+      throw erreur('Cette commande ne se paie pas en ligne', 400);
+    }
     if (commande.statutPaiement !== 'en_attente') throw erreur('Cette commande est déjà réglée', 409);
+    if (commande.methodePaiement === 'virement' && commande.paiement?.stripe) {
+      throw erreur('Le paiement en ligne de cette commande est déjà enregistré', 409);
+    }
     if (commande.statut === 'annulee') throw erreur('Commande annulée', 400);
 
     const front = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
@@ -41,7 +48,7 @@ export const creerSessionPaiement = async (req, res, next) => {
       mode: 'payment',
       customer_email: commande.informationsClient?.email,
       client_reference_id: commande.id,
-      metadata: { commandeId: commande.id },
+      metadata: { commandeId: commande.id, mode: commande.methodePaiement },
       line_items: [
         {
           quantity: 1,
@@ -67,7 +74,7 @@ export const creerSessionPaiement = async (req, res, next) => {
   }
 };
 
-async function marquerPaye(commandeId, reference, commentaire = 'Paiement par carte reçu', messageClient = 'Paiement reçu, merci !') {
+export async function marquerPaye(commandeId, reference, commentaire = 'Paiement par carte reçu', messageClient = 'Paiement reçu, merci !') {
   const commande = await prisma.commande.findUnique({ where: { id: commandeId } });
   if (!commande || commande.statutPaiement === 'valide') return; // idempotent
 
@@ -115,6 +122,49 @@ export const confirmerVirementRecu = async (req, res, next) => {
   }
 };
 
+/**
+ * Virement : le client a payé sur Stripe. On garde la preuve du paiement mais la commande n'est PAS validée :
+ * l'administration vérifie d'abord le justificatif que le client lui envoie.
+ */
+async function enregistrerPaiementVirement(commandeId, session) {
+  const commande = await prisma.commande.findUnique({ where: { id: commandeId } });
+  if (!commande || commande.methodePaiement !== 'virement' || commande.paiement?.stripe) return; // idempotent
+  const payeLe = new Date().toISOString();
+  const maj = await prisma.commande.update({
+    where: { id: commandeId },
+    data: {
+      paiementReference: session.id,
+      paiement: { ...(commande.paiement || {}), stripe: { reference: session.id, payeLe } },
+    },
+  });
+  const email = maj.informationsClient?.email;
+  if (email) {
+    await envoyerEmailPaiementStripeVirement(email, maj).catch((e) =>
+      console.warn('Email paiement virement non envoyé:', e.message)
+    );
+  }
+}
+
+/** GET /api/paiements/:commandeId/justificatif.pdf — reçu PDF du client (ou de l'admin) */
+export const telechargerRecu = async (req, res, next) => {
+  try {
+    const { commandeId } = req.params;
+    if (!isValidId(commandeId)) throw erreur('ID de commande invalide', 400);
+    const commande = await prisma.commande.findUnique({ where: { id: commandeId } });
+    if (!commande) throw erreur('Commande non trouvée', 404);
+    if (req.utilisateur.role !== 'admin' && commande.clientId !== req.utilisateur.id) throw erreur('Non autorisé', 403);
+    const stripe = commande.paiement?.stripe;
+    if (!stripe) throw erreur("Aucun paiement en ligne enregistré pour cette commande", 404);
+    const pdf = await genererRecuPdf(commande, stripe);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="justificatif-${commande.numeroCommande}.pdf"`);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.end(pdf);
+  } catch (e) {
+    next(e);
+  }
+};
+
 async function marquerEchec(commandeId) {
   await prisma.commande.updateMany({
     where: { id: commandeId, statutPaiement: 'en_attente' },
@@ -140,7 +190,8 @@ export const webhookStripe = async (req, res) => {
     const commandeId = session.metadata?.commandeId;
     if (commandeId) {
       if (event.type === 'checkout.session.completed' && session.payment_status === 'paid') {
-        await marquerPaye(commandeId, session.id);
+        if (session.metadata?.mode === 'virement') await enregistrerPaiementVirement(commandeId, session);
+        else await marquerPaye(commandeId, session.id);
       } else if (event.type === 'checkout.session.expired') {
         await marquerEchec(commandeId);
       }

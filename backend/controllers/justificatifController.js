@@ -44,7 +44,9 @@ export const ajouterJustificatif = async (req, res, next) => {
     const type = detecterTypeFichier(req.file.buffer);
     if (!type) throw erreur('Format non accepté : PDF, PNG, JPEG ou WebP uniquement', 400);
 
-    const deja = await prisma.justificatifVirement.count({ where: { commandeId: commande.id } });
+    const deja = await prisma.justificatifVirement.count({
+      where: { commandeId: commande.id, statut: { not: 'refuse' } },
+    });
     if (deja >= MAX_PAR_COMMANDE) throw erreur(`Maximum ${MAX_PAR_COMMANDE} justificatifs par commande`, 400);
 
     const nomBrut = String(req.file.originalname || 'justificatif').replace(/[^\w.\- ]+/g, '_').slice(0, 80);
@@ -56,13 +58,13 @@ export const ajouterJustificatif = async (req, res, next) => {
         taille: req.file.size,
         donnees: req.file.buffer,
       },
-      select: { id: true, nom: true, mime: true, taille: true, createdAt: true },
+      select: { id: true, nom: true, mime: true, taille: true, statut: true, createdAt: true },
     });
 
     await pushVersRole('admin', {
       titre: 'Justificatif de virement reçu',
       corps: `Commande ${commande.numeroCommande} : le client a envoyé sa preuve de virement.`,
-      url: '/commande-admin',
+      url: '/admin-documents',
     }).catch(() => undefined);
 
     res.status(201).json({ success: true, message: 'Justificatif envoyé', data: { justificatif } });
@@ -77,7 +79,7 @@ export const listerJustificatifs = async (req, res, next) => {
     const { commande } = await chargerCommandeAutorisee(req);
     const justificatifs = await prisma.justificatifVirement.findMany({
       where: { commandeId: commande.id },
-      select: { id: true, nom: true, mime: true, taille: true, createdAt: true },
+      select: { id: true, nom: true, mime: true, taille: true, statut: true, motifRefus: true, createdAt: true },
       orderBy: { createdAt: 'asc' },
     });
     res.json({ success: true, data: { justificatifs } });

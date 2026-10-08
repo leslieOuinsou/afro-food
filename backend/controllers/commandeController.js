@@ -618,6 +618,7 @@ export const obtenirCommandeParId = async (req, res, next) => {
 
     if (estVirementEnAttente(commande) && commande.clientId === req.utilisateur.id) {
       resultat.virement = coordonneesVirement(commande);
+      resultat.stripePaye = Boolean(commande.paiement?.stripe);
     }
 
     res.status(200).json({
