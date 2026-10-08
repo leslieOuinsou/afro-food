@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { trackAdminOrderStatus } from '@/lib/analytics';
-import { getCommandes, updateStatut, type CommandeAdmin } from '@/services/adminCommandes';
+import { confirmerVirement, getCommandes, updateStatut, type CommandeAdmin } from '@/services/adminCommandes';
 
 const statutsCommande = [
   { value: 'en_attente', label: 'En attente', color: 'bg-yellow-100 text-yellow-800' },
@@ -89,6 +89,21 @@ export default function CommandeAdminPage() {
 
   const getStatutInfo = (statut: string) => {
     return statutsCommande.find(s => s.value === statut) || statutsCommande[0];
+  };
+
+const virementRecu = async (commande: CommandeAdmin) => {
+    if (!window.confirm(`Confirmer que le virement de ${commande.montantTotal.toFixed(2)} € (${commande.numeroCommande}) est bien arrivé sur votre compte ?`)) return;
+    const res = await confirmerVirement(commande.id);
+    if (!res.success) {
+      setError(res.error || 'Confirmation impossible.');
+      return;
+    }
+    setError(null);
+    setCommandes(prev => prev.map(c =>
+      c.id === commande.id
+        ? { ...c, statutPaiement: 'valide', statut: c.statut === 'en_attente' ? 'confirmee' : c.statut }
+        : c
+    ));
   };
 
 const changerStatut = async (commandeId: string, nouveauStatut: string) => {
@@ -307,6 +322,18 @@ const changerStatut = async (commandeId: string, nouveauStatut: string) => {
                                   </option>
                                 ))}
                             </select>
+                            {commande.modePaiement === 'virement' && (
+                              commande.statutPaiement === 'valide' ? (
+                                <span className="text-xs font-semibold text-green-700">Virement reçu ✓</span>
+                              ) : (
+                                <button
+                                  onClick={() => void virementRecu(commande)}
+                                  className="rounded bg-orange-600 px-2 py-1 text-xs font-semibold text-white hover:bg-orange-700"
+                                >
+                                  Virement reçu
+                                </button>
+                              )
+                            )}
                             <button
                               onClick={() => setCommandeSelectionnee(commande)}
                               className="text-xs text-blue-600 hover:text-blue-900"

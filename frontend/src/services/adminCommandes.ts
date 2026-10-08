@@ -31,6 +31,8 @@ export interface CommandeApi {
   montants: { total: number; sousTotal?: number; fraisLivraison?: number };
   statut: string;
   paiement?: { methode: string };
+  methodePaiement?: string;
+  statutPaiement?: string;
   dates?: { commande?: string; livraison?: string };
   livraison?: { heureEstimee?: string };
   createdAt?: string;
@@ -53,6 +55,7 @@ export interface CommandeAdmin {
   dateCommande: string;
   dateEstimeeLivraison: string;
   modePaiement: string;
+  statutPaiement: string;
   notes?: string;
 }
 
@@ -94,7 +97,8 @@ function mapApiToAdmin(c: CommandeApi): CommandeAdmin {
     montantTotal: c.montants?.total ?? 0,
     dateCommande,
     dateEstimeeLivraison: dateEstimee,
-    modePaiement: c.paiement?.methode || 'especes',
+    modePaiement: c.methodePaiement || c.paiement?.methode || 'especes',
+    statutPaiement: c.statutPaiement || 'en_attente',
     notes: c.preferences?.instructions
   };
 }
@@ -137,5 +141,10 @@ export async function updateStatut(
     `/api/commandes/${commandeId}/statut`,
     { statut }
   );
+  return { success: res.success === true, error: res.success ? undefined : res.message };
+}
+
+export async function confirmerVirement(commandeId: string): Promise<{ success: boolean; error?: string }> {
+  const res = await apiPatch(`/api/paiements/${commandeId}/virement-recu`, {});
   return { success: res.success === true, error: res.success ? undefined : res.message };
 }

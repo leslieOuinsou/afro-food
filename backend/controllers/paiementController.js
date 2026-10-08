@@ -67,7 +67,7 @@ export const creerSessionPaiement = async (req, res, next) => {
   }
 };
 
-async function marquerPaye(commandeId, reference) {
+async function marquerPaye(commandeId, reference, commentaire = 'Paiement par carte reçu', messageClient = 'Paiement reçu, merci !') {
   const commande = await prisma.commande.findUnique({ where: { id: commandeId } });
   if (!commande || commande.statutPaiement === 'valide') return; // idempotent
 
@@ -82,7 +82,7 @@ async function marquerPaye(commandeId, reference) {
         statut: 'confirmee',
         dates: { ...(commande.dates || {}), confirmation: new Date().toISOString() },
         historiqueStatuts: {
-          create: { statut: 'confirmee', commentaire: 'Paiement par carte reçu' },
+          create: { statut: 'confirmee', commentaire },
         },
       }),
     },
@@ -90,12 +90,30 @@ async function marquerPaye(commandeId, reference) {
 
   const email = maj.informationsClient?.email;
   if (confirmer && email) {
-    await envoyerEmailStatutCommande(email, maj, 'Paiement reçu, merci !').catch((e) =>
+    await envoyerEmailStatutCommande(email, maj, messageClient).catch((e) =>
       console.warn('Email paiement non envoyé:', e.message)
     );
   }
   if (confirmer) await offrirRecompense(maj);
 }
+
+/** PATCH /api/paiements/:commandeId/virement-recu — l'admin confirme avoir reçu le virement */
+export const confirmerVirementRecu = async (req, res, next) => {
+  try {
+    const { commandeId } = req.params;
+    if (!isValidId(commandeId)) throw erreur('ID de commande invalide', 400);
+    const commande = await prisma.commande.findUnique({ where: { id: commandeId } });
+    if (!commande) throw erreur('Commande non trouvée', 404);
+    if (commande.methodePaiement !== 'virement') throw erreur("Cette commande n'est pas payée par virement", 400);
+    if (commande.statutPaiement === 'valide') throw erreur('Le virement est déjà confirmé', 409);
+    if (['annulee', 'remboursee'].includes(commande.statut)) throw erreur('Commande annulée ou remboursée', 400);
+    const reference = String(req.body?.reference ?? '').trim().slice(0, 120) || `virement-${commande.numeroCommande}`;
+    await marquerPaye(commandeId, reference, `Virement reçu (confirmé par l'administration)`, 'Votre virement est bien reçu, merci !');
+    res.json({ success: true, message: 'Virement confirmé' });
+  } catch (e) {
+    next(e);
+  }
+};
 
 async function marquerEchec(commandeId) {
   await prisma.commande.updateMany({
