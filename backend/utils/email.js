@@ -7,6 +7,7 @@ import {
   passwordResetEmail,
   thankYouEmail,
   promoRewardEmail,
+  newOrderAdminEmail,
 } from './emailTemplates.js';
 
 let transporter = null;
@@ -139,7 +140,7 @@ export async function envoyerEmailNouvelleCommandeAdmin(email, commande) {
     to: email,
     subject: `Nouvelle commande ${numero} — ${total} €`,
     text: `Nouvelle commande ${numero}${client ? ` de ${client}` : ''} : ${total} €. À traiter : ${lien}`,
-    html: `<p><strong>Nouvelle commande ${numero}</strong>${client ? ` de ${client}` : ''}.</p><p>Total : <strong>${total}&nbsp;€</strong></p><p><a href="${lien}">Ouvrir la gestion des commandes</a></p>`,
+    html: newOrderAdminEmail(commande, lien),
   });
 }
 

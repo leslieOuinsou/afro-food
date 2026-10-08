@@ -1306,7 +1306,62 @@ export const promoRewardEmail = (client, promo, commande) => {
   return baseTemplate(content, 'Votre code promo offert - Afro-food');
 };
 
+/**
+ * E-mail admin « Nouvelle commande » — récapitulatif client, articles, adresse et total.
+ * @param {object} commande
+ * @param {string} lienAdmin — lien vers la gestion des commandes
+ */
+export const newOrderAdminEmail = (commande, lienAdmin) => {
+  const info = commande.informationsClient || {};
+  const client = escapeHtml([info.prenom, info.nom].filter(Boolean).join(' ') || 'Client');
+  const numero = escapeHtml(commande.numeroCommande || '');
+  const m = commande.montants || {};
+  const total = formatMoneyEUR(m.total ?? commande.total);
+  const dateCmd = new Date(commande.createdAt || Date.now()).toLocaleString('fr-FR', {
+    dateStyle: 'long',
+    timeStyle: 'short',
+  });
+  const lignes = (commande.articles || [])
+    .map(
+      (a) => `<tr>
+        <td style="padding:10px 0;border-bottom:1px solid #EFE6D4;font-size:14px;color:#2C1A0E;"><strong>${escapeHtml(a.informationsPlat?.nom || 'Produit')}</strong></td>
+        <td align="center" style="padding:10px 8px;border-bottom:1px solid #EFE6D4;font-size:14px;color:#4A3426;white-space:nowrap;">×&nbsp;${Number(a.quantite) || 0}</td>
+        <td align="right" style="padding:10px 0;border-bottom:1px solid #EFE6D4;font-size:14px;font-weight:700;color:#C2610F;white-space:nowrap;">${formatMoneyEUR(a.sousTotal)}</td>
+      </tr>`
+    )
+    .join('');
+  const addr = commande.adresseLivraison || {};
+  const adresse = [
+    escapeHtml(addr.adresse),
+    `${escapeHtml(addr.codePostal || '')} ${escapeHtml(addr.ville || '')}`.trim(),
+  ]
+    .filter(Boolean)
+    .join('<br />');
+  const contact = [info.telephone, info.email].filter(Boolean).map(escapeHtml).join(' · ');
+
+  const content = `
+    <p style="margin:0 0 8px;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#C2610F;font-weight:700;">Nouvelle commande</p>
+    <h2>Commande ${numero}</h2>
+    <p style="color:#8A7664;font-size:13px;margin:0 0 20px;">${escapeHtml(dateCmd)}</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F4EBDD;border-radius:14px;margin:0 0 22px;">
+      <tr><td style="padding:16px 18px;font-size:14px;line-height:1.6;color:#4A3426;">
+        <strong>${client}</strong>${contact ? `<br />${contact}` : ''}${adresse ? `<br /><span style="color:#8A7664;">${adresse}</span>` : ''}
+      </td></tr>
+    </table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${lignes}</table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0 26px;">
+      <tr>
+        <td style="font-size:16px;font-weight:700;color:#2C1A0E;">Total</td>
+        <td align="right" style="font-size:22px;font-weight:700;color:#C2610F;">${total}</td>
+      </tr>
+    </table>
+    <p style="text-align:center;margin:0 0 8px;"><a href="${escapeHtml(lienAdmin)}" class="button" style="display:inline-block;background:#C2610F;color:#FFFFFF;padding:14px 32px;text-decoration:none;border-radius:999px;font-weight:700;font-size:15px;">Traiter la commande</a></p>
+  `;
+  return baseTemplate(content, `Nouvelle commande ${commande.numeroCommande || ''} - Afro-food`);
+};
+
 export default {
+  newOrderAdminEmail,
   thankYouEmail,
   promoRewardEmail,
   welcomeEmail,
