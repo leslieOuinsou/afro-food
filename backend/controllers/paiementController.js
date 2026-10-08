@@ -2,6 +2,7 @@ import Stripe from 'stripe';
 import prisma from '../lib/prisma.js';
 import { isValidId } from '../utils/serialize.js';
 import { envoyerEmailStatutCommande } from '../utils/email.js';
+import { offrirRecompense } from '../utils/recompenses.js';
 
 let stripe = null;
 function getStripe() {
@@ -89,10 +90,11 @@ async function marquerPaye(commandeId, reference) {
 
   const email = maj.informationsClient?.email;
   if (confirmer && email) {
-    envoyerEmailStatutCommande(email, maj, 'Paiement reçu, merci !').catch((e) =>
+    await envoyerEmailStatutCommande(email, maj, 'Paiement reçu, merci !').catch((e) =>
       console.warn('Email paiement non envoyé:', e.message)
     );
   }
+  if (confirmer) await offrirRecompense(maj);
 }
 
 async function marquerEchec(commandeId) {

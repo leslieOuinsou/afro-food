@@ -1,5 +1,7 @@
 import crypto from 'crypto';
 import prisma from '../lib/prisma.js';
+import { envoyerEmailCodePromoMerci } from './email.js';
+import { pushVersUtilisateur } from './push.js';
 
 /** Montant (TTC) au-dessus duquel le client reçoit un code promo en remerciement. */
 export const SEUIL_RECOMPENSE = 30;
@@ -51,4 +53,26 @@ export async function genererCodeRecompense(commande) {
     }
   }
   return null;
+}
+
+/**
+ * Crée le code récompense (commande > 30 €) puis prévient le client par e-mail et notification push.
+ * À attendre (await) : sur Vercel, le traitement s'arrête dès que la réponse HTTP est envoyée.
+ */
+export async function offrirRecompense(commande) {
+  try {
+    const promo = await genererCodeRecompense(commande);
+    if (!promo) return null;
+    const email = commande.informationsClient?.email;
+    if (email) await envoyerEmailCodePromoMerci(email, commande, promo);
+    await pushVersUtilisateur(commande.clientId, {
+      titre: 'Un cadeau pour vous 🎁',
+      corps: `Code ${promo.code} : −10 % et livraison offerte sur vos prochaines commandes.`,
+      url: '/panier',
+    });
+    return promo;
+  } catch (err) {
+    console.warn('Code récompense non offert:', err.message);
+    return null;
+  }
 }

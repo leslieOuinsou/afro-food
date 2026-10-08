@@ -9,11 +9,10 @@ import {
   envoyerEmailCommandePrete,
   envoyerEmailNouvelleCommandeAdmin,
   envoyerEmailMerciLivraison,
-  envoyerEmailCodePromoMerci,
   envoyerEmailAvisNegatif,
 } from '../utils/email.js';
 import { pushVersRole, pushVersUtilisateur } from '../utils/push.js';
-import { genererCodeRecompense } from '../utils/recompenses.js';
+import { offrirRecompense } from '../utils/recompenses.js';
 
 const TRANSITIONS_VALIDES = {
   en_attente: ['confirmee', 'annulee'],
@@ -260,19 +259,7 @@ async function changerStatutInterne(commande, nouveauStatut, commentaire, modifi
   }
 
   // Commande de plus de 30 € confirmée : code promo offert (−10 % + livraison offerte) + e-mail
-  if (nouveauStatut === 'confirmee') {
-    genererCodeRecompense(miseAJour)
-      .then(async (promo) => {
-        if (!promo) return;
-        if (emailClient) await envoyerEmailCodePromoMerci(emailClient, miseAJour, promo);
-        await pushVersUtilisateur(miseAJour.clientId, {
-          titre: 'Un cadeau pour vous 🎁',
-          corps: `Code ${promo.code} : −10 % et livraison offerte sur vos prochaines commandes.`,
-          url: '/panier',
-        });
-      })
-      .catch((err) => console.warn('Code récompense non généré:', err.message));
-  }
+  if (nouveauStatut === 'confirmee') await offrirRecompense(miseAJour);
 
   // Notifications push (appareils où l'utilisateur les a activées)
   const MESSAGES_PUSH = {
