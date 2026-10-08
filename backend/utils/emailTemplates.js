@@ -1247,7 +1247,7 @@ export const abandonedCartEmail = (options = {}) => {
           <tr>
             <td align="center" style="padding:18px 16px 28px 16px;border-top:1px solid #e8dcc4;background-color:#FAF3E0;">
               <p style="margin:0 0 10px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#2C1A0E;opacity:0.75;">
-                <a href="${FRONTEND}/compte/notifications${emailQuery}" style="color:#A0522D;text-decoration:underline;">Ne plus recevoir ces rappels de panier</a>
+                <a href="${escapeHtml(options.unsubscribeUrl || `${FRONTEND}/compte/notifications${emailQuery}`)}" style="color:#A0522D;text-decoration:underline;">Ne plus recevoir ces rappels de panier</a>
               </p>
               <p style="margin:0 0 8px 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#2C1A0E;opacity:0.65;">
                 <a href="${FRONTEND}/contact" style="color:#C2610F;text-decoration:underline;">Nous écrire</a>

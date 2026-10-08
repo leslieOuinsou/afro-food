@@ -18,12 +18,8 @@
   ],
   "crons": [
     {
-      "path": "/api/caisse/alerte",
+      "path": "/api/cron/quotidien",
       "schedule": "0 7 * * *"
-    },
-    {
-      "path": "/api/paie/cron",
-      "schedule": "15 7 * * *"
     }
   ]
 }

@@ -3,7 +3,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../lib/prisma.js';
 import { serialize, serializeUser } from '../utils/serialize.js';
-import { envoyerEmailResetMotDePasse } from '../utils/email.js';
+import { envoyerEmailBienvenue, envoyerEmailResetMotDePasse } from '../utils/email.js';
+import { assurerCodeBienvenue } from '../utils/recompenses.js';
 
 const saltRounds = () => parseInt(process.env.BCRYPT_SALT_ROUNDS, 10) || 12;
 
@@ -123,6 +124,14 @@ export const inscription = async (req, res, next) => {
       },
       include: { adresses: true },
     });
+
+    // Bienvenue : l'e-mail n'empêche jamais l'inscription (attendu : sur Vercel, le traitement s'arrête avec la réponse)
+    try {
+      const codeBienvenue = await assurerCodeBienvenue();
+      await envoyerEmailBienvenue(utilisateur.email, utilisateur, codeBienvenue);
+    } catch (err) {
+      console.warn('E-mail de bienvenue non envoyé:', err.message);
+    }
 
     envoyerTokenReponse(utilisateur, 201, res, 'Inscription réussie');
   } catch (error) {

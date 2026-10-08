@@ -387,12 +387,9 @@ export const rapprochement = async (req, res, next) => {
   }
 };
 
-/** GET /api/caisse/alerte — appelé chaque jour par le cron Vercel (CRON_SECRET) */
-export const alerteSoldes = async (req, res, next) => {
-  try {
-    const secret = process.env.CRON_SECRET;
-    if (!secret || req.headers.authorization !== `Bearer ${secret}`) throw erreur('Non autorisé', 401);
-    const enAlerte = (await soldesParLivreur()).filter((l) => l.alerte);
+/** Alerte quotidienne : prévient les admins des espèces non reversées depuis trop longtemps. Retourne le nombre de livreurs en alerte. */
+export async function executerAlerteCaisse() {
+  const enAlerte = (await soldesParLivreur()).filter((l) => l.alerte);
     if (enAlerte.length) {
       const resume = enAlerte
         .map((l) => `${l.livreur.prenom} ${l.livreur.nom} : ${l.solde} € (depuis ${l.ageHeures} h)`)
@@ -409,7 +406,16 @@ export const alerteSoldes = async (req, res, next) => {
         )
       );
     }
-    res.json({ success: true, data: { livreursEnAlerte: enAlerte.length } });
+  return enAlerte.length;
+}
+
+/** GET /api/caisse/alerte — appelé chaque jour par le cron Vercel (CRON_SECRET) */
+export const alerteSoldes = async (req, res, next) => {
+  try {
+    const secret = process.env.CRON_SECRET;
+    if (!secret || req.headers.authorization !== `Bearer ${secret}`) throw erreur('Non autorisé', 401);
+    const nb = await executerAlerteCaisse();
+    res.json({ success: true, data: { livreursEnAlerte: nb } });
   } catch (e) {
     next(e);
   }

@@ -22,6 +22,7 @@ import {
 } from '../utils/caisse.js';
 import { pushVersRole, pushVersUtilisateur } from '../utils/push.js';
 import { offrirRecompense } from '../utils/recompenses.js';
+import { viderPanier } from '../utils/panier.js';
 
 const TRANSITIONS_VALIDES = {
   en_attente: ['confirmee', 'annulee'],
@@ -511,6 +512,7 @@ export const creerCommande = async (req, res, next) => {
       return created;
     });
 
+    await viderPanier(req.utilisateur.id).catch(() => undefined);
     try {
       await envoyerEmailConfirmationCommande(client.email, commande);
     } catch (emailErr) {

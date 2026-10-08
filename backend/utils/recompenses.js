@@ -76,3 +76,24 @@ export async function offrirRecompense(commande) {
     return null;
   }
 }
+
+/**
+ * Garantit l'existence du code de bienvenue (−10 % sur la première commande), sans jamais écraser ce que l'admin a modifié.
+ */
+export async function assurerCodeBienvenue() {
+  const code = (process.env.WELCOME_PROMO_CODE || 'BIENVENUE10').toUpperCase();
+  await prisma.promoCode.upsert({
+    where: { code },
+    update: {},
+    create: {
+      code,
+      description: 'Bienvenue : −10 % sur la première commande',
+      typeRemise: 'pourcentage',
+      valeur: 10,
+      usageParClient: 1,
+      premiereCommandeSeulement: true,
+      actif: true,
+    },
+  });
+  return code;
+}

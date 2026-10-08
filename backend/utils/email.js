@@ -15,6 +15,7 @@ import {
   payslipEmail,
   negativeReviewEmail,
   cashAlertEmail,
+  welcomeEmail,
 } from './emailTemplates.js';
 
 let transporter = null;
@@ -234,5 +235,16 @@ export async function envoyerEmailAlerteEspeces(email, lignes, delaiHeures) {
     subject: 'Espèces non reversées par des livreurs',
     text: `Soldes en retard : ${resume}`,
     html: cashAlertEmail(lignes, delaiHeures),
+  });
+}
+
+/** Bienvenue après l'inscription, avec le code de la première commande. */
+export async function envoyerEmailBienvenue(email, utilisateur, codePromo) {
+  const front = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+  return envoyerEmail({
+    to: email,
+    subject: 'Bienvenue chez Afro-food — votre code de bienvenue',
+    text: `Bienvenue ${utilisateur.prenom} ! Votre code ${codePromo} offre 10 % sur votre première commande : ${front}/catalogue`,
+    html: welcomeEmail(utilisateur.nom, utilisateur.prenom, codePromo),
   });
 }
