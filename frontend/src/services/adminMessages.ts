@@ -63,8 +63,17 @@ export async function marquerCommeLu(id: string): Promise<boolean> {
   return res.success === true;
 }
 
-export async function repondreMessage(id: string, corps: string): Promise<{ success: boolean; message?: MessageContact }> {
-  const res = await apiPost<{ message: MessageContact }>(`/api/messages/${id}/reply`, { corps });
-  const payload = res.data as { message?: MessageContact } | undefined;
-  return { success: res.success === true, message: payload?.message };
+export async function repondreMessage(
+  id: string,
+  corps: string
+): Promise<{ success: boolean; message?: MessageContact; emailEnvoye?: boolean; raisonEmail?: string | null; erreur?: string }> {
+  const res = await apiPost<{ message: MessageContact; emailEnvoye?: boolean; raisonEmail?: string | null }>(`/api/messages/${id}/reply`, { corps });
+  const payload = res.data as { message?: MessageContact; emailEnvoye?: boolean; raisonEmail?: string | null } | undefined;
+  return {
+    success: res.success === true,
+    message: payload?.message,
+    emailEnvoye: payload?.emailEnvoye,
+    raisonEmail: payload?.raisonEmail,
+    erreur: res.success ? undefined : res.message,
+  };
 }

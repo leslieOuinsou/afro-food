@@ -1,5 +1,6 @@
 import prisma from '../lib/prisma.js';
 import { isValidId, serialize } from '../utils/serialize.js';
+import { envoyerEmailReponseContact } from '../utils/email.js';
 
 function serializeMessage(msg) {
   if (!msg) return null;
@@ -175,10 +176,22 @@ export const repondreMessage = async (req, res, next) => {
       include: { reponses: { orderBy: { date: 'asc' } } },
     });
 
+    // La réponse part par e-mail au client (sinon il ne la voit jamais). Un échec d'envoi n'annule pas l'enregistrement.
+    let emailEnvoye = false;
+    let raisonEmail = null;
+    try {
+      const r = await envoyerEmailReponseContact(existant, corps.trim(), auteur);
+      emailEnvoye = r.sent === true;
+      if (!emailEnvoye) raisonEmail = 'Le service d’e-mail n’est pas configuré sur le serveur.';
+    } catch (err) {
+      console.warn('E-mail de réponse non envoyé:', err.message);
+      raisonEmail = 'L’e-mail n’a pas pu être envoyé.';
+    }
+
     res.json({
       success: true,
-      message: 'Réponse envoyée',
-      data: { message: serializeMessage(msg) },
+      message: emailEnvoye ? 'Réponse envoyée par e-mail' : 'Réponse enregistrée, mais l’e-mail n’a pas été envoyé',
+      data: { message: serializeMessage(msg), emailEnvoye, raisonEmail },
     });
   } catch (err) {
     next(err);

@@ -13,6 +13,7 @@ import {
   stripeVirementEmail,
   orderReadyCourierEmail,
   payslipEmail,
+  contactReplyEmail,
   negativeReviewEmail,
   cashAlertEmail,
   welcomeEmail,
@@ -47,7 +48,7 @@ function getTransporter() {
 /**
  * Envoie un e-mail. En développement sans SMTP, log le contenu.
  */
-export async function envoyerEmail({ to, subject, html, text }) {
+export async function envoyerEmail({ to, subject, html, text, replyTo }) {
   const from = process.env.EMAIL_FROM || 'Afro-food <noreply@afro-food.com>';
   const transport = getTransporter();
 
@@ -67,6 +68,7 @@ export async function envoyerEmail({ to, subject, html, text }) {
   await transport.sendMail({
     from,
     to,
+    ...(replyTo ? { replyTo } : {}),
     subject,
     text,
     html: avecLogo ? html.replace(FRONT_LOGO_RE, `cid:${LOGO_CID}`) : html,
@@ -246,5 +248,17 @@ export async function envoyerEmailBienvenue(email, utilisateur, codePromo) {
     subject: 'Bienvenue chez Afro-food — votre code de bienvenue',
     text: `Bienvenue ${utilisateur.prenom} ! Votre code ${codePromo} offre 5 % sur votre première commande : ${front}/catalogue`,
     html: welcomeEmail(utilisateur.nom, utilisateur.prenom, codePromo),
+  });
+}
+
+/** Réponse de l'équipe à un message du formulaire de contact (le client peut répondre directement). */
+export async function envoyerEmailReponseContact(message, reponse, auteur) {
+  const support = process.env.SUPPORT_EMAIL || undefined;
+  return envoyerEmail({
+    to: message.email,
+    replyTo: support,
+    subject: `Re : ${message.sujet} — Afro-food`,
+    text: `Bonjour ${message.nom},\n\n${reponse}\n\n${auteur || "L'équipe Afro-food"}\n\n— Votre message : ${message.message}`,
+    html: contactReplyEmail({ nom: message.nom, sujet: message.sujet, messageOriginal: message.message, reponse, auteur }),
   });
 }

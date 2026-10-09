@@ -85,6 +85,8 @@ export default function AdminMessageriePage() {
     await loadMessages();
   }, [loadMessages]);
 
+  const [infoReponse, setInfoReponse] = useState<{ type: 'ok' | 'erreur'; texte: string } | null>(null);
+
   const handleReply = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedId || !replyText.trim()) return;
@@ -94,7 +96,14 @@ export default function AdminMessageriePage() {
     if (res.success && res.message) {
       setSelectedMessage(res.message);
       setReplyText('');
+      setInfoReponse(
+        res.emailEnvoye
+          ? { type: 'ok', texte: 'Réponse envoyée par e-mail au client.' }
+          : { type: 'erreur', texte: `Réponse enregistrée, mais l’e-mail n’est pas parti. ${res.raisonEmail ?? ''}` }
+      );
       await loadMessages();
+    } else {
+      setInfoReponse({ type: 'erreur', texte: res.erreur || 'Envoi impossible.' });
     }
   };
 
@@ -242,7 +251,7 @@ export default function AdminMessageriePage() {
                 <form onSubmit={handleReply} className="mt-6 pt-6 border-t border-gray-200">
                   <h3 className="text-sm font-semibold text-gray-900 mb-2">Répondre</h3>
                   <p className="text-xs text-gray-600 mb-2">
-                    Votre réponse sera enregistrée ici. Pour envoyer un email au client, utilisez votre messagerie avec l&apos;adresse : {selectedMessage.email}
+                    Votre réponse est enregistrée ici et envoyée par e-mail à {selectedMessage.email}. Le client peut répondre directement à ce message.
                   </p>
                   <textarea
                     value={replyText}
@@ -252,6 +261,9 @@ export default function AdminMessageriePage() {
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-900 bg-white"
                     required
                   />
+                  {infoReponse && (
+                    <p className={`mt-2 rounded-lg p-2 text-sm ${infoReponse.type === 'ok' ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-800'}`}>{infoReponse.texte}</p>
+                  )}
                   <button
                     type="submit"
                     disabled={sendingReply || !replyText.trim()}

@@ -1539,7 +1539,30 @@ export const cashAlertEmail = (lignes, delaiHeures) => {
   return baseTemplate(content, 'Espèces non reversées - Afro-food');
 };
 
+/** E-mail client : réponse de l'équipe à un message envoyé depuis le formulaire de contact. */
+export const contactReplyEmail = ({ nom, sujet, messageOriginal, reponse, auteur }) => {
+  const paragraphes = escapeHtml(reponse)
+    .split(/\n{2,}/)
+    .map((p) => `<p style="margin:0 0 14px;">${p.replace(/\n/g, '<br />')}</p>`)
+    .join('');
+  const content = `
+    <p style="margin:0 0 8px;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#C2610F;font-weight:700;">Réponse à votre message</p>
+    <h2>${nom ? `Bonjour ${escapeHtml(nom)}` : 'Bonjour'},</h2>
+    ${paragraphes}
+    <p style="margin:18px 0 0;color:#2C1A0E;"><strong>${escapeHtml(auteur || "L'équipe Afro-food")}</strong><br /><span style="color:#8A7664;font-size:13px;">Afro-food</span></p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 6px;">
+      <tr><td style="background-color:#F4EBDD;border-left:4px solid #E9B26B;border-radius:10px;padding:14px 18px;">
+        <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#8A7664;margin-bottom:6px;">Votre message · ${escapeHtml(sujet || '')}</div>
+        <div style="font-size:13px;color:#4A3426;font-style:italic;">${escapeHtml(messageOriginal || '').replace(/\n/g, '<br />')}</div>
+      </td></tr>
+    </table>
+    <p style="font-size:13px;color:#8A7664;">Vous pouvez répondre directement à cet e-mail.</p>
+  `;
+  return baseTemplate(content, 'Réponse à votre message - Afro-food');
+};
+
 export default {
+  contactReplyEmail,
   negativeReviewEmail,
   cashAlertEmail,
   payslipEmail,
