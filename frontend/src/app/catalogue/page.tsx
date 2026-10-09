@@ -1,9 +1,11 @@
 'use client';
 
+import Link from 'next/link';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Header from '@/components/Header';
+import BoutonFavori from '@/components/BoutonFavori';
 import Footer from '@/components/Footer';
 import AvisClients from '@/components/AvisClients';
 import InstallButton from '@/components/InstallButton';
@@ -318,8 +320,13 @@ function ProductCard({
   return (
     <article className="group overflow-hidden rounded-[28px] border border-[var(--wood)]/10 bg-white/55 shadow-sm backdrop-blur transition hover:bg-white/65">
       <div className="relative">
-        <img src={item.image} alt={item.nom} className="h-44 w-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/0 to-transparent opacity-85" />
+        <Link href={`/produit/${item.id}`} aria-label={`Voir ${item.nom}`}>
+          <img src={item.image} alt={item.nom} className="h-44 w-full object-cover" />
+        </Link>
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/40 via-black/0 to-transparent opacity-85" />
+        <div className="absolute right-3 top-3">
+          <BoutonFavori id={item.id} nom={item.nom} image={item.image} />
+        </div>
         <div className="absolute left-4 top-4 flex flex-wrap gap-2">
           <span className="inline-flex items-center gap-2 rounded-full bg-black/35 px-3 py-1 text-xs font-semibold text-white">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--ochre)]" />
@@ -337,7 +344,11 @@ function ProductCard({
         </div>
       </div>
       <div className="p-5">
-        <h3 className="font-title text-2xl leading-tight">{item.nom}</h3>
+        <h3 className="font-title text-2xl leading-tight">
+          <Link href={`/produit/${item.id}`} className="hover:underline">
+            {item.nom}
+          </Link>
+        </h3>
         <p className="mt-1 text-sm text-[var(--wood)]/70">{item.origine}</p>
         <div className="mt-6 flex items-center justify-between gap-4">
           <div className="font-title text-2xl text-[var(--wood)]">

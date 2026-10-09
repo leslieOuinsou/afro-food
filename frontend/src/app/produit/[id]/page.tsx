@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { trackViewItem } from '@/lib/analytics';
 import Link from 'next/link';
 import PartagerPlat from '@/components/PartagerPlat';
+import BoutonFavori from '@/components/BoutonFavori';
 import { SITE_URL } from '@/lib/seo';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -408,6 +409,9 @@ export default function ProduitPage({ params }: { params: { id: string } }) {
                 <h1 className="font-title mt-5 text-5xl leading-[0.95] tracking-tight">
                   {product.nom}
                 </h1>
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <BoutonFavori id={product.id} nom={product.nom} image={product.images[0] || ''} variante="texte" />
+                </div>
                 <PartagerPlat titre={product.nom} url={`${SITE_URL}/produit/${product.id}`} />
 
                 {product.indisponible ? (
