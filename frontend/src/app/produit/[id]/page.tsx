@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { trackViewItem } from '@/lib/analytics';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import PartagerPlat from '@/components/PartagerPlat';
 import BoutonFavori from '@/components/BoutonFavori';
 import { SITE_URL } from '@/lib/seo';
@@ -124,7 +125,10 @@ function Stars({ value }: { value: number }) {
   );
 }
 
-export default function ProduitPage({ params }: { params: { id: string } }) {
+export default function ProduitPage() {
+  // Next.js 16 : les paramètres de route d'un composant client se lisent avec useParams (la prop `params` est une promesse)
+  const routeParams = useParams<{ id: string }>();
+  const params = { id: String(routeParams?.id ?? '') };
   const { addItem } = useCart();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
