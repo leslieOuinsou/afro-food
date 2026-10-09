@@ -38,12 +38,6 @@ type FavItem = {
   image: string;
 };
 
-const MOCK_FAVS: FavItem[] = [
-  { id: '1', nom: 'Jollof rice au poulet', image: '/images/plats/1769702264382_Jollof_rice_au_poulet.jpg' },
-  { id: '2', nom: 'Jus de Bissap', image: '/images/plats/1769702468458_Jus_de_bissap.jpg' },
-  { id: '3', nom: 'Dibi agneau', image: '/images/plats/Dibi_agneau.png' },
-];
-
 function statusLabel(s: string) {
   switch (s) {
     case 'en_attente':
@@ -142,7 +136,7 @@ function DashboardContent() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState('');
-  const [favoris, setFavoris] = useState<FavItem[]>(MOCK_FAVS);
+  const [favoris, setFavoris] = useState<FavItem[]>([]);
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviewsError, setReviewsError] = useState('');
@@ -162,7 +156,8 @@ function DashboardContent() {
       const raw = localStorage.getItem(FAVORITES_STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as FavItem[];
-        if (Array.isArray(parsed) && parsed.length > 0) setFavoris(parsed);
+        // Nettoyage : les anciens favoris de démonstration (identifiants « 1 », « 2 », « 3 ») ne mènent à aucun vrai plat
+        if (Array.isArray(parsed)) setFavoris(parsed.filter((f) => f && typeof f.id === 'string' && !/^\d{1,3}$/.test(f.id)));
       }
     } catch {}
   }, []);

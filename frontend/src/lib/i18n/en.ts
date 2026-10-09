@@ -1719,4 +1719,6 @@ export const EN: Record<string, string> = {
   "Ajouter le plat + ce menu complet": "Add the dish + this full menu",
   "Menu ajouté au panier ✓": "Menu added to cart ✓",
   "Astuces de service": "Serving tips",
+  "Ce plat n'existe plus ou n'est plus proposé. S'il figurait dans vos favoris, vous pouvez le retirer et en choisir un autre.": "This dish no longer exists or is no longer offered. If it was in your favourites, you can remove it and choose another.",
+  "Mes favoris": "My favourites",
 };

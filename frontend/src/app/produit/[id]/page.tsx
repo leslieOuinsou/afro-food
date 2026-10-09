@@ -128,6 +128,7 @@ export default function ProduitPage({ params }: { params: { id: string } }) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [product, setProduct] = useState<ProductView>(fallback);
+  const [introuvable, setIntrouvable] = useState(false);
   const [selectedImage, setSelectedImage] = useState(0);
   const [qty, setQty] = useState(1);
 
@@ -155,6 +156,7 @@ export default function ProduitPage({ params }: { params: { id: string } }) {
     let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
+    setIntrouvable(false);
     setSelectedImage(0);
     fetchPlatById(params.id)
       .then((res) => {
@@ -163,10 +165,12 @@ export default function ProduitPage({ params }: { params: { id: string } }) {
           const vue = toView(res.data as Plat);
           setProduct(vue);
           trackViewItem({ item_id: vue.id, item_name: vue.nom, price: vue.prixUnitaire, quantity: 1 });
+        } else {
+          // Plat supprimé, identifiant inconnu (ancien favori de démonstration…) : on l'indique au lieu d'afficher un autre plat
+          setIntrouvable(true);
         }
-        else setProduct(fallback);
       })
-      .catch(() => setProduct(fallback))
+      .catch(() => setIntrouvable(true))
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
@@ -285,6 +289,31 @@ export default function ProduitPage({ params }: { params: { id: string } }) {
 
   const displayedRating = reviewStats?.noteMoyenne ?? product.note;
   const displayedReviewCount = reviewStats?.nombreTotal ?? reviews.length;
+
+  if (introuvable && !loading) {
+    return (
+      <div className="flex min-h-screen flex-col bg-[var(--ivory)] text-[var(--wood)]">
+        <Header />
+        <main className="flex flex-grow items-center justify-center px-6 py-20 text-center">
+          <div className="max-w-md">
+            <h1 className="font-title text-4xl">Plat introuvable</h1>
+            <p className="mt-3 text-sm text-[var(--wood)]/70">
+              Ce plat n’existe plus ou n’est plus proposé. S’il figurait dans vos favoris, vous pouvez le retirer et en choisir un autre.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <Link href="/catalogue" className="rounded-full bg-[var(--ochre)] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#a6500c]">
+                Voir le catalogue
+              </Link>
+              <Link href="/dashboard?tab=favoris" className="rounded-full border border-[var(--wood)]/20 px-6 py-2.5 text-sm font-semibold hover:bg-white">
+                Mes favoris
+              </Link>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--ivory)] text-[var(--wood)]">
