@@ -1,0 +1,121 @@
+// Pipeline Jenkins adapté à Fly.io (pas de Docker daemon → agent built-in + Node dans l'image).
+// Voir docs/FLY-JENKINS.md. Le Jenkinsfile « classique » (Docker agents) reste pour local/Oracle.
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+    ansiColor('xterm')
+    timeout(time: 45, unit: 'MINUTES')
+    disableConcurrentBuilds(abortPrevious: true)
+    buildDiscarder(logRotator(numToKeepStr: '20'))
+  }
+
+  parameters {
+    booleanParam(name: 'DEPLOYER', defaultValue: false, description: 'Déployer en production (branche main uniquement)')
+    booleanParam(name: 'MIGRER', defaultValue: true, description: 'Appliquer les migrations avant le backend')
+  }
+
+  environment {
+    CI = 'true'
+    NEXT_TELEMETRY_DISABLED = '1'
+    BACKEND_URL = 'https://backend-swart-phi-99.vercel.app'
+    FRONTEND_URL = 'https://afrofood.vercel.app'
+  }
+
+  stages {
+    stage('Vérifications') {
+      parallel {
+        stage('Backend') {
+          environment {
+            DATABASE_URL = 'postgresql://ci:ci@localhost:5432/ci'
+            JWT_SECRET = 'secret-de-test-ci'
+          }
+          steps {
+            dir('backend') {
+              sh 'npm ci'
+              sh 'npx prisma validate'
+              sh 'npm test'
+              sh 'npm audit --omit=dev --audit-level=high || true'
+            }
+          }
+        }
+
+        stage('Frontend') {
+          environment {
+            NEXT_PUBLIC_API_URL = 'https://api.example.test'
+          }
+          steps {
+            dir('frontend') {
+              sh 'npm ci'
+              sh 'npx eslint src'
+              sh 'npx tsc --noEmit'
+              sh 'npx next build'
+              sh 'npm audit --omit=dev --audit-level=high || true'
+            }
+          }
+        }
+
+        stage('Migrations') {
+          steps {
+            sh 'git fetch --no-tags --depth=50 origin +refs/heads/*:refs/remotes/origin/* || true'
+            sh 'bash scripts/verifier-migrations.sh'
+          }
+        }
+      }
+    }
+
+    stage('Déploiement') {
+      when {
+        allOf {
+          branch 'main'
+          expression { return params.DEPLOYER }
+        }
+      }
+      environment {
+        VERCEL_ORG_ID = credentials('vercel-org-id')
+        VERCEL_TOKEN = credentials('vercel-token')
+      }
+      stages {
+        stage('Confirmation') {
+          steps {
+            timeout(time: 10, unit: 'MINUTES') {
+              input message: 'Déployer Afro-food en production ?', ok: 'Déployer'
+            }
+          }
+        }
+        stage('Backend') {
+          environment {
+            VERCEL_PROJECT_ID = credentials('vercel-backend-project-id')
+            DATABASE_URL = credentials('database-url-direct')
+          }
+          steps {
+            script {
+              if (params.MIGRER) {
+                dir('backend') {
+                  sh 'npm ci && npx prisma migrate deploy'
+                }
+              }
+            }
+            sh 'npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"'
+            sh 'bash scripts/verifier-sante.sh "$BACKEND_URL/api/health"'
+          }
+        }
+        stage('Frontend') {
+          environment {
+            VERCEL_PROJECT_ID = credentials('vercel-frontend-project-id')
+          }
+          steps {
+            sh 'npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"'
+            sh 'bash scripts/verifier-sante.sh "$FRONTEND_URL/catalogue"'
+          }
+        }
+      }
+    }
+  }
+
+  post {
+    success { echo 'Pipeline réussi (Fly.io).' }
+    failure { echo 'Pipeline en échec : consultez les journaux.' }
+  }
+}
