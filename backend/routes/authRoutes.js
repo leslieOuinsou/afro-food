@@ -10,7 +10,9 @@ import {
   changerMotDePasse,
   ajouterAdresse,
   supprimerAdresse,
-  verifierAuthentification
+  verifierAuthentification,
+  verifierEmail,
+  connexionGoogle,
 } from '../controllers/authController.js';
 import {
   protegerRoute,
@@ -53,6 +55,8 @@ router.post('/connexion',
 );
 router.post('/mot-de-passe-oublie', limiteurTaux(5, 15 * 60 * 1000), motDePasseOublie);
 router.post('/reinitialiser-mot-de-passe', limiteurTaux(5, 15 * 60 * 1000), reinitialiserMotDePasse);
+router.get('/verifier-email', limiteurTaux(20, 15 * 60 * 1000), verifierEmail);
+router.post('/google', limiteurTaux(20, 15 * 60 * 1000), connexionGoogle);
 
 // Routes protégées
 router.use(protegerRoute); // Toutes les routes suivantes nécessitent l'authentification

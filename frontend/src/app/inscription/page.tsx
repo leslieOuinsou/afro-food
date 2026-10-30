@@ -3,7 +3,7 @@
 import { useCallback, useState } from 'react';
 import PasswordField from '@/components/PasswordField';
 import { trackSignUp } from '@/lib/analytics';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { register, logout } from '@/services/auth';
 import AuthSplitPanel from '@/components/AuthSplitPanel';
@@ -113,6 +113,8 @@ const STEPS = [
 
 export default function InscriptionPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const codeParrainUrl = (searchParams.get('parrain') || '').trim().toUpperCase();
   const [step, setStep] = useState(1);
   const [chargement, setChargement] = useState(false);
   const [erreurGlobal, setErreurGlobal] = useState('');
@@ -212,6 +214,7 @@ export default function InscriptionPage() {
         motDePasse,
         confirmationMotDePasse,
         accepteCGU,
+        ...(codeParrainUrl ? { codeParrain: codeParrainUrl } : {}),
       });
       if (res.success) {
         trackSignUp();

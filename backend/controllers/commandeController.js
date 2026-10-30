@@ -27,6 +27,9 @@ import { crediterPoints, retirerPoints } from '../utils/fidelite.js';
 import { evaluerLivraison, lireZones } from '../utils/zones.js';
 import { attribuerCommande, geocoder } from '../utils/attribution.js';
 import { creneauxDisponibles } from './livraisonController.js';
+import { canalCommande, canalCuisine, publier } from '../utils/events.js';
+import { verifierAlerteStock } from '../utils/stock.js';
+import { recompenserParrainSiEligible } from '../utils/parrainage.js';
 
 const TRANSITIONS_VALIDES = {
   en_attente: ['confirmee', 'annulee'],
@@ -170,6 +173,7 @@ async function calculerPanier(articles, typeLivraison, adresseLivraison = null) 
         prix: prixUnitaire,
         image: images.principale || null,
         categorie: plat.categorie,
+        allergenes: plat.allergenes || [],
       },
       quantite,
       prixUnitaire,
@@ -293,12 +297,20 @@ async function changerStatutInterne(commande, nouveauStatut, commentaire, modifi
   // Fidélité : points à la livraison (une seule fois), retirés en cas de remboursement
   if (nouveauStatut === 'livree') {
     await crediterPoints(prisma, miseAJour).catch((err) => console.warn('Points fidélité non crédités:', err.message));
+    await recompenserParrainSiEligible(miseAJour).catch((err) =>
+      console.warn('Récompense parrain non appliquée:', err.message)
+    );
   } else if (nouveauStatut === 'remboursee') {
     await retirerPoints(prisma, miseAJour).catch((err) => console.warn('Points fidélité non retirés:', err.message));
   }
 
   // Commande de plus de 30 € confirmée : code promo offert (−10 % + livraison offerte) + e-mail
   if (nouveauStatut === 'confirmee') await offrirRecompense(miseAJour);
+
+  publier(canalCommande(miseAJour.id), { type: 'statut', statut: nouveauStatut });
+  if (['confirmee', 'en_preparation', 'prete'].includes(nouveauStatut)) {
+    publier(canalCuisine(), { type: 'statut', commandeId: miseAJour.id, statut: nouveauStatut });
+  }
 
   // Notifications push (appareils où l'utilisateur les a activées)
   const MESSAGES_PUSH = {
@@ -433,7 +445,34 @@ export const creerCommande = async (req, res, next) => {
       return next(error);
     }
 
+    // E-mail vérifié obligatoire avant commande (activé via REQUIRE_EMAIL_VERIFIED=true)
+    if (process.env.REQUIRE_EMAIL_VERIFIED === 'true' && !client.emailVerifie) {
+      const error = new Error('Vérifiez votre e-mail avant de commander (lien reçu à l’inscription).');
+      error.statusCode = 403;
+      return next(error);
+    }
+
     const panier = await calculerPanier(articles, typeLivraison, adresseLivraison);
+
+    // Allergènes : bloque si un plat contient une allergie déclarée (sauf confirmation explicite)
+    const allergiesClient = Array.isArray(client.preferences?.allergies)
+      ? client.preferences.allergies.map((a) => String(a).toLowerCase().trim()).filter(Boolean)
+      : [];
+    if (allergiesClient.length && !req.body.ignorerAllergies) {
+      const conflits = [];
+      for (const art of panier.articlesData) {
+        const allergenes = (art.informationsPlat?.allergenes || []).map((a) => String(a).toLowerCase());
+        const hit = allergiesClient.filter((a) => allergenes.some((x) => x.includes(a) || a.includes(x)));
+        if (hit.length) conflits.push({ plat: art.informationsPlat?.nom, allergies: hit });
+      }
+      if (conflits.length) {
+        return res.status(409).json({
+          success: false,
+          message: 'Des plats contiennent vos allergènes déclarés. Confirmez avec ignorerAllergies: true pour forcer.',
+          data: { conflits },
+        });
+      }
+    }
     const { articlesData, sousTotal, fraisLivraison, taxesPourcentage } = panier;
 
     // Commande programmée : le créneau doit exister et rester disponible
@@ -567,6 +606,17 @@ export const creerCommande = async (req, res, next) => {
     });
 
     await viderPanier(req.utilisateur.id).catch(() => undefined);
+
+    for (const art of articlesData) {
+      const p = await prisma.plat.findUnique({
+        where: { id: art.platId },
+        select: { id: true, nom: true, quantiteDisponible: true, enRupture: true },
+      });
+      if (p) await verifierAlerteStock(p).catch(() => undefined);
+    }
+    publier(canalCommande(commande.id), { type: 'cree', statut: commande.statut });
+    publier(canalCuisine(), { type: 'nouvelle', commandeId: commande.id });
+
     try {
       await envoyerEmailConfirmationCommande(client.email, commande);
     } catch (emailErr) {
@@ -1324,16 +1374,19 @@ export const mettreAJourPositionLivreur = async (req, res, next) => {
     }
 
     const prendEnCharge = req.utilisateur.role === 'livreur' && !commande.livreurId;
+    const positionLivreur = { lat, lng, date: new Date().toISOString() };
     await prisma.commande.update({
       where: { id },
       data: {
         ...(prendEnCharge ? { livreurId: req.utilisateur.id } : {}),
         livraison: {
           ...(commande.livraison || {}),
-          positionLivreur: { lat, lng, date: new Date().toISOString() },
+          positionLivreur,
         },
       },
     });
+
+    publier(canalCommande(id), { type: 'position', positionLivreur });
 
     res.status(200).json({ success: true, message: 'Position enregistrée', data: null });
   } catch (error) {

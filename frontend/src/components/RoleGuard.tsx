@@ -16,7 +16,7 @@ export function accueilPourRole(role?: string): string {
 const COMMUNES = ['/login', '/mot-de-passe-oublie', '/cookies', '/privacy', '/terms', '/refund', '/commande/'];
 
 const ESPACES: Record<string, string[]> = {
-  admin: ['/admin-', '/commande-admin'],
+  admin: ['/admin-', '/commande-admin', '/cuisine'],
   livreur: ['/livreur'],
 };
 

@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import SuiviLivreurMap from '@/components/SuiviLivreurMap';
+import ChatCommande from '@/components/ChatCommande';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useAuth } from '@/context/AuthContext';
@@ -422,6 +423,8 @@ function SuiviContent() {
               )}
             </section>
           )}
+
+          {!STATUTS_FINAUX.includes(commande.statut) && <ChatCommande commandeId={commande.id} />}
 
           {commande.statut === 'livree' && (
             <section

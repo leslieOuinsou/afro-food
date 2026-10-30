@@ -17,17 +17,26 @@ import panierRoutes from './panierRoutes.js';
 import statsRoutes from './statsRoutes.js';
 import livraisonRoutes from './livraisonRoutes.js';
 import fideliteRoutes from './fideliteRoutes.js';
+import cuisineRoutes from './cuisineRoutes.js';
+import chatRoutes from './chatRoutes.js';
+import groupeRoutes from './groupeRoutes.js';
+import parrainageRoutes from './parrainageRoutes.js';
+import abonnementRoutes from './abonnementRoutes.js';
+import recetteRoutes from './recetteRoutes.js';
+import stockRoutes from './stockRoutes.js';
+import eventsRoutes from './eventsRoutes.js';
 import { lireInfosEntreprise, majInfosEntreprise } from '../controllers/factureController.js';
 import { cronQuotidien } from '../controllers/cronController.js';
 import { obtenirAvisPublics } from '../controllers/commandeController.js';
 import { creerMessage } from '../controllers/contactMessageController.js';
 import { subscribe } from '../controllers/newsletterController.js';
+import { recommandations } from '../controllers/recommandationController.js';
 import {
   obtenirParametres,
   mettreAJourParametres,
   obtenirParametresLivraison,
 } from '../controllers/settingsController.js';
-import { protegerRoute, restreindreAcces } from '../middleware/auth.js';
+import { authentificationOptionnelle, protegerRoute, restreindreAcces } from '../middleware/auth.js';
 import prisma from '../lib/prisma.js';
 
 const router = express.Router();
@@ -65,6 +74,15 @@ router.use('/panier', panierRoutes);
 router.use('/stats', statsRoutes);
 router.use('/livraison', livraisonRoutes);
 router.use('/fidelite', fideliteRoutes);
+router.use('/cuisine', cuisineRoutes);
+router.use('/chat', chatRoutes);
+router.use('/groupe', groupeRoutes);
+router.use('/parrainage', parrainageRoutes);
+router.use('/abonnements', abonnementRoutes);
+router.use('/recettes', recetteRoutes);
+router.use('/stock', stockRoutes);
+router.use('/events', eventsRoutes);
+router.get('/recommandations', authentificationOptionnelle, recommandations);
 router.get('/entreprise', protegerRoute, restreindreAcces('admin'), lireInfosEntreprise);
 router.put('/entreprise', protegerRoute, restreindreAcces('admin'), majInfosEntreprise);
 router.get('/cron/quotidien', cronQuotidien);

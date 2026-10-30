@@ -128,8 +128,16 @@ async function seedSettings() {
   console.log('✓ Settings admin par défaut');
 }
 
+async function ensureSequences() {
+  // Hors schéma Prisma : db push ne les crée pas
+  await prisma.$executeRawUnsafe(`CREATE SEQUENCE IF NOT EXISTS "commande_numero_seq" START 1`);
+  await prisma.$executeRawUnsafe(`CREATE SEQUENCE IF NOT EXISTS "facture_numero_seq" START 1`);
+  console.log('✓ Séquences numéro commande / facture');
+}
+
 async function main() {
   console.log('🌱 Seed Prisma…');
+  await ensureSequences();
   await seedAdmin();
   await seedPlats();
   await seedPromo();

@@ -25,8 +25,9 @@ export const configPaiement = (req, res) => {
       stripeActif: Boolean(getStripe()),
       // Mode test : le frontend affiche la carte de test (jamais avec une clé sk_live_)
       stripeTest: (process.env.STRIPE_SECRET_KEY || '').startsWith('sk_test_'),
-      // Mobile money : simulateur de test (aucun vrai prélèvement) tant qu'aucun prestataire n'est branché
-      mobileTest: true,
+      // Mobile money : simulateur si aucune clé Wave ; sinon API Wave réelle
+      mobileTest: !process.env.WAVE_API_KEY,
+      waveActif: Boolean(process.env.WAVE_API_KEY),
     },
   });
 };
@@ -194,7 +195,7 @@ async function commandeMobileDuClient(commandeId, utilisateur) {
   return commande;
 }
 
-/** POST /api/paiements/mobile/initier { commandeId, operateur, telephone } — SIMULATEUR de test */
+/** POST /api/paiements/mobile/initier { commandeId, operateur, telephone } — Wave réel si WAVE_API_KEY, sinon simulateur */
 export const initierPaiementMobile = async (req, res, next) => {
   try {
     const { commandeId, operateur, telephone } = req.body;
@@ -202,6 +203,57 @@ export const initierPaiementMobile = async (req, res, next) => {
     if (!OPERATEURS_MOBILE.includes(operateur)) throw erreur('Opérateur invalide', 400);
     const chiffres = String(telephone ?? '').replace(/[^\d]/g, '');
     if (chiffres.length < 8 || chiffres.length > 15) throw erreur('Numéro de téléphone invalide', 400);
+
+    // Wave Checkout Session (https://docs.wave.com) quand la clé est présente
+    if (process.env.WAVE_API_KEY && operateur === 'wave') {
+      const front = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+      const waveRes = await fetch('https://api.wave.com/v1/checkout/sessions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.WAVE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: String(Number(commande.total).toFixed(2)),
+          currency: process.env.WAVE_CURRENCY || 'XOF',
+          error_url: `${front}/commande/${commande.id}?paiement=annule`,
+          success_url: `${front}/commande/${commande.id}?paiement=ok`,
+          client_reference: commande.id,
+        }),
+      });
+      if (!waveRes.ok) {
+        const detail = await waveRes.text().catch(() => '');
+        throw erreur(`Wave indisponible: ${detail.slice(0, 180) || waveRes.status}`, 502);
+      }
+      const session = await waveRes.json();
+      await prisma.commande.update({
+        where: { id: commande.id },
+        data: {
+          paiementReference: session.id,
+          paiement: {
+            ...(commande.paiement || {}),
+            mobile: {
+              operateur: 'wave',
+              telephone: `••••${chiffres.slice(-3)}`,
+              reference: session.id,
+              statut: 'en_attente',
+              tentatives: 0,
+              initieLe: new Date().toISOString(),
+              simulation: false,
+              waveUrl: session.wave_launch_url || session.checkout_url || null,
+            },
+          },
+        },
+      });
+      return res.json({
+        success: true,
+        data: {
+          reference: session.id,
+          montant: commande.total,
+          url: session.wave_launch_url || session.checkout_url || null,
+        },
+      });
+    }
 
     const reference = `MM-TEST-${Date.now().toString(36).toUpperCase()}`;
     await prisma.commande.update({

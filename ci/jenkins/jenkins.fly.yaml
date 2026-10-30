@@ -1,0 +1,34 @@
+# Configuration Jenkins « as code » pour Fly.io (minimale, stable)
+# Pas de credentials Vercel vides (ils faisaient planter CASC au démarrage)
+jenkins:
+  systemMessage: "Jenkins CI/CD · Afro-food (Fly.io)"
+  numExecutors: 2
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "${JENKINS_ADMIN_ID}"
+          password: "${JENKINS_ADMIN_PASSWORD}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: true
+  # crumbIssuer : attribut « excludeClientIPFromCrumb » retiré (invalide sur Jenkins récent → exit 5)
+unclassified:
+  location:
+    url: "${JENKINS_URL}"
+jobs:
+  - script: >
+      multibranchPipelineJob('afro-food') {
+        branchSources {
+          github {
+            id('afro-food-github')
+            repoOwner('leslieOuinsou')
+            repository('afro-food')
+            buildOriginBranch(true)
+            buildOriginPRMerge(true)
+          }
+        }
+        factory { workflowBranchProjectFactory { scriptPath('Jenkinsfile.fly') } }
+        orphanedItemStrategy { discardOldItems { numToKeep(10) } }
+        triggers { periodicFolderTrigger { interval('5m') } }
+      }

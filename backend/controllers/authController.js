@@ -5,6 +5,7 @@ import prisma from '../lib/prisma.js';
 import { serialize, serializeUser } from '../utils/serialize.js';
 import { envoyerEmailBienvenue, envoyerEmailResetMotDePasse } from '../utils/email.js';
 import { assurerCodeBienvenue } from '../utils/recompenses.js';
+import { assurerCodeParrain, lierParrain } from '../utils/parrainage.js';
 
 const saltRounds = () => parseInt(process.env.BCRYPT_SALT_ROUNDS, 10) || 12;
 
@@ -64,6 +65,7 @@ export const inscription = async (req, res, next) => {
       confirmationMotDePasse,
       accepteCGU,
       adresse,
+      codeParrain,
     } = req.body;
 
     if (!nom || !prenom || !email || !telephone || !motDePasse) {
@@ -98,6 +100,8 @@ export const inscription = async (req, res, next) => {
     }
 
     const hash = await hasherMotDePasse(motDePasse);
+    const tokenEmail = crypto.randomBytes(32).toString('hex');
+    const tokenEmailHash = crypto.createHash('sha256').update(tokenEmail).digest('hex');
 
     const utilisateur = await prisma.user.create({
       data: {
@@ -106,6 +110,9 @@ export const inscription = async (req, res, next) => {
         email: emailNorm,
         telephone,
         motDePasse: hash,
+        emailVerifie: process.env.REQUIRE_EMAIL_VERIFIED !== 'true',
+        tokenVerificationEmail: tokenEmailHash,
+        expirationTokenEmail: new Date(Date.now() + 48 * 60 * 60 * 1000),
         ...(adresse
           ? {
               adresses: {
@@ -124,6 +131,13 @@ export const inscription = async (req, res, next) => {
       },
       include: { adresses: true },
     });
+
+    try {
+      await assurerCodeParrain(utilisateur.id);
+      if (codeParrain) await lierParrain(utilisateur.id, codeParrain);
+    } catch (err) {
+      console.warn('Parrainage non appliqué:', err.message);
+    }
 
     // Bienvenue : l'e-mail n'empêche jamais l'inscription (attendu : sur Vercel, le traitement s'arrête avec la réponse)
     try {
@@ -550,5 +564,116 @@ export const reinitialiserMotDePasse = async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+};
+
+/** GET /api/auth/verifier-email?token= */
+export const verifierEmail = async (req, res, next) => {
+  try {
+    const token = String(req.query.token || req.body?.token || '');
+    if (!token) {
+      const error = new Error('Token manquant');
+      error.statusCode = 400;
+      return next(error);
+    }
+    const hashed = crypto.createHash('sha256').update(token).digest('hex');
+    const user = await prisma.user.findFirst({
+      where: {
+        tokenVerificationEmail: hashed,
+        expirationTokenEmail: { gt: new Date() },
+      },
+    });
+    if (!user) {
+      const error = new Error('Lien de vérification invalide ou expiré');
+      error.statusCode = 400;
+      return next(error);
+    }
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerifie: true,
+        tokenVerificationEmail: null,
+        expirationTokenEmail: null,
+      },
+    });
+    res.json({ success: true, message: 'E-mail vérifié' });
+  } catch (e) {
+    next(e);
+  }
+};
+
+/**
+ * POST /api/auth/google { credential } — Google Identity Services (JWT id_token).
+ * Nécessite GOOGLE_CLIENT_ID.
+ */
+export const connexionGoogle = async (req, res, next) => {
+  try {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      const error = new Error('Connexion Google non configurée');
+      error.statusCode = 503;
+      return next(error);
+    }
+    const credential = req.body?.credential;
+    if (!credential) {
+      const error = new Error('credential Google manquant');
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    const resp = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`
+    );
+    if (!resp.ok) {
+      const error = new Error('Jeton Google invalide');
+      error.statusCode = 401;
+      return next(error);
+    }
+    const payload = await resp.json();
+    if (payload.aud !== clientId) {
+      const error = new Error('Audience Google invalide');
+      error.statusCode = 401;
+      return next(error);
+    }
+    if (payload.email_verified !== 'true' && payload.email_verified !== true) {
+      const error = new Error('E-mail Google non vérifié');
+      error.statusCode = 401;
+      return next(error);
+    }
+
+    const email = String(payload.email).toLowerCase();
+    let user = await prisma.user.findFirst({
+      where: { OR: [{ googleId: payload.sub }, { email }] },
+      include: { adresses: true },
+    });
+
+    if (!user) {
+      const telPlaceholder = `g-${payload.sub.slice(-10)}`;
+      user = await prisma.user.create({
+        data: {
+          nom: payload.family_name || 'Google',
+          prenom: payload.given_name || email.split('@')[0],
+          email,
+          telephone: telPlaceholder,
+          motDePasse: await hasherMotDePasse(crypto.randomBytes(24).toString('hex')),
+          googleId: payload.sub,
+          emailVerifie: true,
+          avatar: payload.picture || null,
+        },
+        include: { adresses: true },
+      });
+      await assurerCodeParrain(user.id).catch(() => {});
+      if (req.body?.codeParrain) await lierParrain(user.id, req.body.codeParrain).catch(() => {});
+    } else if (!user.googleId) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { googleId: payload.sub, emailVerifie: true },
+        include: { adresses: true },
+      });
+    }
+
+    envoyerTokenReponse(user, 200, res, 'Connexion Google réussie');
+  } catch (e) {
+    next(e);
   }
 };

@@ -243,6 +243,26 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/recettes" className={linkClassName()}>
+                  Recettes
+                </Link>
+              </li>
+              <li>
+                <Link href="/parrainage" className={linkClassName()}>
+                  Parrainage
+                </Link>
+              </li>
+              <li>
+                <Link href="/abonnements" className={linkClassName()}>
+                  Box abonnement
+                </Link>
+              </li>
+              <li>
+                <Link href="/groupe" className={linkClassName()}>
+                  Commande de groupe
+                </Link>
+              </li>
+              <li>
                 <Link href="/contact" className={linkClassName()}>
                   Contact
                 </Link>

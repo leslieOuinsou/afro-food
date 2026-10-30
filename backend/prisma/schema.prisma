@@ -143,8 +143,19 @@ model User {
   reponsesAvis      Avis[]               @relation("ReponseAvisAuteur")
   favoris           Favori[]
   pushSubscriptions PushSubscription[]
+  /// Code unique de parrainage (ex. AFRO-AB12CD)
+  codeParrain       String?              @unique
+  /// Qui a parrainé ce compte (null = organique)
+  parraineParId     String?
+  parrainePar       User?                @relation("Parrainage", fields: [parraineParId], references: [id], onDelete: SetNull)
+  filleuls          User[]               @relation("Parrainage")
+  googleId          String?              @unique
+  paniersGroupeHote PanierGroupe[]       @relation("GroupeHote")
+  messagesChat      MessageChat[]
+  abonnements       Abonnement[]
 
   @@index([role])
+  @@index([parraineParId])
   @@map("users")
 }
 
@@ -646,4 +657,105 @@ model MouvementPoints {
 
   @@index([userId, createdAt])
   @@map("mouvements_points")
+}
+
+/// Panier partagé : plusieurs clients ajoutent des plats, l'hôte passe la commande.
+model PanierGroupe {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  hoteId    String
+  hote      User     @relation("GroupeHote", fields: [hoteId], references: [id], onDelete: Cascade)
+  /// ouvert | commande | ferme
+  statut    String   @default("ouvert")
+  /// [{ participantId?, nom, platId, quantite, prixUnitaire, nomPlat }]
+  articles  Json     @default("[]")
+  commandeId String?
+  expireLe  DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([hoteId, statut])
+  @@map("paniers_groupe")
+}
+
+/// Fil de discussion lié à une commande (client ↔ support / livreur).
+model Conversation {
+  id         String        @id @default(cuid())
+  commandeId String        @unique
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  messages   MessageChat[]
+
+  @@map("conversations")
+}
+
+model MessageChat {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  auteurId       String
+  auteur         User         @relation(fields: [auteurId], references: [id], onDelete: Cascade)
+  corps          String
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+  @@map("messages_chat")
+}
+
+/// Box / abonnement hebdomadaire de plats.
+model Abonnement {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// hebdo | bihebdo
+  frequence       String    @default("hebdo")
+  /// nombre de plats par livraison
+  tailleBox       Int       @default(4)
+  /// ids de plats préférés / exclus
+  preferences     Json      @default("{}")
+  /// actif | pause | annule
+  statut          String    @default("actif")
+  prochainCreneau DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId, statut])
+  @@map("abonnements")
+}
+
+/// Recette / histoire d'origine liée à un plat du catalogue.
+model Recette {
+  id          String   @id @default(cuid())
+  platId      String?  @unique
+  titre       String
+  slug        String   @unique
+  resume      String
+  contenu     String
+  paysOrigine String?
+  dureeMin    Int?
+  portions    Int?
+  imageUrl    String?
+  publie      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([publie, createdAt])
+  @@map("recettes")
+}
+
+/// Alerte stock bas / rupture (générée automatiquement).
+model AlerteStock {
+  id          String    @id @default(cuid())
+  platId      String
+  /// bas | rupture
+  type        String
+  message     String
+  quantite    Int?
+  traitee     Boolean   @default(false)
+  traiteeLe   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([traitee, createdAt])
+  @@index([platId])
+  @@map("alertes_stock")
 }

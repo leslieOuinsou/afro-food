@@ -1,0 +1,20 @@
+# Jenkins pour Fly.io : Node 24 inclus (pas de Docker daemon sur Fly).
+# Les pipelines tournent sur l'agent « built-in ».
+FROM jenkins/jenkins:lts-jdk21
+
+USER root
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates curl gnupg xz-utils \
+ && curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
+ && apt-get install -y --no-install-recommends nodejs \
+ && node -v && npm -v \
+ && rm -rf /var/lib/apt/lists/*
+
+USER jenkins
+COPY plugins.txt /usr/share/jenkins/ref/plugins.txt
+RUN jenkins-plugin-cli --plugin-file /usr/share/jenkins/ref/plugins.txt
+
+# Hors du volume /var/jenkins_home (sinon perdu au premier mount Fly)
+COPY jenkins.fly.yaml /casc/jenkins.yaml
+ENV CASC_JENKINS_CONFIG=/casc/jenkins.yaml
+ENV JAVA_OPTS="-Djenkins.install.runSetupWizard=false -Xmx2560m"

@@ -21,10 +21,24 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     setIsSidebarOpen(false);
   }, [pathname]);
 
-  // Rien n'est affiché (ni appelé côté API) tant que le rôle admin n'est pas confirmé ;
-  // RoleGuard redirige les autres comptes.
-  if (user?.role !== 'admin' || (loading && !user)) {
+  if (loading && !user) {
     return <div className="min-h-screen bg-gray-50" aria-busy="true" />;
+  }
+
+  // Compte non-admin : message clair (sinon écran vide = « commandes invisibles »)
+  if (user?.role !== 'admin') {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gray-50 px-4 text-center text-gray-800">
+        <p className="text-lg font-semibold">Espace admin réservé</p>
+        <p className="max-w-md text-sm text-gray-600">
+          Vous êtes connecté{user ? ` en tant que ${user.email} (${user.role})` : ' sans compte admin'}.
+          Déconnectez-vous puis reconnectez-vous avec le compte admin pour voir les commandes.
+        </p>
+        <a href="/login?redirect=/commande-admin" className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white">
+          Connexion admin
+        </a>
+      </div>
+    );
   }
 
   return (

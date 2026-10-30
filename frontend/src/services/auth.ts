@@ -94,6 +94,7 @@ export async function register(data: {
   motDePasse: string;
   confirmationMotDePasse: string;
   accepteCGU: boolean;
+  codeParrain?: string;
   adresse?: { adresse: string; ville: string; codePostal: string; pays?: string };
 }): Promise<ApiResponse<AuthResponse>> {
   const res = await apiPost<AuthResponse>('/api/auth/inscription', data);

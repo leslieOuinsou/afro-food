@@ -154,6 +154,7 @@ export const creerAvis = async (req, res, next) => {
       evaluations,
       recommande,
       tags,
+      photos,
     } = req.body;
 
     if (!isValidId(platId) || !isValidId(commandeId)) {
@@ -200,6 +201,11 @@ export const creerAvis = async (req, res, next) => {
         evaluations: evaluations || null,
         recommande: recommande ?? true,
         tags: tags || [],
+        photos: Array.isArray(photos)
+          ? photos
+              .filter((p) => typeof p === 'string' && (p.startsWith('data:image/') || p.startsWith('https://')))
+              .slice(0, 4)
+          : [],
         statut,
         dateApprobation,
         adresseIP: req.ip || null,
